@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AquaSort · UI 2026 Prototype (THROWWAY)</title>
+  <!--
+    PROTOTYPE — throwaway.
+    Question: What should AquaSort's 2026 first-run feel like (loading → home → rules)?
+    Three variants via ?variant=A|B|C — structurally different, color-accessible.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@500;600;700;800&family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --phone-w: 390px;
+      --phone-h: 844px;
+      --safe-top: 54px;
+      --safe-bot: 34px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: #12151a;
+      color: #e8ecef;
+      font-family: "DM Sans", system-ui, sans-serif;
+    }
+
+    .stage {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 32px 16px 120px;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #1a3a3e 0%, transparent 55%),
+        #12151a;
+    }
+
+    .meta {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 40;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      font-size: 12px;
+      color: rgba(232,236,239,0.55);
+      letter-spacing: 0.04em;
+    }
+    .meta strong { color: rgba(232,236,239,0.85); font-weight: 600; }
+    .meta code {
+      font-family: ui-monospace, monospace;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .phone {
+      width: min(var(--phone-w), 100%);
+      height: min(var(--phone-h), 92dvh);
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.08),
+        0 0 0 10px #0a0c0f,
+        0 40px 80px rgba(0,0,0,0.55);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 34px;
+      background: #0a0c0f;
+      border-radius: 20px;
+      z-index: 30;
+      pointer-events: none;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .screen.active { display: flex; }
+
+    /* ——— Prototype switcher (not part of design) ——— */
+    .switcher {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px;
+      background: #f4f6f8;
+      color: #0f1216;
+      border-radius: 999px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 12px;
+      font-weight: 600;
+      user-select: none;
+    }
+    .switcher button {
+      border: 0;
+      background: transparent;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #0f1216;
+    }
+    .switcher button:hover { background: rgba(0,0,0,0.06); }
+    .switcher .label {
+      min-width: 200px;
+      text-align: center;
+      padding: 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .flow-bar {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      background: rgba(20,24,28,0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      backdrop-filter: blur(12px);
+    }
+    .flow-bar button {
+      border: 0;
+      background: transparent;
+      color: rgba(232,236,239,0.5);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: "DM Sans", sans-serif;
+    }
+    .flow-bar button.on {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+    }
+
+    /* Shared utilities inside phone */
+    .btn {
+      border: 0;
+      cursor: pointer;
+      font: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible {
+      outline: 3px solid currentColor;
+      outline-offset: 3px;
+    }
+
+    /* =========================================================
+       VARIANT A — Liquid Path
+       Immersive path-as-home; story-card rules; kinetic load
+       ========================================================= */
+    [data-variant="A"] {
+      --bg0: #04161c;
+      --bg1: #0a2e36;
+      --ink: #f3faf9;
+      --muted: rgba(243,250,249,0.68);
+      --aqua: #3dd6c6;
+      --aqua-ink: #04221f;
+      --gold: #f0c14b;
+      --gold-ink: #1a1400;
+      --surface: rgba(61,214,198,0.12);
+      --line: rgba(61,214,198,0.28);
+      font-family: Outfit, "DM Sans", sans-serif;
+    }
+    [data-variant="A"] .screen {
+      background: linear-gradient(165deg, var(--bg0) 0%, var(--bg1) 55%, #0d3d3a 100%);
+      color: var(--ink);
+    }
+    [data-variant="A"] .a-mesh {
+      position: absolute;
+      inset: -20%;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(61,214,198,0.35), transparent 42%),
+        radial-gradient(circle at 75% 60%, rgba(240,193,75,0.18), transparent 40%),
+        radial-gradient(circle at 40% 90%, rgba(61,214,198,0.2), transparent 45%);
+      animation: meshDrift 10s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    [data-variant="A"] .a-load > :not(.a-mesh),
+    [data-variant="A"] .a-home > :not(.a-mesh),
+    [data-variant="A"] .a-rules > :not(.a-mesh) {
+      position: relative;
+      z-index: 1;
+    }
+    @keyframes meshDrift {
+      from { transform: translate(-2%, -1%) scale(1); }
+      to { transform: translate(3%, 2%) scale(1.08); }
+    }
+    [data-variant="A"] .a-load {
+      align-items: center;
+      justify-content: center;
+      padding: var(--safe-top) 28px var(--safe-bot);
+    }
+    [data-variant="A"] .a-orb {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      position: relative;
+      margin-bottom: 36px;
+      background: radial-gradient(circle at 35% 30%, #7ef0e4, #1a9e92 55%, #0a3d3a);
+      box-shadow: 0 0 60px rgba(61,214,198,0.45);
+      animation: orbPulse 2.4s ease-in-out infinite;
+    }
+    [data-variant="A"] .a-orb::after {
+      content: "";
+      position: absolute;
+      inset: 18%;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: transparent;
+      animation: spin 1.6s linear infinite;
+    }
+    @keyframes orbPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    [data-variant="A"] .a-brand {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: var(--ink);
+      opacity: 0;
+      animation: brandIn 0.8s 0.3s ease forwards;
+    }
+    @keyframes brandIn {
+      from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+      to { opacity: 1; transform: none; filter: none; }
+    }
+    [data-variant="A"] .a-tag {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0;
+      animation: brandIn 0.7s 0.55s ease forwards;
+    }
+    [data-variant="A"] .a-bar {
+      width: 160px;
+      height: 4px;
+      margin-top: 40px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+    [data-variant="A"] .a-bar > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--aqua), var(--gold));
+      border-radius: inherit;
+      animation: fillBar 2.2s 0.4s ease-out forwards;
+    }
+    @keyframes fillBar { to { width: 100%; } }
+
+    /* A Home */
+    [data-variant="A"] .a-home {
+      padding: calc(var(--safe-top) + 12px) 0 0;
+    }
+    [data-variant="A"] .a-top {
+      padding: 0 22px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      z-index: 2;
+    }
+    [data-variant="A"] .a-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--aqua);
+      font-weight: 600;
+    }
+    [data-variant="A"] .a-title {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-top: 4px;
+    }
+    [data-variant="A"] .a-wallet {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px 14px;
+      text-align: right;
+      backdrop-filter: blur(16px);
+    }
+    [data-variant="A"] .a-wallet small {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    [data-variant="A"] .a-wallet b {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    [data-variant="A"] .a-path {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 28px 140px;
+      position: relative;
+      scrollbar-width: none;
+    }
+    [data-variant="A"] .a-path::-webkit-scrollbar { display: none; }
+    [data-variant="A"] .a-pipe {
+      position: absolute;
+      left: 50%;
+      top: 20px;
+      bottom: 120px;
+      width: 3px;
+      background: linear-gradient(180deg, var(--aqua), transparent);
+      opacity: 0.35;
+      transform: translateX(-50%);
+    }
+    [data-variant="A"] .a-node {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin: 28px 0;
+      gap: 16px;
+    }
+    [data-variant="A"] .a-node:nth-child(odd) { flex-direction: row; }
+    [data-variant="A"] .a-node:nth-child(even) { flex-direction: row-reverse; }
+    [data-variant="A"] .a-flask {
+      width: 58px;
+      height: 72px;
+      border-radius: 12px 12px 18px 18px;
+      border: 2px solid var(--line);
+      background: rgba(61,214,198,0.08);
+      display: grid;
+      place-items: center;
+      position: relative;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    [data-variant="A"] .a-flask.current {
+      border-color: var(--gold);
+      box-shadow: 0 0 24px rgba(240,193,75,0.35);
+      animation: flaskGlow 2s ease-in-out infinite;
+    }
+    [data-variant="A"] .a-flask.done {
+      background: rgba(61,214,198,0.28);
+      border-color: var(--aqua);
+    }
+    [data-variant="A"] .a-flask.locked { opacity: 0.4; }
+    @keyframes flaskGlow {
+      0%, 100% { box-shadow: 0 0 16px rgba(240,193,75,0.25); }
+      50% { box-shadow: 0 0 32px rgba(240,193,75,0.5); }
+    }
+    [data-variant="A"] .a-flask span {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    [data-variant="A"] .a-node-meta {
+      flex: 1;
+      max-width: 140px;
+    }
+    [data-variant="A"] .a-node-meta strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    [data-variant="A"] .a-node-meta em {
+      font-style: normal;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    [data-variant="A"] .a-dock {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: calc(var(--safe-bot) + 8px);
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 10px;
+      z-index: 5;
+    }
+    [data-variant="A"] .a-dock .ghost {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 16px;
+      font-weight: 650;
+      font-size: 14px;
+      backdrop-filter: blur(20px);
+    }
+    [data-variant="A"] .a-dock .primary {
+      background: var(--gold);
+      color: var(--gold-ink);
+      border-radius: 18px;
+      padding: 16px;
+      font-weight: 750;
+      font-size: 15px;
+    }
+
+    /* A Rules — story cards */
+    [data-variant="A"] .a-rules {
+      padding: calc(var(--safe-top) + 20px) 22px calc(var(--safe-bot) + 16px);
+    }
+    [data-variant="A"] .a-rules-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    [data-variant="A"] .a-rules-top h2 {
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--aqua);
+      font-weight: 600;
+    }
+    [data-variant="A"] .a-skip {
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px;
+    }
+    [data-variant="A"] .a-card-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    [data-variant="A"] .a-story {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 28px 24px 32px;
+      min-height: 380px;
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+    }
+    [data-variant="A"] .a-story-viz {
+      height: 140px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.25);
+      margin-bottom: 24px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    [data-variant="A"] .tubes-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .proto-tube {
+      width: 28px;
+      height: 88px;
+      border-radius: 8px 8px 12px 12px;
+      border: 2px solid rgba(255,255,255,0.35);
+      display: flex;
+      flex-direction: column-reverse;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+    }
+    .proto-seg {
+      height: 25%;
+      width: 100%;
+      position: relative;
+    }
+    /* pattern + color for colorblind friendliness */
+    .proto-seg.c1 { background: repeating-linear-gradient(45deg, #e85d4c, #e85d4c 4px, #c94436 4px, #c94436 8px); }
+    .proto-seg.c2 { background: repeating-linear-gradient(90deg, #3d8ec9, #3d8ec9 3px, #2f759f 3px, #2f759f 6px); }
+    .proto-seg.c3 { background: repeating-linear-gradient(-45deg, #2a9d8f, #2a9d8f 4px, #218074 4px, #218074 8px); }
+    .proto-seg.c4 { background: radial-gradient(circle, #e9c46a 40%, #d4ad4a 41%); }
+
+    [data-variant="A"] .a-story h3 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+    [data-variant="A"] .a-story p {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--muted);
+      font-weight: 450;
+      flex: 1;
+    }
+    [data-variant="A"] .a-dots {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 22px 0;
+    }
+    [data-variant="A"] .a-dots i {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.2);
+    }
+    [data-variant="A"] .a-dots i.on {
+      width: 22px;
+      background: var(--aqua);
+    }
+    [data-variant="A"] .a-rules-cta {
+      background: var(--gold);
+      color: var(--gold-ink);
+      border-radius: 18px;
+      padding: 18px;
+      font-weight: 750;
+      font-size: 16px;
+      width: 100%;
+    }
+
+    /* =========================================================
+       VARIANT B — Day Station (light, outdoor-friendly)
+       Continue-first home; sheet rules; fill-meter load
+       ========================================================= */
+    [data-variant="B"] {
+      --bg: #e7f3ef;
+      --bg2: #cfe8e0;
+      --ink: #0d2420;
+      --muted: #3d5c56;
+      --teal: #0b6b5f;
+      --teal-soft: #d2efe8;
+      --gold: #a65f00;
+      --gold-bg: #ffd89a;
+      --card: #ffffff;
+      --line: rgba(13,36,32,0.1);
+      font-family: Sora, "DM Sans", sans-serif;
+    }
+    [data-variant="B"] .screen {
+      background:
+        linear-gradient(180deg, #f2faf7 0%, var(--bg) 40%, var(--bg2) 100%);
+      color: var(--ink);
+    }
+    [data-variant="B"] .b-load {
+      align-items: center;
+      justify-content: center;
+      padding: var(--safe-top) 36px var(--safe-bot);
+      gap: 28px;
+    }
+    [data-variant="B"] .b-fill-tube {
+      width: 72px;
+      height: 220px;
+      border-radius: 18px 18px 28px 28px;
+      border: 3px solid var(--ink);
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,0.5);
+    }
+    [data-variant="B"] .b-fill-tube .liquid {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 0%;
+      background: linear-gradient(180deg, #2ec4b6, #0b6b5f);
+      animation: liquidRise 2.4s 0.2s ease-out forwards;
+    }
+    [data-variant="B"] .b-fill-tube .liquid::before {
+      content: "";
+      position: absolute;
+      top: -8px; left: -10%; right: -10%;
+      height: 16px;
+      background: #3dd6c6;
+      border-radius: 50%;
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    @keyframes liquidRise { to { height: 88%; } }
+    @keyframes wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(3px); }
+    }
+    [data-variant="B"] .b-load h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      text-align: center;
+    }
+    [data-variant="B"] .b-load p {
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      margin-top: -16px;
+    }
+
+    [data-variant="B"] .b-home {
+      padding: calc(var(--safe-top) + 8px) 20px calc(var(--safe-bot) + 16px);
+      gap: 16px;
+    }
+    [data-variant="B"] .b-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    [data-variant="B"] .b-header .mark {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    [data-variant="B"] .b-chip {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 650;
+      box-shadow: 0 4px 16px rgba(13,36,32,0.06);
+    }
+    [data-variant="B"] .b-hero {
+      background: var(--card);
+      border-radius: 28px;
+      padding: 28px 24px;
+      box-shadow: 0 16px 40px rgba(13,36,32,0.08);
+      margin-top: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-hero::before {
+      content: "";
+      position: absolute;
+      right: -40px;
+      top: -40px;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      animation: softBlob 6s ease-in-out infinite alternate;
+    }
+    @keyframes softBlob {
+      from { transform: translate(0,0) scale(1); }
+      to { transform: translate(-12px, 18px) scale(1.15); }
+    }
+    [data-variant="B"] .b-hero .label {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--teal);
+      font-weight: 700;
+      position: relative;
+    }
+    [data-variant="B"] .b-hero h2 {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 8px 0 6px;
+      position: relative;
+    }
+    [data-variant="B"] .b-hero p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      position: relative;
+      margin-bottom: 22px;
+    }
+    [data-variant="B"] .b-continue {
+      width: 100%;
+      background: var(--teal);
+      color: #f3fffc;
+      border-radius: 16px;
+      padding: 18px;
+      font-weight: 700;
+      font-size: 16px;
+      position: relative;
+    }
+    [data-variant="B"] .b-continue:focus-visible {
+      outline-color: var(--ink);
+    }
+    [data-variant="B"] .b-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    [data-variant="B"] .b-tile {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px 16px;
+      text-align: left;
+      box-shadow: 0 6px 20px rgba(13,36,32,0.05);
+    }
+    [data-variant="B"] .b-tile strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    [data-variant="B"] .b-tile span {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    [data-variant="B"] .b-gold {
+      background: var(--gold-bg);
+      border-color: transparent;
+    }
+    [data-variant="B"] .b-gold strong { color: var(--gold); }
+    [data-variant="B"] .b-path-preview {
+      flex: 1;
+      background: rgba(255,255,255,0.55);
+      border: 1px dashed rgba(13,36,32,0.18);
+      border-radius: 20px;
+      padding: 16px;
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-path-preview h3 {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+    [data-variant="B"] .b-steps {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    [data-variant="B"] .b-step {
+      min-width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      border: 2px solid var(--line);
+      background: var(--card);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-step.on {
+      border-color: var(--teal);
+      background: var(--teal-soft);
+      color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(11,107,95,0.15);
+    }
+    [data-variant="B"] .b-step.done {
+      background: var(--teal);
+      color: #fff;
+      border-color: var(--teal);
+    }
+
+    /* B Rules sheet */
+    [data-variant="B"] .b-rules {
+      justify-content: flex-end;
+      background: rgba(13,36,32,0.35) !important;
+      padding: 0;
+    }
+    [data-variant="B"] .b-sheet {
+      background: var(--card);
+      border-radius: 28px 28px 0 0;
+      padding: 12px 22px calc(var(--safe-bot) + 16px);
+      max-height: 88%;
+      display: flex;
+      flex-direction: column;
+      animation: sheetUp 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      color: var(--ink);
+    }
+    @keyframes sheetUp {
+      from { transform: translateY(40%); opacity: 0.5; }
+      to { transform: none; opacity: 1; }
+    }
+    [data-variant="B"] .b-handle {
+      width: 40px;
+      height: 4px;
+      background: rgba(13,36,32,0.15);
+      border-radius: 999px;
+      margin: 4px auto 16px;
+    }
+    [data-variant="B"] .b-sheet h2 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+    [data-variant="B"] .b-sheet .sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    [data-variant="B"] .b-steps-list {
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 12px;
+    }
+    [data-variant="B"] .b-rule {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px;
+      border-radius: 16px;
+      background: var(--bg);
+    }
+    [data-variant="B"] .b-rule .icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: var(--teal-soft);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--teal);
+    }
+    [data-variant="B"] .b-rule strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    [data-variant="B"] .b-rule span {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    [data-variant="B"] .b-sheet-actions {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    [data-variant="B"] .b-sheet-actions .ghost {
+      background: transparent;
+      border: 1.5px solid var(--line);
+      color: var(--ink);
+      border-radius: 14px;
+      padding: 16px;
+      font-weight: 650;
+    }
+    [data-variant="B"] .b-sheet-actions .primary {
+      background: var(--teal);
+      color: #f3fffc;
+      border-radius: 14px;
+      padding: 16px;
+      font-weight: 700;
+    }
+
+    /* =========================================================
+       VARIANT C — Signal Editorial
+       Typographic load; three-pillar home; sticky-CTA manual
+       ========================================================= */
+    [data-variant="C"] {
+      --bg: #0b0e10;
+      --ink: #eee8df;
+      --muted: rgba(238,232,223,0.62);
+      --mint: #00d9a5;
+      --mint-ink: #003528;
+      --warn: #ff6b4a;
+      --line: rgba(238,232,223,0.14);
+      font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+    }
+    [data-variant="C"] .screen {
+      background: var(--bg);
+      color: var(--ink);
+    }
+    [data-variant="C"] .c-load {
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: var(--safe-top) 28px calc(var(--safe-bot) + 48px);
+      background:
+        linear-gradient(160deg, #0b0e10 40%, #0f2a24 100%);
+    }
+    [data-variant="C"] .c-kinetic {
+      font-size: clamp(48px, 14vw, 64px);
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      line-height: 0.92;
+      overflow: hidden;
+    }
+    [data-variant="C"] .c-kinetic span {
+      display: block;
+      opacity: 0;
+      transform: translateY(110%);
+      animation: riseWord 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    [data-variant="C"] .c-kinetic span:nth-child(1) { animation-delay: 0.15s; }
+    [data-variant="C"] .c-kinetic span:nth-child(2) { animation-delay: 0.35s; color: var(--mint); }
+    [data-variant="C"] .c-load .status {
+      margin-top: 28px;
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0;
+      animation: brandIn 0.5s 0.9s ease forwards;
+    }
+    [data-variant="C"] .c-progress {
+      margin-top: 16px;
+      width: 100%;
+      height: 2px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    [data-variant="C"] .c-progress i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--mint);
+      animation: fillBar 2s 0.5s ease-out forwards;
+    }
+    @keyframes riseWord {
+      to { opacity: 1; transform: none; }
+    }
+
+    [data-variant="C"] .c-home {
+      padding: calc(var(--safe-top) + 16px) 22px calc(var(--safe-bot) + 16px);
+      gap: 0;
+    }
+    [data-variant="C"] .c-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+      margin-bottom: 8px;
+    }
+    [data-variant="C"] .c-top h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+    [data-variant="C"] .c-top .coins {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mint);
+    }
+    [data-variant="C"] .c-lede {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin: 12px 0 24px;
+      max-width: 28ch;
+    }
+    [data-variant="C"] .c-pillars {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    [data-variant="C"] .c-pillar {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 20px 18px;
+      text-align: left;
+      background: transparent;
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 110px;
+      position: relative;
+      overflow: hidden;
+    }
+    [data-variant="C"] .c-pillar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 60%, rgba(0,217,165,0.08));
+      pointer-events: none;
+    }
+    [data-variant="C"] .c-pillar.featured {
+      background: var(--mint);
+      color: var(--mint-ink);
+      border-color: var(--mint);
+      flex: 1.35;
+    }
+    [data-variant="C"] .c-pillar.featured::after { display: none; }
+    [data-variant="C"] .c-pillar .kicker {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      font-weight: 600;
+    }
+    [data-variant="C"] .c-pillar h3 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-top: 6px;
+    }
+    [data-variant="C"] .c-pillar .hint {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 12px;
+      opacity: 0.75;
+      margin-top: 8px;
+    }
+    [data-variant="C"] .c-pillar .arrow {
+      align-self: flex-end;
+      font-size: 20px;
+      opacity: 0.5;
+    }
+    [data-variant="C"] .c-pillar.featured .arrow { opacity: 0.8; }
+
+    /* C Rules manual */
+    [data-variant="C"] .c-rules {
+      padding: calc(var(--safe-top) + 12px) 0 0;
+    }
+    [data-variant="C"] .c-rules-head {
+      padding: 0 22px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    [data-variant="C"] .c-rules-head .kicker {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--mint);
+      font-weight: 600;
+    }
+    [data-variant="C"] .c-rules-head h2 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-top: 6px;
+    }
+    [data-variant="C"] .c-manual {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 22px 120px;
+      scrollbar-width: none;
+    }
+    [data-variant="C"] .c-manual::-webkit-scrollbar { display: none; }
+    [data-variant="C"] .c-block {
+      padding: 22px 0;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+    }
+    [data-variant="C"] .c-num {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--mint);
+      padding-top: 3px;
+    }
+    [data-variant="C"] .c-block h3 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    [data-variant="C"] .c-block p {
+      font-family: "IBM Plex Sans", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    [data-variant="C"] .c-viz-mini {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    [data-variant="C"] .c-sticky {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 0;
+      padding: 16px 22px calc(var(--safe-bot) + 12px);
+      background: linear-gradient(180deg, transparent, var(--bg) 28%);
+    }
+    [data-variant="C"] .c-sticky .primary {
+      width: 100%;
+      background: var(--mint);
+      color: var(--mint-ink);
+      border-radius: 4px;
+      padding: 18px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    [data-variant="C"] .c-sticky .skip {
+      width: 100%;
+      background: transparent;
+      color: var(--muted);
+      padding: 12px;
+      margin-top: 4px;
+      font-size: 13px;
+      font-family: "IBM Plex Sans", sans-serif;
+      font-weight: 500;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <div>
+      <strong>PROTOTYPE · throwaway</strong><br />
+      loading → home → rules (new user)
+    </div>
+    <div style="text-align:right">
+      State: <code id="stateLabel">—</code><br />
+      <code>?variant=</code> shareable
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="phone" id="phone" data-variant="A" aria-label="Phone preview">
+      <div class="phone-notch" aria-hidden="true"></div>
+
+      <!-- ========== VARIANT A ========== -->
+      <div class="variant-root" data-for="A">
+        <section class="screen a-load" data-screen="loading" aria-label="Loading">
+          <div class="a-mesh" aria-hidden="true"></div>
+          <div class="a-orb" aria-hidden="true"></div>
+          <div class="a-brand">AquaSort</div>
+          <div class="a-tag">Hydrology Lab</div>
+          <div class="a-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Loading"><i></i></div>
+        </section>
+
+        <section class="screen a-home" data-screen="home" aria-label="Home">
+          <div class="a-mesh" aria-hidden="true"></div>
+          <div class="a-top">
+            <div>
+              <div class="a-eyebrow">Hydrology Lab</div>
+              <div class="a-title">AquaSort</div>
+            </div>
+            <div class="a-wallet" aria-label="Wallet">
+              <small>Coins</small>
+              <b>240</b>
+            </div>
+          </div>
+          <div class="a-path" role="list" aria-label="Reagent path">
+            <div class="a-pipe" aria-hidden="true"></div>
+            <div class="a-node" role="listitem">
+              <div class="a-flask done"><span>✓</span></div>
+              <div class="a-node-meta"><strong>Station 1</strong><em>Beginner · cleared</em></div>
+            </div>
+            <div class="a-node" role="listitem">
+              <div class="a-flask done"><span>✓</span></div>
+              <div class="a-node-meta"><strong>Station 2</strong><em>Beginner · cleared</em></div>
+            </div>
+            <div class="a-node" role="listitem">
+              <div class="a-flask current"><span>3</span></div>
+              <div class="a-node-meta"><strong>Station 3</strong><em>Beginner · next</em></div>
+            </div>
+            <div class="a-node" role="listitem">
+              <div class="a-flask locked"><span>4</span></div>
+              <div class="a-node-meta"><strong>Station 4</strong><em>Locked</em></div>
+            </div>
+            <div class="a-node" role="listitem">
+              <div class="a-flask locked"><span>5</span></div>
+              <div class="a-node-meta"><strong>Station 5</strong><em>Locked</em></div>
+            </div>
+          </div>
+          <div class="a-dock">
+            <button type="button" class="btn ghost" data-go="rules">Lab Manual</button>
+            <button type="button" class="btn primary" data-go="rules">Continue · 3</button>
+          </div>
+        </section>
+
+        <section class="screen a-rules" data-screen="rules" aria-label="Rules">
+          <div class="a-mesh" aria-hidden="true"></div>
+          <div class="a-rules-top">
+            <h2>First pour</h2>
+            <button type="button" class="btn a-skip" data-go="home">Skip</button>
+          </div>
+          <div class="a-card-stage">
+            <div class="a-story" id="aStory">
+              <div class="a-story-viz" aria-hidden="true">
+                <div class="tubes-row">
+                  <div class="proto-tube"><div class="proto-seg c1"></div><div class="proto-seg c2"></div><div class="proto-seg c1"></div><div class="proto-seg c3"></div></div>
+                  <div class="proto-tube"><div class="proto-seg c2"></div><div class="proto-seg c3"></div></div>
+                  <div class="proto-tube"></div>
+                </div>
+              </div>
+              <h3 id="aStoryTitle">Goal</h3>
+              <p id="aStoryBody">Sort reagents so every vial is empty — or filled with one color only. Patterns on the liquid help if colors look alike.</p>
+            </div>
+            <div class="a-dots" id="aDots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>
+          </div>
+          <button type="button" class="btn a-rules-cta" id="aNext">Next</button>
+        </section>
+      </div>
+
+      <!-- ========== VARIANT B ========== -->
+      <div class="variant-root" data-for="B" hidden>
+        <section class="screen b-load" data-screen="loading" aria-label="Loading">
+          <div class="b-fill-tube" aria-hidden="true"><div class="liquid"></div></div>
+          <h1>AquaSort</h1>
+          <p>Calibrating the sorting bench…</p>
+        </section>
+
+        <section class="screen b-home" data-screen="home" aria-label="Home">
+          <div class="b-header">
+            <div class="mark">AquaSort</div>
+            <div class="b-chip" aria-label="Coins">240 coins</div>
+          </div>
+          <div class="b-hero">
+            <div class="label">Station ready</div>
+            <h2>Continue Station 3</h2>
+            <p>Beginner tier · 12 moves · mid-puzzle progress saved.</p>
+            <button type="button" class="btn b-continue" data-go="rules">Pour reagents</button>
+          </div>
+          <div class="b-row">
+            <button type="button" class="btn b-tile b-gold" data-go="home">
+              <strong>Centrifuge</strong>
+              <span>Spin coins for undos &amp; tubes</span>
+            </button>
+            <button type="button" class="btn b-tile" data-go="rules">
+              <strong>How to play</strong>
+              <span>Quick rules for new labs</span>
+            </button>
+          </div>
+          <div class="b-path-preview">
+            <h3>Reagent path</h3>
+            <div class="b-steps" role="list">
+              <div class="b-step done" role="listitem" aria-label="Station 1 cleared">1</div>
+              <div class="b-step done" role="listitem" aria-label="Station 2 cleared">2</div>
+              <div class="b-step on" role="listitem" aria-current="true" aria-label="Station 3 current">3</div>
+              <div class="b-step" role="listitem" aria-label="Station 4 locked">4</div>
+              <div class="b-step" role="listitem" aria-label="Station 5 locked">5</div>
+              <div class="b-step" role="listitem" aria-label="Station 6 locked">6</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen b-rules" data-screen="rules" aria-label="Rules">
+          <div class="b-sheet" role="dialog" aria-labelledby="bRulesTitle">
+            <div class="b-handle" aria-hidden="true"></div>
+            <h2 id="bRulesTitle">Lab basics</h2>
+            <p class="sub">New here? Thirty seconds, then you pour.</p>
+            <div class="b-steps-list">
+              <div class="b-rule">
+                <div class="icon" aria-hidden="true">①</div>
+                <div>
+                  <strong>Goal</strong>
+                  <span>Every vial empty or one solid color. Patterns on liquid are backups for color vision.</span>
+                </div>
+              </div>
+              <div class="b-rule">
+                <div class="icon" aria-hidden="true">②</div>
+                <div>
+                  <strong>Pour</strong>
+                  <span>Tap source, then target. Top color must match — or the target must be empty.</span>
+                </div>
+              </div>
+              <div class="b-rule">
+                <div class="icon" aria-hidden="true">③</div>
+                <div>
+                  <strong>Moves</strong>
+                  <span>Each pour costs 1. Out of moves → retry or watch an ad.</span>
+                </div>
+              </div>
+              <div class="b-rule">
+                <div class="icon" aria-hidden="true">④</div>
+                <div>
+                  <strong>Centrifuge</strong>
+                  <span>Spend coins to win undos, empty vials, and rare skins.</span>
+                </div>
+              </div>
+            </div>
+            <div class="b-sheet-actions">
+              <button type="button" class="btn ghost" data-go="home">Maybe later</button>
+              <button type="button" class="btn primary" data-go="home">Let's pour</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ========== VARIANT C ========== -->
+      <div class="variant-root" data-for="C" hidden>
+        <section class="screen c-load" data-screen="loading" aria-label="Loading">
+          <div class="c-kinetic" aria-hidden="true">
+            <span>Aqua</span>
+            <span>Sort</span>
+          </div>
+          <div class="status">Initializing lab systems</div>
+          <div class="c-progress" role="progressbar" aria-label="Loading"><i></i></div>
+        </section>
+
+        <section class="screen c-home" data-screen="home" aria-label="Home">
+          <div class="c-top">
+            <h1>AquaSort</h1>
+            <div class="coins" aria-label="240 coins">240 COIN</div>
+          </div>
+          <p class="c-lede">Sort the reagents. Spin the centrifuge. Clear three hundred stations.</p>
+          <div class="c-pillars">
+            <button type="button" class="btn c-pillar featured" data-go="rules">
+              <div>
+                <div class="kicker">Primary</div>
+                <h3>Reagent Path</h3>
+                <div class="hint">Station 3 · Beginner</div>
+              </div>
+              <div class="arrow" aria-hidden="true">→</div>
+            </button>
+            <button type="button" class="btn c-pillar" data-go="home">
+              <div>
+                <div class="kicker">Economy</div>
+                <h3>Centrifuge</h3>
+                <div class="hint">Bet coins · win items</div>
+              </div>
+              <div class="arrow" aria-hidden="true">→</div>
+            </button>
+            <button type="button" class="btn c-pillar" data-go="rules">
+              <div>
+                <div class="kicker">New user</div>
+                <h3>Lab Manual</h3>
+                <div class="hint">Rules before first pour</div>
+              </div>
+              <div class="arrow" aria-hidden="true">→</div>
+            </button>
+          </div>
+        </section>
+
+        <section class="screen c-rules" data-screen="rules" aria-label="Rules">
+          <div class="c-rules-head">
+            <div class="kicker">Onboarding</div>
+            <h2>Lab Manual</h2>
+          </div>
+          <div class="c-manual">
+            <div class="c-block">
+              <div class="c-num">01</div>
+              <div>
+                <h3>Goal</h3>
+                <p>Sort colored reagents so every vial is empty or filled with one color only.</p>
+                <div class="c-viz-mini" aria-hidden="true">
+                  <div class="proto-tube"><div class="proto-seg c1"></div><div class="proto-seg c1"></div><div class="proto-seg c1"></div><div class="proto-seg c1"></div></div>
+                  <div class="proto-tube"><div class="proto-seg c2"></div><div class="proto-seg c2"></div><div class="proto-seg c2"></div><div class="proto-seg c2"></div></div>
+                  <div class="proto-tube"></div>
+                </div>
+              </div>
+            </div>
+            <div class="c-block">
+              <div class="c-num">02</div>
+              <div>
+                <h3>Pouring</h3>
+                <p>Tap a vial to pick it up, then tap another to pour. Target must be empty or share the top color. Contiguous top segments pour together.</p>
+              </div>
+            </div>
+            <div class="c-block">
+              <div class="c-num">03</div>
+              <div>
+                <h3>Moves</h3>
+                <p>Each successful pour costs 1 move. Run out and you’ll retry or watch an ad for more.</p>
+              </div>
+            </div>
+            <div class="c-block">
+              <div class="c-num">04</div>
+              <div>
+                <h3>Coins &amp; Centrifuge</h3>
+                <p>Clear stations for coins. Spend them on the Centrifuge for undos, empty vials, and rare skins.</p>
+              </div>
+            </div>
+          </div>
+          <div class="c-sticky">
+            <button type="button" class="btn primary" data-go="home">Start Station 1</button>
+            <button type="button" class="btn skip" data-go="home">Back to path</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-bar" role="group" aria-label="Flow step">
+    <button type="button" data-flow="loading">Load</button>
+    <button type="button" data-flow="home">Home</button>
+    <button type="button" data-flow="rules">Rules</button>
+  </div>
+
+  <div class="switcher" role="group" aria-label="Prototype variant switcher">
+    <button type="button" id="prevVar" aria-label="Previous variant">←</button>
+    <div class="label" id="varLabel">A — Liquid Path</div>
+    <button type="button" id="nextVar" aria-label="Next variant">→</button>
+  </div>
+
+  <script>
+    const VARIANTS = {
+      A: { name: "Liquid Path", autoAdvanceMs: 2600 },
+      B: { name: "Day Station", autoAdvanceMs: 2800 },
+      C: { name: "Signal Editorial", autoAdvanceMs: 2400 },
+    };
+    const KEYS = Object.keys(VARIANTS);
+
+    const A_CARDS = [
+      {
+        title: "Goal",
+        body: "Sort reagents so every vial is empty — or filled with one color only. Patterns on the liquid help if colors look alike.",
+        viz: "mixed",
+      },
+      {
+        title: "Pour",
+        body: "Tap a vial to pick it up, then tap another to pour. You can only pour onto an empty vial or a matching top color.",
+        viz: "pour",
+      },
+      {
+        title: "Moves",
+        body: "Each successful pour costs 1 move. Run out and you’ll retry the station or watch an ad for more moves.",
+        viz: "moves",
+      },
+      {
+        title: "Centrifuge",
+        body: "Clear stations for coins. Spin the Centrifuge to win undos, empty vials, and rare skins.",
+        viz: "spin",
+      },
+    ];
+
+    let variant = "A";
+    let screen = "loading";
+    let aCard = 0;
+    let loadTimer = null;
+
+    const phone = document.getElementById("phone");
+    const stateLabel = document.getElementById("stateLabel");
+    const varLabel = document.getElementById("varLabel");
+
+    function readVariantFromURL() {
+      const v = new URLSearchParams(location.search).get("variant");
+      if (v && VARIANTS[v.toUpperCase()]) return v.toUpperCase();
+      return "A";
+    }
+
+    function setURLVariant(v) {
+      const url = new URL(location.href);
+      url.searchParams.set("variant", v);
+      history.replaceState(null, "", url);
+    }
+
+    function updateStateLabel() {
+      stateLabel.textContent = `variant=${variant} · screen=${screen}` +
+        (variant === "A" && screen === "rules" ? ` · card=${aCard + 1}` : "");
+    }
+
+    function showScreen(next) {
+      screen = next;
+      document.querySelectorAll(".variant-root:not([hidden]) .screen").forEach((el) => {
+        el.classList.toggle("active", el.dataset.screen === next);
+      });
+      document.querySelectorAll(".flow-bar button").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.flow === next);
+      });
+      updateStateLabel();
+
+      if (next === "loading") {
+        clearTimeout(loadTimer);
+        loadTimer = setTimeout(() => showScreen("home"), VARIANTS[variant].autoAdvanceMs);
+      } else {
+        clearTimeout(loadTimer);
+      }
+
+      if (variant === "A" && next === "rules") {
+        aCard = 0;
+        renderACard();
+      }
+    }
+
+    function applyVariant(v, { resetFlow = true } = {}) {
+      variant = v;
+      phone.dataset.variant = v;
+      setURLVariant(v);
+      varLabel.textContent = `${v} — ${VARIANTS[v].name}`;
+
+      document.querySelectorAll(".variant-root").forEach((root) => {
+        const on = root.dataset.for === v;
+        root.hidden = !on;
+      });
+
+      if (resetFlow) showScreen("loading");
+      else showScreen(screen);
+    }
+
+    function cycle(dir) {
+      const i = KEYS.indexOf(variant);
+      const next = KEYS[(i + dir + KEYS.length) % KEYS.length];
+      applyVariant(next);
+    }
+
+    function renderACard() {
+      const card = A_CARDS[aCard];
+      document.getElementById("aStoryTitle").textContent = card.title;
+      document.getElementById("aStoryBody").textContent = card.body;
+      const dots = document.getElementById("aDots");
+      dots.innerHTML = A_CARDS.map((_, i) =>
+        `<i class="${i === aCard ? "on" : ""}"></i>`
+      ).join("");
+      const cta = document.getElementById("aNext");
+      cta.textContent = aCard === A_CARDS.length - 1 ? "Start pouring" : "Next";
+
+      const viz = document.querySelector("#aStory .a-story-viz .tubes-row");
+      if (card.viz === "mixed") {
+        viz.innerHTML = `
+          <div class="proto-tube"><div class="proto-seg c1"></div><div class="proto-seg c2"></div><div class="proto-seg c1"></div><div class="proto-seg c3"></div></div>
+          <div class="proto-tube"><div class="proto-seg c2"></div><div class="proto-seg c3"></div></div>
+          <div class="proto-tube"></div>`;
+      } else if (card.viz === "pour") {
+        viz.innerHTML = `
+          <div class="proto-tube" style="transform:translateY(-10px)"><div class="proto-seg c1"></div><div class="proto-seg c1"></div></div>
+          <div class="proto-tube"><div class="proto-seg c1"></div><div class="proto-seg c2"></div><div class="proto-seg c2"></div></div>
+          <div class="proto-tube"><div class="proto-seg c3"></div><div class="proto-seg c3"></div><div class="proto-seg c3"></div><div class="proto-seg c3"></div></div>`;
+      } else if (card.viz === "moves") {
+        viz.innerHTML = `<div style="font-size:42px;font-weight:800;letter-spacing:-0.04em;color:#f0c14b">12<span style="font-size:18px;opacity:0.5"> / 12</span></div>`;
+      } else {
+        viz.innerHTML = `<div style="font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#3dd6c6;font-weight:700">◉ Centrifuge ready</div>`;
+      }
+      updateStateLabel();
+    }
+
+    document.getElementById("prevVar").addEventListener("click", () => cycle(-1));
+    document.getElementById("nextVar").addEventListener("click", () => cycle(1));
+
+    document.querySelectorAll(".flow-bar button").forEach((btn) => {
+      btn.addEventListener("click", () => showScreen(btn.dataset.flow));
+    });
+
+    phone.addEventListener("click", (e) => {
+      const go = e.target.closest("[data-go]");
+      if (go) {
+        e.preventDefault();
+        showScreen(go.dataset.go);
+      }
+    });
+
+    document.getElementById("aNext").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (aCard < A_CARDS.length - 1) {
+        aCard += 1;
+        renderACard();
+      } else {
+        showScreen("home");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "ArrowLeft") cycle(-1);
+      if (e.key === "ArrowRight") cycle(1);
+    });
+
+    applyVariant(readVariantFromURL());
+  </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+import {
+  WaterSortEngine,
+  canPour,
+  pour,
+  isWon,
+  getTopColor,
+  getTopContiguousCount,
+  generateLevel,
+  getLevelDifficulty,
+  DEFAULT_CAPACITY,
+  type Tube,
+} from '../WaterSortEngine';
+
+describe('WaterSortEngine', () => {
+  describe('canPour', () => {
+    it('rejects pouring into a full tube', () => {
+      const tubes: Tube[] = [
+        [1, 1, 1, 1],
+        [2],
+      ];
+      expect(canPour(tubes, 1, 0)).toBe(false);
+    });
+
+    it('rejects mixing different colors on a non-empty tube', () => {
+      const tubes: Tube[] = [
+        [1, 1],
+        [2, 2],
+      ];
+      expect(canPour(tubes, 0, 1)).toBe(false);
+      expect(canPour(tubes, 1, 0)).toBe(false);
+    });
+
+    it('allows pour into empty tube', () => {
+      const tubes: Tube[] = [[1, 1], []];
+      expect(canPour(tubes, 0, 1)).toBe(true);
+    });
+
+    it('allows pour when top colors match and space remains', () => {
+      const tubes: Tube[] = [
+        [2, 1, 1],
+        [1],
+      ];
+      expect(canPour(tubes, 0, 1)).toBe(true);
+    });
+
+    it('rejects pouring from an empty tube', () => {
+      const tubes: Tube[] = [[], [1]];
+      expect(canPour(tubes, 0, 1)).toBe(false);
+    });
+
+    it('rejects pouring a tube into itself', () => {
+      const tubes: Tube[] = [[1, 1], []];
+      expect(canPour(tubes, 0, 0)).toBe(false);
+    });
+
+    it('rejects out-of-range indices', () => {
+      const tubes: Tube[] = [[1], []];
+      expect(canPour(tubes, -1, 1)).toBe(false);
+      expect(canPour(tubes, 0, 5)).toBe(false);
+    });
+  });
+
+  describe('pour', () => {
+    it('transfers all contiguous matching top segments', () => {
+      const tubes: Tube[] = [
+        [2, 1, 1],
+        [1],
+        [],
+      ];
+      const { tubes: next, result } = pour(tubes, 0, 1);
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(2);
+      expect(result.color).toBe(1);
+      expect(next[0]).toEqual([2]);
+      expect(next[1]).toEqual([1, 1, 1]);
+    });
+
+    it('limits transfer by remaining capacity', () => {
+      const tubes: Tube[] = [
+        [1, 1, 1],
+        [1, 1, 1],
+      ];
+      const { tubes: next, result } = pour(tubes, 0, 1);
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(1);
+      expect(next[0]).toEqual([1, 1]);
+      expect(next[1]).toEqual([1, 1, 1, 1]);
+    });
+
+    it('does not mutate on illegal pour', () => {
+      const tubes: Tube[] = [
+        [1, 1],
+        [2, 2],
+      ];
+      const { tubes: next, result } = pour(tubes, 0, 1);
+      expect(result.success).toBe(false);
+      expect(next).toEqual(tubes);
+    });
+
+    it('pours entire color stack into empty tube', () => {
+      const tubes: Tube[] = [[3, 3, 3], []];
+      const { tubes: next, result } = pour(tubes, 0, 1);
+      expect(result.amount).toBe(3);
+      expect(next[0]).toEqual([]);
+      expect(next[1]).toEqual([3, 3, 3]);
+    });
+  });
+
+  describe('helpers', () => {
+    it('getTopColor returns null for empty', () => {
+      expect(getTopColor([])).toBeNull();
+      expect(getTopColor([1, 2])).toBe(2);
+    });
+
+    it('getTopContiguousCount counts matching tops', () => {
+      expect(getTopContiguousCount([])).toBe(0);
+      expect(getTopContiguousCount([1, 2, 2, 2])).toBe(3);
+      expect(getTopContiguousCount([1])).toBe(1);
+    });
+  });
+
+  describe('win condition', () => {
+    it('wins when every tube is empty or mono-full', () => {
+      const tubes: Tube[] = [
+        [1, 1, 1, 1],
+        [2, 2, 2, 2],
+        [],
+      ];
+      expect(isWon(tubes, DEFAULT_CAPACITY)).toBe(true);
+    });
+
+    it('does not win with mixed or partial tubes', () => {
+      expect(isWon([[1, 1, 1], []], DEFAULT_CAPACITY)).toBe(false);
+      expect(isWon([[1, 2, 1, 1], []], DEFAULT_CAPACITY)).toBe(false);
+    });
+  });
+
+  describe('WaterSortEngine class', () => {
+    it('tracks history and supports undo', () => {
+      const engine = new WaterSortEngine({
+        tubes: [[1, 1], []],
+        capacity: 4,
+      });
+      expect(engine.canUndo()).toBe(false);
+      const r = engine.pour(0, 1);
+      expect(r.success).toBe(true);
+      expect(engine.getTubes()[0]).toEqual([]);
+      expect(engine.getTubes()[1]).toEqual([1, 1]);
+      expect(engine.undo()).toBe(true);
+      expect(engine.getTubes()[0]).toEqual([1, 1]);
+      expect(engine.getTubes()[1]).toEqual([]);
+    });
+
+    it('detects win after solving', () => {
+      const engine = new WaterSortEngine({
+        tubes: [
+          [1, 1, 1],
+          [1],
+          [],
+        ],
+        capacity: 4,
+      });
+      expect(engine.isWon()).toBe(false);
+      engine.pour(1, 0);
+      expect(engine.isWon()).toBe(true);
+    });
+
+    it('addEmptyTube appends an empty tube', () => {
+      const engine = new WaterSortEngine({
+        tubes: [[1], []],
+        capacity: 4,
+      });
+      engine.addEmptyTube();
+      expect(engine.getTubes()).toHaveLength(3);
+      expect(engine.getTubes()[2]).toEqual([]);
+    });
+
+    it('generateLevel creates colorCount + emptyTubes tubes', () => {
+      const state = generateLevel({ colorCount: 3, emptyTubes: 2, seed: 1 });
+      expect(state.tubes).toHaveLength(5);
+      expect(state.tubes.filter((t) => t.length === 0)).toHaveLength(2);
+      const flat = state.tubes.flat();
+      expect(flat).toHaveLength(3 * DEFAULT_CAPACITY);
+    });
+  });
+
+  describe('getLevelDifficulty', () => {
+    it('starts easy with 3 colors, 1 empty, and a move budget', () => {
+      const d1 = getLevelDifficulty(1);
+      expect(d1.colorCount).toBe(3);
+      expect(d1.emptyTubes).toBe(1);
+      expect(d1.moveLimit).toBeGreaterThan(15);
+    });
+
+    it('gets harder across the 300-level campaign', () => {
+      const early = getLevelDifficulty(1);
+      const mid = getLevelDifficulty(100);
+      const late = getLevelDifficulty(300);
+
+      expect(mid.colorCount).toBeGreaterThan(early.colorCount);
+      expect(late.colorCount).toBeGreaterThan(mid.colorCount);
+      expect(late.colorCount).toBe(12);
+      expect(late.moveLimit / late.colorCount).toBeLessThan(
+        early.moveLimit / early.colorCount,
+      );
+    });
+
+    it('createDefaultLevel uses the difficulty curve', () => {
+      const engine = WaterSortEngine.createDefaultLevel(5);
+      const diff = WaterSortEngine.difficultyFor(5);
+      expect(engine.getTubes()).toHaveLength(diff.colorCount + diff.emptyTubes);
+      expect(diff.moveLimit).toBeGreaterThan(0);
+    });
+  });
+});
