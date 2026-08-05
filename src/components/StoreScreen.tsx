@@ -34,7 +34,8 @@ export function StoreScreen() {
         <Text style={styles.eyebrow}>HYDROLOGY LAB</Text>
         <Text style={styles.title}>Supply Store</Text>
         <Text style={styles.sub}>
-          Spend coins on path looks and vial cosmetics.
+          Vials are cosmetic only. Paths are exclusive challenges with fewer
+          moves — never an advantage. The free Standard Lab path always works.
         </Text>
         <View style={styles.balance}>
           <Text style={styles.balanceText}>🪙 {coins}</Text>
@@ -123,6 +124,9 @@ function StoreRow({
         <Text style={styles.itemBlurb}>{item.blurb}</Text>
         <Text style={styles.itemPrice}>
           {item.price === 0 ? 'Free' : `🪙 ${item.price}`}
+          {item.kind === 'path' && item.moveScale != null && item.moveScale < 1
+            ? ` · −${Math.round((1 - item.moveScale) * 100)}% moves`
+            : ''}
         </Text>
       </View>
       <View style={styles.cardActions}>

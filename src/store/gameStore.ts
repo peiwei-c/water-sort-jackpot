@@ -41,6 +41,7 @@ import {
   DEFAULT_OWNED,
   getStoreItem,
   ensureOwnedDefaults,
+  scaledMoveLimit,
 } from '../engines/StoreCatalog';
 
 export const EXTRA_MOVES_FROM_AD = 5;
@@ -147,8 +148,12 @@ function createPuzzle(level: number): WaterSortEngine {
   return WaterSortEngine.createDefaultLevel(level);
 }
 
-function moveBudget(level: number): { moveLimit: number; movesLeft: number } {
-  const { moveLimit } = getLevelDifficulty(level);
+function moveBudget(
+  level: number,
+  pathId: string = PATH_DEFAULT,
+): { moveLimit: number; movesLeft: number } {
+  const { moveLimit: base } = getLevelDifficulty(level);
+  const moveLimit = scaledMoveLimit(base, pathId);
   return { moveLimit, movesLeft: moveLimit };
 }
 
@@ -231,7 +236,7 @@ let persistSoon: () => void = () => {};
 export const useGameStore = create<GameStore>((set, get) => {
   const puzzle = createPuzzle(1);
   const jackpot = new JackpotEngine();
-  const budget = moveBudget(1);
+  const budget = moveBudget(1, PATH_DEFAULT);
   const startDiff = getLevelDifficulty(1);
 
   return {
@@ -512,7 +517,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         level: safe,
         _puzzle: next,
         ...syncFromPuzzle(next),
-        ...moveBudget(safe),
+        ...moveBudget(safe, get().equippedPathId),
         tierLabel: diff.tierLabel,
         selectedTube: null,
         pourAnim: null,
@@ -575,7 +580,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         coins: coins - item.price,
         ownedItemIds: nextOwned,
         rareSkinUnlocked: nextOwned.includes(VIAL_CROWN),
-        lastMessage: `Purchased ${item.name}`,
+        lastMessage:
+          item.kind === 'path' && (item.moveScale ?? 1) < 1
+            ? `Purchased ${item.name} · harder challenge equipped`
+            : `Purchased ${item.name}`,
       };
       if (item.kind === 'path') patch.equippedPathId = id;
       if (item.kind === 'vial') patch.equippedVialId = id;
@@ -595,7 +603,13 @@ export const useGameStore = create<GameStore>((set, get) => {
         return false;
       }
       if (item.kind === 'path') {
-        set({ equippedPathId: id, lastMessage: `Equipped ${item.name}` });
+        set({
+          equippedPathId: id,
+          lastMessage:
+            (item.moveScale ?? 1) < 1
+              ? `Equipped ${item.name} · harder move budget on next station`
+              : `Equipped ${item.name}`,
+        });
       } else {
         set({ equippedVialId: id, lastMessage: `Equipped ${item.name}` });
       }
@@ -610,7 +624,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({
         _puzzle: next,
         ...syncFromPuzzle(next),
-        ...moveBudget(level),
+        ...moveBudget(level, get().equippedPathId),
         tierLabel: diff.tierLabel,
         selectedTube: null,
         pourAnim: null,
@@ -668,7 +682,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         level,
         _puzzle: next,
         ...syncFromPuzzle(next),
-        ...moveBudget(level),
+        ...moveBudget(level, get().equippedPathId),
         tierLabel: diff.tierLabel,
         selectedTube: null,
         pourAnim: null,

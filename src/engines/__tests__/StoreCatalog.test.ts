@@ -4,6 +4,8 @@ import {
   getStoreItem,
   getPathTheme,
   getVialTheme,
+  getPathMoveScale,
+  scaledMoveLimit,
   PATH_DEFAULT,
   VIAL_DEFAULT,
   VIAL_CROWN,
@@ -37,9 +39,14 @@ describe('StoreCatalog', () => {
     );
   });
 
-  it('prices paid cosmetics above starting coin cushion', () => {
-    const paid = STORE_ITEMS.filter((i) => i.price > 0);
-    expect(paid.length).toBeGreaterThan(0);
-    expect(Math.min(...paid.map((i) => i.price))).toBeGreaterThanOrEqual(60);
+  it('paid paths reduce move budgets and never increase them', () => {
+    expect(getPathMoveScale(PATH_DEFAULT)).toBe(1);
+    expect(getPathMoveScale('path_amber')).toBe(0.9);
+    expect(getPathMoveScale('path_coral')).toBe(0.8);
+    expect(getPathMoveScale('path_midnight')).toBe(0.7);
+    expect(scaledMoveLimit(40, 'path_midnight')).toBe(28);
+    expect(scaledMoveLimit(40, 'path_midnight')).toBeLessThan(
+      scaledMoveLimit(40, PATH_DEFAULT),
+    );
   });
 });

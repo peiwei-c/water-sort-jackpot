@@ -116,8 +116,9 @@ export function GameHUD() {
 
               <Text style={styles.helpHeading}>Coins</Text>
               <Text style={styles.helpBody}>
-                Clear a station to earn coins. Spend them in the Store on path
-                looks and vial skins, or power the Centrifuge.
+                Clear a station to earn coins. The Store sells vial cosmetics
+                (looks only) and exclusive harder paths (fewer moves). You can
+                always play the free Standard Lab path.
               </Text>
 
               <Pressable

@@ -32,6 +32,11 @@ export type StoreItem = {
   blurb: string;
   /** 0 = free starter item */
   price: number;
+  /**
+   * Path challenge multiplier for move budgets (1 = normal).
+   * Paid paths are harder (lower), never easier — not pay-to-win.
+   */
+  moveScale?: number;
   pathTheme?: PathThemeTokens;
   vialTheme?: VialThemeTokens;
 };
@@ -45,8 +50,9 @@ export const STORE_ITEMS: StoreItem[] = [
     id: PATH_DEFAULT,
     kind: 'path',
     name: 'Standard Lab',
-    blurb: 'Classic teal conduits.',
+    blurb: 'Classic teal conduits · normal move budget.',
     price: 0,
+    moveScale: 1,
     pathTheme: {
       glassBright: '#7EE3D6',
       reagent: '#F0B429',
@@ -62,8 +68,9 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_amber',
     kind: 'path',
     name: 'Amber Conduit',
-    blurb: 'Warm reagent-lit pipes.',
+    blurb: 'Exclusive look · 10% fewer moves.',
     price: 80,
+    moveScale: 0.9,
     pathTheme: {
       glassBright: '#F0B429',
       reagent: '#FFD56A',
@@ -79,8 +86,9 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_coral',
     kind: 'path',
     name: 'Hazard Line',
-    blurb: 'Coral hazard striping.',
+    blurb: 'Exclusive look · 20% fewer moves.',
     price: 120,
+    moveScale: 0.8,
     pathTheme: {
       glassBright: '#F08070',
       reagent: '#F0B429',
@@ -96,8 +104,9 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_midnight',
     kind: 'path',
     name: 'Midnight Glass',
-    blurb: 'Cool steel-blue night lab.',
+    blurb: 'Rarest look · 30% fewer moves.',
     price: 160,
+    moveScale: 0.7,
     pathTheme: {
       glassBright: '#7EB8E8',
       reagent: '#A8D4F0',
@@ -113,7 +122,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: VIAL_DEFAULT,
     kind: 'vial',
     name: 'Clear Glass',
-    blurb: 'Standard sorting vial.',
+    blurb: 'Cosmetic only · no gameplay change.',
     price: 0,
     vialTheme: {
       rim: 'rgba(126, 227, 214, 0.45)',
@@ -128,7 +137,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'vial_teal',
     kind: 'vial',
     name: 'Teal Crystal',
-    blurb: 'Brighter crystal rim.',
+    blurb: 'Cosmetic only · no gameplay change.',
     price: 60,
     vialTheme: {
       rim: 'rgba(80, 220, 200, 0.65)',
@@ -143,7 +152,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'vial_amber',
     kind: 'vial',
     name: 'Reagent Amber',
-    blurb: 'Golden lab glass.',
+    blurb: 'Cosmetic only · no gameplay change.',
     price: 90,
     vialTheme: {
       rim: 'rgba(240, 180, 41, 0.55)',
@@ -158,7 +167,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: VIAL_CROWN,
     kind: 'vial',
     name: 'Crown Alloy',
-    blurb: 'Royal finish — also from Centrifuge crown.',
+    blurb: 'Cosmetic only · also from Centrifuge crown.',
     price: 150,
     vialTheme: {
       rim: 'rgba(255, 215, 100, 0.7)',
@@ -186,6 +195,17 @@ export function getPathTheme(id: string): PathThemeTokens {
     getStoreItem(id)?.pathTheme ??
     getStoreItem(PATH_DEFAULT)!.pathTheme!
   );
+}
+
+/** Move budget scale for an equipped path (≤ 1 — never easier than default). */
+export function getPathMoveScale(id: string): number {
+  const scale = getStoreItem(id)?.moveScale ?? 1;
+  return Math.min(1, Math.max(0.5, scale));
+}
+
+export function scaledMoveLimit(baseLimit: number, pathId: string): number {
+  const scaled = Math.round(baseLimit * getPathMoveScale(pathId));
+  return Math.max(8, scaled);
 }
 
 export function getVialTheme(id: string): VialThemeTokens {
