@@ -11,6 +11,7 @@ type Props = {
   tubes: TubeData[];
   capacity: number;
   selectedTube: number | null;
+  vialSkinId?: string;
   rareSkin?: boolean;
   onSelect: (index: number) => void;
 };
@@ -30,6 +31,7 @@ export function TubeBoard({
   tubes,
   capacity,
   selectedTube,
+  vialSkinId,
   rareSkin,
   onSelect,
 }: Props) {
@@ -173,6 +175,7 @@ export function TubeBoard({
           capacity={capacity}
           selected={selectedTube === index && !pourAnim}
           rareSkin={rareSkin}
+          vialSkinId={vialSkinId}
           tiltDir={tiltFor(index)}
           disabled={!!pourAnim}
           onPress={() => onSelect(index)}

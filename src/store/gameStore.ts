@@ -34,6 +34,14 @@ import {
   type PuzzleSession,
   type PersistedGame,
 } from '../services/persistence';
+import {
+  PATH_DEFAULT,
+  VIAL_DEFAULT,
+  VIAL_CROWN,
+  DEFAULT_OWNED,
+  getStoreItem,
+  ensureOwnedDefaults,
+} from '../engines/StoreCatalog';
 
 export const EXTRA_MOVES_FROM_AD = 5;
 export const POUR_ANIM_MS = 520;
@@ -65,7 +73,7 @@ export type ModalKind =
   | 'spin_result';
 
 type GameStore = {
-  screen: 'home' | 'play';
+  screen: 'home' | 'play' | 'store';
   level: number;
   /** Highest level the player may open (1…MAX_LEVEL). */
   unlockedLevel: number;
@@ -75,7 +83,11 @@ type GameStore = {
   undoItems: number;
   extraTubeItems: number;
   freeSpins: number;
+  /** True when crown vial is owned (Centrifuge or Store). */
   rareSkinUnlocked: boolean;
+  ownedItemIds: string[];
+  equippedPathId: string;
+  equippedVialId: string;
   tubes: Tube[];
   capacity: number;
   moveLimit: number;
@@ -109,6 +121,9 @@ type GameStore = {
   restartLevel: () => void;
   startLevel: (level: number) => void;
   goHome: () => void;
+  openStore: () => void;
+  buyItem: (id: string) => boolean;
+  equipItem: (id: string) => boolean;
   nextLevel: (opts?: { openJackpot?: boolean; goHome?: boolean }) => void;
   openSlotMachine: () => void;
   closeModal: () => void;
@@ -186,11 +201,28 @@ function buildPersistPayload(state: GameStore): PersistedGame {
     undoItems: state.undoItems,
     extraTubeItems: state.extraTubeItems,
     freeSpins: state.freeSpins,
-    rareSkinUnlocked: state.rareSkinUnlocked,
+    rareSkinUnlocked: state.ownedItemIds.includes(VIAL_CROWN),
     betPerLine: state.betPerLine,
     activeLines: state.activeLines,
     session: state.session,
+    ownedItemIds: state.ownedItemIds,
+    equippedPathId: state.equippedPathId,
+    equippedVialId: state.equippedVialId,
   };
+}
+
+function grantCosmeticFromPayout(
+  ownedItemIds: string[],
+  unlockRareSkin: boolean,
+): { ownedItemIds: string[]; rareSkinUnlocked: boolean } {
+  if (!unlockRareSkin) {
+    return {
+      ownedItemIds,
+      rareSkinUnlocked: ownedItemIds.includes(VIAL_CROWN),
+    };
+  }
+  const next = ensureOwnedDefaults([...ownedItemIds, VIAL_CROWN], true);
+  return { ownedItemIds: next, rareSkinUnlocked: true };
 }
 
 /** Assigned after store creation — safe to call from actions. */
@@ -212,6 +244,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     extraTubeItems: 1,
     freeSpins: 0,
     rareSkinUnlocked: false,
+    ownedItemIds: [...DEFAULT_OWNED],
+    equippedPathId: PATH_DEFAULT,
+    equippedVialId: VIAL_DEFAULT,
     ...syncFromPuzzle(puzzle),
     ...budget,
     tierLabel: startDiff.tierLabel,
@@ -246,6 +281,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         extraTubeItems: data.extraTubeItems,
         freeSpins: data.freeSpins,
         rareSkinUnlocked: data.rareSkinUnlocked,
+        ownedItemIds: data.ownedItemIds,
+        equippedPathId: data.equippedPathId,
+        equippedVialId: data.equippedVialId,
         betPerLine: clampBet(data.betPerLine),
         activeLines: clampLines(data.activeLines),
         session: data.session,
@@ -487,17 +525,82 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     goHome: () => {
       if (get().pourAnim) return;
-      const session = captureSession(get());
+      const session =
+        get().screen === 'play' ? captureSession(get()) : get().session;
       set({
         screen: 'home',
         selectedTube: null,
         pourAnim: null,
         modal: 'none',
         pendingPayout: null,
-        lastMessage: session ? 'Progress saved — tap the flask to continue' : null,
+        lastMessage:
+          get().screen === 'play' && session
+            ? 'Progress saved — tap the flask to continue'
+            : null,
         session,
       });
       persistSoon();
+    },
+
+    openStore: () => {
+      if (get().pourAnim) return;
+      if (get().screen === 'play') {
+        const session = captureSession(get());
+        set({ screen: 'store', session, selectedTube: null, modal: 'none' });
+      } else {
+        set({ screen: 'store', modal: 'none', pendingPayout: null });
+      }
+      persistSoon();
+    },
+
+    buyItem: (id) => {
+      const item = getStoreItem(id);
+      if (!item) {
+        set({ lastMessage: 'Unknown item' });
+        return false;
+      }
+      const { coins, ownedItemIds } = get();
+      if (ownedItemIds.includes(id)) {
+        set({ lastMessage: 'Already owned' });
+        return false;
+      }
+      if (item.price > coins) {
+        set({
+          lastMessage: `Need ${item.price - coins} more coins for ${item.name}`,
+        });
+        return false;
+      }
+      const nextOwned = ensureOwnedDefaults([...ownedItemIds, id]);
+      const patch: Partial<GameStore> = {
+        coins: coins - item.price,
+        ownedItemIds: nextOwned,
+        rareSkinUnlocked: nextOwned.includes(VIAL_CROWN),
+        lastMessage: `Purchased ${item.name}`,
+      };
+      if (item.kind === 'path') patch.equippedPathId = id;
+      if (item.kind === 'vial') patch.equippedVialId = id;
+      set(patch as GameStore);
+      persistSoon();
+      return true;
+    },
+
+    equipItem: (id) => {
+      const item = getStoreItem(id);
+      if (!item) {
+        set({ lastMessage: 'Unknown item' });
+        return false;
+      }
+      if (!get().ownedItemIds.includes(id)) {
+        set({ lastMessage: 'Buy it in the Store first' });
+        return false;
+      }
+      if (item.kind === 'path') {
+        set({ equippedPathId: id, lastMessage: `Equipped ${item.name}` });
+      } else {
+        set({ equippedVialId: id, lastMessage: `Equipped ${item.name}` });
+      }
+      persistSoon();
+      return true;
     },
 
     restartLevel: () => {
@@ -611,6 +714,10 @@ export const useGameStore = create<GameStore>((set, get) => {
 
         // While free spins remain, auto-collect — no Collect / 2× dialog
         if (remaining > 0) {
+          const cosmetics = grantCosmeticFromPayout(
+            get().ownedItemIds,
+            payout.unlockRareSkin,
+          );
           set({
             freeSpins: remaining,
             lastSpin: result,
@@ -618,14 +725,14 @@ export const useGameStore = create<GameStore>((set, get) => {
             coins: coins + payout.coins,
             undoItems: get().undoItems + payout.undoItems,
             extraTubeItems: get().extraTubeItems + payout.extraTubeItems,
-            rareSkinUnlocked:
-              get().rareSkinUnlocked || payout.unlockRareSkin,
+            ...cosmetics,
             modal: 'spin_result',
             lastMessage:
               payout.kind === 'none'
                 ? `No win · ${remaining} free spin${remaining === 1 ? '' : 's'} left`
                 : `${payout.label} · auto collected · ${remaining} free left`,
           });
+          persistSoon();
           return;
         }
 
@@ -675,18 +782,22 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     claimPendingPayout: (multiplier: number) => {
-      const { pendingPayout, coins, undoItems, extraTubeItems, rareSkinUnlocked } =
+      const { pendingPayout, coins, undoItems, extraTubeItems, ownedItemIds } =
         get();
       if (!pendingPayout) {
         set({ modal: 'slot_machine' });
         return;
       }
       const payout = applyPayoutMultiplier(pendingPayout, multiplier);
+      const cosmetics = grantCosmeticFromPayout(
+        ownedItemIds,
+        payout.unlockRareSkin,
+      );
       set({
         coins: coins + payout.coins,
         undoItems: undoItems + payout.undoItems,
         extraTubeItems: extraTubeItems + payout.extraTubeItems,
-        rareSkinUnlocked: rareSkinUnlocked || payout.unlockRareSkin,
+        ...cosmetics,
         pendingPayout: null,
         modal: 'spin_result',
         lastMessage: payout.label,

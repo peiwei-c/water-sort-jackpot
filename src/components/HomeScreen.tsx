@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
+import { getPathTheme } from '../engines/StoreCatalog';
 import { COLORS, LAB } from '../theme/colors';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -49,10 +50,16 @@ function buildPath(): PathRow[] {
 
 const PATH = buildPath();
 
-function LabBackdrop() {
+function LabBackdrop({
+  glowColor,
+  reagentColor,
+}: {
+  glowColor: string;
+  reagentColor: string;
+}) {
   const bubbleA = useRef(new Animated.Value(0)).current;
   const bubbleB = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0.35)).current;
+  const glowAnim = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
     const loop = (v: Animated.Value, duration: number, delay: number) =>
@@ -78,13 +85,13 @@ function LabBackdrop() {
     const b = loop(bubbleB, 5600, 800);
     const g = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, {
+        Animated.timing(glowAnim, {
           toValue: 0.7,
           duration: 2800,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(glow, {
+        Animated.timing(glowAnim, {
           toValue: 0.3,
           duration: 2800,
           easing: Easing.inOut(Easing.quad),
@@ -100,7 +107,7 @@ function LabBackdrop() {
       b.stop();
       g.stop();
     };
-  }, [bubbleA, bubbleB, glow]);
+  }, [bubbleA, bubbleB, glowAnim]);
 
   const rise = (v: Animated.Value, from: number, to: number) => ({
     transform: [
@@ -120,10 +127,19 @@ function LabBackdrop() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={styles.labWash} />
-      <Animated.View style={[styles.glowOrb, { opacity: glow }]} />
-      <Animated.View style={[styles.glowOrbAmber, { opacity: glow }]} />
+      <Animated.View
+        style={[
+          styles.glowOrb,
+          { opacity: glowAnim, backgroundColor: glowColor },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.glowOrbAmber,
+          { opacity: glowAnim, backgroundColor: reagentColor },
+        ]}
+      />
 
-      {/* Blueprint / lab grid */}
       {Array.from({ length: 14 }, (_, i) => (
         <View
           key={`h-${i}`}
@@ -137,14 +153,33 @@ function LabBackdrop() {
         />
       ))}
 
-      {/* Floating reagent bubbles */}
-      <Animated.View style={[styles.bubble, styles.bubble1, rise(bubbleA, 80, -40)]} />
-      <Animated.View style={[styles.bubble, styles.bubble2, rise(bubbleB, 120, -20)]} />
-      <Animated.View style={[styles.bubble, styles.bubble3, rise(bubbleA, 60, -70)]} />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble1,
+          { borderColor: glowColor },
+          rise(bubbleA, 80, -40),
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble2,
+          { borderColor: glowColor },
+          rise(bubbleB, 120, -20),
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble3,
+          { borderColor: glowColor },
+          rise(bubbleA, 60, -70),
+        ]}
+      />
 
-      {/* Bench silhouette */}
       <View style={styles.shelf} />
-      <View style={styles.shelfEdge} />
+      <View style={[styles.shelfEdge, { backgroundColor: glowColor }]} />
     </View>
   );
 }
@@ -155,12 +190,18 @@ function FlaskNode({
   cleared,
   current,
   onPress,
+  flaskBorder,
+  flaskFill,
+  reagent,
 }: {
   level: number;
   locked: boolean;
   cleared: boolean;
   current: boolean;
   onPress: () => void;
+  flaskBorder: string;
+  flaskFill: string;
+  reagent: string;
 }) {
   const pulse = useRef(new Animated.Value(1)).current;
 
@@ -196,8 +237,16 @@ function FlaskNode({
         onPress={onPress}
         style={[
           styles.flask,
-          cleared && styles.flaskCleared,
-          current && styles.flaskCurrent,
+          { borderColor: locked ? 'rgba(255,255,255,0.16)' : flaskBorder },
+          cleared && { borderColor: flaskBorder },
+          current && {
+            borderColor: reagent,
+            shadowColor: reagent,
+            shadowOpacity: 0.55,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 6,
+          },
           locked && styles.flaskLocked,
         ]}
         accessibilityRole="button"
@@ -210,15 +259,20 @@ function FlaskNode({
               : `Play level ${level}`
         }
       >
-        {/* Flask neck */}
-        <View style={[styles.flaskNeck, locked && styles.flaskNeckLocked]} />
-        {/* Liquid fill */}
+        <View
+          style={[
+            styles.flaskNeck,
+            locked && styles.flaskNeckLocked,
+            !locked && { borderColor: flaskBorder },
+          ]}
+        />
         {!locked ? (
           <View
             style={[
               styles.flaskLiquid,
-              cleared && styles.flaskLiquidCleared,
-              current && styles.flaskLiquidCurrent,
+              { backgroundColor: flaskFill },
+              cleared && { height: '72%', opacity: 0.9 },
+              current && { height: '62%', backgroundColor: reagent, opacity: 0.35 },
             ]}
           />
         ) : null}
@@ -231,7 +285,9 @@ function FlaskNode({
         >
           {locked ? '∅' : cleared ? '✓' : level}
         </Text>
-        {current ? <View style={styles.flaskRing} /> : null}
+        {current ? (
+          <View style={[styles.flaskRing, { borderColor: reagent }]} />
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -245,9 +301,15 @@ export function HomeScreen() {
   const unlockedLevel = useGameStore((s) => s.unlockedLevel);
   const highestCompleted = useGameStore((s) => s.highestCompleted);
   const session = useGameStore((s) => s.session);
+  const equippedPathId = useGameStore((s) => s.equippedPathId);
   const startLevel = useGameStore((s) => s.startLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
+  const openStore = useGameStore((s) => s.openStore);
   const listRef = useRef<FlatList<PathRow>>(null);
+  const pathTheme = useMemo(
+    () => getPathTheme(equippedPathId),
+    [equippedPathId],
+  );
 
   const focusIndex = useMemo(() => {
     if (session?.level) return Math.max(0, session.level - 1);
@@ -286,9 +348,15 @@ export function HomeScreen() {
       <View style={styles.row}>
         {showTier ? (
           <View style={styles.stationBanner}>
-            <View style={styles.stationStripe} />
-            <Text style={styles.stationText}>STATION · {item.tierLabel.toUpperCase()}</Text>
-            <View style={styles.stationStripe} />
+            <View
+              style={[styles.stationStripe, { backgroundColor: pathTheme.hazard }]}
+            />
+            <Text style={[styles.stationText, { color: pathTheme.reagent }]}>
+              STATION · {item.tierLabel.toUpperCase()}
+            </Text>
+            <View
+              style={[styles.stationStripe, { backgroundColor: pathTheme.hazard }]}
+            />
           </View>
         ) : null}
 
@@ -300,8 +368,11 @@ export function HomeScreen() {
               {
                 left: pipeLeft,
                 width: Math.max(pipeWidth, 8),
+                backgroundColor: locked ? LAB.pipeLocked : pathTheme.pipe,
+                borderColor: locked
+                  ? 'rgba(255,255,255,0.08)'
+                  : pathTheme.glassBright,
               },
-              locked && styles.pipeLocked,
             ]}
           >
             <View style={[styles.pipeShine, locked && { opacity: 0.15 }]} />
@@ -315,8 +386,17 @@ export function HomeScreen() {
             cleared={cleared}
             current={current || inProgress}
             onPress={() => startLevel(item.level)}
+            flaskBorder={pathTheme.flaskBorder}
+            flaskFill={pathTheme.flaskFill}
+            reagent={pathTheme.reagent}
           />
-          <Text style={[styles.nodeCaption, locked && styles.muted]}>
+          <Text
+            style={[
+              styles.nodeCaption,
+              { color: pathTheme.label },
+              locked && styles.muted,
+            ]}
+          >
             {locked
               ? 'Sealed'
               : inProgress
@@ -334,10 +414,15 @@ export function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <LabBackdrop />
+      <LabBackdrop
+        glowColor={pathTheme.glow}
+        reagentColor={pathTheme.reagent}
+      />
 
       <View style={styles.hero}>
-        <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
+        <Text style={[styles.labEyebrow, { color: pathTheme.label }]}>
+          HYDROLOGY LAB
+        </Text>
         <Text style={styles.brand}>AquaSort</Text>
         <Text style={styles.tagline}>
           Trace the glass line. Clear each flask. Unlock the next reagent station.
@@ -360,14 +445,21 @@ export function HomeScreen() {
           ) : null}
         </View>
 
-        <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
-          <Text style={styles.jackpotText}>Centrifuge</Text>
-        </Pressable>
+        <View style={styles.heroActions}>
+          <Pressable style={styles.storeBtn} onPress={openStore}>
+            <Text style={styles.storeBtnText}>Store</Text>
+          </Pressable>
+          <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
+            <Text style={styles.jackpotText}>Centrifuge</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.pathHeader}>
-        <Text style={styles.pathHeading}>REAGENT PATH</Text>
-        <Text style={styles.pathMeta}>
+        <Text style={[styles.pathHeading, { color: pathTheme.glassBright }]}>
+          REAGENT PATH
+        </Text>
+        <Text style={[styles.pathMeta, { color: pathTheme.label }]}>
           {session
             ? `Continue · Flask ${session.level}`
             : `Next open · Flask ${Math.min(unlockedLevel, MAX_LEVEL)}`}
@@ -520,8 +612,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
-  jackpotBtn: {
+  heroActions: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 14,
+  },
+  storeBtn: {
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  storeBtnText: {
+    color: COLORS.text,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  jackpotBtn: {
     backgroundColor: LAB.reagent,
     paddingHorizontal: 26,
     paddingVertical: 12,

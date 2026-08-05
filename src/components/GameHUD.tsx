@@ -116,8 +116,8 @@ export function GameHUD() {
 
               <Text style={styles.helpHeading}>Coins</Text>
               <Text style={styles.helpBody}>
-                Clear a station to earn coins. Coins power the Centrifuge —
-                bet them on paylines to win more coins and items.
+                Clear a station to earn coins. Spend them in the Store on path
+                looks and vial skins, or power the Centrifuge.
               </Text>
 
               <Pressable

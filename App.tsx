@@ -11,6 +11,8 @@ import { LinearGradientFallback } from './src/components/LinearGradientFallback'
 import { TubeBoard } from './src/components/TubeBoard';
 import { GameHUD, GameControls } from './src/components/GameHUD';
 import { HomeScreen } from './src/components/HomeScreen';
+import { LoadingScreen } from './src/components/LoadingScreen';
+import { StoreScreen } from './src/components/StoreScreen';
 import { SlotMachineModal } from './src/components/SlotMachineModal';
 import {
   LevelCompleteModal,
@@ -29,6 +31,7 @@ export default function App() {
   const capacity = useGameStore((s) => s.capacity);
   const selectedTube = useGameStore((s) => s.selectedTube);
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
+  const equippedVialId = useGameStore((s) => s.equippedVialId);
   const lastMessage = useGameStore((s) => s.lastMessage);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
@@ -57,19 +60,7 @@ export default function App() {
   }, [lastMessage, dismissMessage]);
 
   if (!hydrated) {
-    return (
-      <LinearGradientFallback
-        colors={[LAB.benchDeep, LAB.benchMid]}
-        style={styles.root}
-      >
-        <SafeAreaView style={styles.safe}>
-          <StatusBar barStyle="light-content" />
-          <View style={styles.boot}>
-            <Text style={styles.bootText}>Loading lab…</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradientFallback>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -82,6 +73,8 @@ export default function App() {
 
         {screen === 'home' ? (
           <HomeScreen />
+        ) : screen === 'store' ? (
+          <StoreScreen />
         ) : (
           <View style={styles.playRoot}>
             {/* Soft lab grid behind the bench */}
@@ -113,6 +106,7 @@ export default function App() {
                   tubes={tubes}
                   capacity={capacity}
                   selectedTube={selectedTube}
+                  vialSkinId={equippedVialId}
                   rareSkin={rareSkinUnlocked}
                   onSelect={selectTube}
                 />
@@ -239,15 +233,5 @@ const styles = StyleSheet.create({
   toastPlaceholder: {
     minHeight: 22,
     marginTop: 8,
-  },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bootText: {
-    color: LAB.label,
-    fontWeight: '700',
-    letterSpacing: 1,
   },
 });
