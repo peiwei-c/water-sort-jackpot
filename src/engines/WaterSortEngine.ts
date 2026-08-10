@@ -97,6 +97,35 @@ export function canPour(
   return toTop === fromTop;
 }
 
+export type HintMove = { fromIndex: number; toIndex: number };
+
+/** First valid pour (prefer non-empty targets, then empty). */
+export function findHint(
+  tubes: Tube[],
+  capacity: number = DEFAULT_CAPACITY,
+): HintMove | null {
+  const n = tubes.length;
+  // Prefer pouring onto matching color (non-empty) before empties.
+  for (let pass = 0; pass < 2; pass++) {
+    for (let from = 0; from < n; from++) {
+      for (let to = 0; to < n; to++) {
+        if (!canPour(tubes, from, to, capacity)) continue;
+        const toEmpty = isTubeEmpty(tubes[to]);
+        if (pass === 0 && toEmpty) continue;
+        if (pass === 1 && !toEmpty) continue;
+        return { fromIndex: from, toIndex: to };
+      }
+    }
+  }
+  return null;
+}
+
+/** Scale ad undo depth: 1–3 based on available history. */
+export function adUndoCount(historyLength: number): number {
+  if (historyLength <= 0) return 0;
+  return Math.min(3, historyLength);
+}
+
 /**
  * Transfers all contiguous matching top color segments into the target,
  * limited by remaining capacity.
@@ -323,8 +352,25 @@ export class WaterSortEngine {
     return true;
   }
 
+  /** Undo up to `count` pours (clamped to history). Returns how many were undone. */
+  undoMany(count: number): number {
+    const n = Math.max(0, Math.min(count, this.history.length));
+    for (let i = 0; i < n; i++) {
+      this.undo();
+    }
+    return n;
+  }
+
+  undoDepth(): number {
+    return this.history.length;
+  }
+
   canUndo(): boolean {
     return this.history.length > 0;
+  }
+
+  findHint(): HintMove | null {
+    return findHint(this.tubes, this.capacity);
   }
 
   isWon(): boolean {

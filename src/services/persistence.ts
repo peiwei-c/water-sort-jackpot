@@ -12,6 +12,12 @@ import {
   type SlotSymbol,
 } from '../engines/JackpotEngine';
 import { MAX_LEVEL } from '../engines/LevelProgression';
+import {
+  PATH_DEFAULT,
+  VIAL_DEFAULT,
+  VIAL_CROWN,
+  sanitizeOwnedItemIds,
+} from '../engines/StoreCatalog';
 
 const STORAGE_KEY = 'aquasort.lab.v1';
 
@@ -37,10 +43,16 @@ export type PersistedGame = {
   undoItems: number;
   extraTubeItems: number;
   freeSpins: number;
+  /** @deprecated Prefer ownedItemIds + vial_crown */
   rareSkinUnlocked: boolean;
   betPerLine: BetOption;
   activeLines: number;
   session: PuzzleSession | null;
+  ownedItemIds: string[];
+  equippedPathId: string;
+  equippedVialId: string;
+  /** Remove Ads IAP — suppresses banner + interstitial only. */
+  isNoAdsPurchased: boolean;
   levelsCompletedSinceAd: number;
   /** Unclaimed Centrifuge payout (survives brief background; flush may auto-collect). */
   pendingPayout: Payout | null;
@@ -184,6 +196,18 @@ export function sanitizePersistedGame(
     clampInt(data.highestCompleted, 0, 0, MAX_LEVEL),
     unlockedLevel,
   );
+  const owned = sanitizeOwnedItemIds(
+    data.ownedItemIds,
+    data.rareSkinUnlocked === true,
+  );
+  const equippedPathId =
+    typeof data.equippedPathId === 'string' && owned.includes(data.equippedPathId)
+      ? data.equippedPathId
+      : PATH_DEFAULT;
+  const equippedVialId =
+    typeof data.equippedVialId === 'string' && owned.includes(data.equippedVialId)
+      ? data.equippedVialId
+      : VIAL_DEFAULT;
 
   const betRaw = data.betPerLine;
   const betPerLine =
@@ -199,10 +223,14 @@ export function sanitizePersistedGame(
     undoItems: clampInt(data.undoItems, 2, 0, MAX_CONSUMABLE),
     extraTubeItems: clampInt(data.extraTubeItems, 1, 0, MAX_CONSUMABLE),
     freeSpins: clampInt(data.freeSpins, 0, 0, MAX_CONSUMABLE),
-    rareSkinUnlocked: data.rareSkinUnlocked === true,
+    rareSkinUnlocked: owned.includes(VIAL_CROWN),
     betPerLine,
     activeLines: clampInt(data.activeLines, 5, 1, 5),
     session: sanitizeSession(data.session),
+    ownedItemIds: owned,
+    equippedPathId,
+    equippedVialId,
+    isNoAdsPurchased: data.isNoAdsPurchased === true,
     levelsCompletedSinceAd: clampInt(data.levelsCompletedSinceAd, 0, 0, 100),
     pendingPayout: sanitizePendingPayout(data.pendingPayout),
     hasSeenLabManual: data.hasSeenLabManual === true,

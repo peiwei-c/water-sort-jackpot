@@ -38,7 +38,18 @@ export function isFreeSpinBet(bet: number): bet is FreeSpinBet {
 
 /** @deprecated Use bet × lines. Kept as default single-line-ish reference. */
 export const SPIN_COST = DEFAULT_BET * DEFAULT_LINES;
+/** First-clear reward for sorting a station. */
 export const LEVEL_COIN_REWARD = 10;
+/** Replay reward when the station was already cleared. */
+export const REPLAY_COIN_REWARD = 1;
+
+/** Coins earned for clearing `level` given prior `highestCompleted`. */
+export function coinRewardForClear(
+  level: number,
+  highestCompleted: number,
+): number {
+  return level <= highestCompleted ? REPLAY_COIN_REWARD : LEVEL_COIN_REWARD;
+}
 
 /** Relative weights for each symbol (higher = more common). */
 export const SYMBOL_WEIGHTS: Record<SlotSymbol, number> = {

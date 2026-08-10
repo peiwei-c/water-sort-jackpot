@@ -13,9 +13,12 @@ import {
 } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
+import { getPathTheme } from '../engines/StoreCatalog';
 import { LEGAL } from '../constants/legal';
 import { COLORS, LAB } from '../theme/colors';
+import { AudioSettingsModal } from './AudioSettingsModal';
 import { LabManualModal } from './LabManualModal';
+import { getAudioManager } from '../services/audio/AudioManager';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const ROW_H = 108;
@@ -52,10 +55,16 @@ function buildPath(): PathRow[] {
 
 const PATH = buildPath();
 
-function LabBackdrop() {
+function LabBackdrop({
+  glowColor,
+  reagentColor,
+}: {
+  glowColor: string;
+  reagentColor: string;
+}) {
   const bubbleA = useRef(new Animated.Value(0)).current;
   const bubbleB = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0.35)).current;
+  const glowAnim = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
     const loop = (v: Animated.Value, duration: number, delay: number) =>
@@ -81,13 +90,13 @@ function LabBackdrop() {
     const b = loop(bubbleB, 5600, 800);
     const g = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, {
+        Animated.timing(glowAnim, {
           toValue: 0.7,
           duration: 2800,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(glow, {
+        Animated.timing(glowAnim, {
           toValue: 0.3,
           duration: 2800,
           easing: Easing.inOut(Easing.quad),
@@ -103,7 +112,7 @@ function LabBackdrop() {
       b.stop();
       g.stop();
     };
-  }, [bubbleA, bubbleB, glow]);
+  }, [bubbleA, bubbleB, glowAnim]);
 
   const rise = (v: Animated.Value, from: number, to: number) => ({
     transform: [
@@ -123,10 +132,19 @@ function LabBackdrop() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <View style={styles.labWash} />
-      <Animated.View style={[styles.glowOrb, { opacity: glow }]} />
-      <Animated.View style={[styles.glowOrbAmber, { opacity: glow }]} />
+      <Animated.View
+        style={[
+          styles.glowOrb,
+          { opacity: glowAnim, backgroundColor: glowColor },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.glowOrbAmber,
+          { opacity: glowAnim, backgroundColor: reagentColor },
+        ]}
+      />
 
-      {/* Blueprint / lab grid */}
       {Array.from({ length: 14 }, (_, i) => (
         <View
           key={`h-${i}`}
@@ -140,15 +158,102 @@ function LabBackdrop() {
         />
       ))}
 
-      {/* Floating reagent bubbles */}
-      <Animated.View style={[styles.bubble, styles.bubble1, rise(bubbleA, 80, -40)]} />
-      <Animated.View style={[styles.bubble, styles.bubble2, rise(bubbleB, 120, -20)]} />
-      <Animated.View style={[styles.bubble, styles.bubble3, rise(bubbleA, 60, -70)]} />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble1,
+          { borderColor: glowColor },
+          rise(bubbleA, 80, -40),
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble2,
+          { borderColor: glowColor },
+          rise(bubbleB, 120, -20),
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.bubble,
+          styles.bubble3,
+          { borderColor: glowColor },
+          rise(bubbleA, 60, -70),
+        ]}
+      />
 
-      {/* Bench silhouette */}
       <View style={styles.shelf} />
-      <View style={styles.shelfEdge} />
+      <View style={[styles.shelfEdge, { backgroundColor: glowColor }]} />
     </View>
+  );
+}
+
+function LabTraveler({
+  side,
+  accent,
+}: {
+  side: 'left' | 'right';
+  accent: string;
+}) {
+  const bob = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bob, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [bob]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        styles.traveler,
+        side === 'left' ? styles.travelerLeft : styles.travelerRight,
+        {
+          transform: [
+            {
+              translateY: bob.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -5],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      {/* Goggles / visor */}
+      <View style={styles.travelerGoggles}>
+        <View style={[styles.travelerLens, { borderColor: accent }]} />
+        <View style={[styles.travelerLens, { borderColor: accent }]} />
+      </View>
+      <View style={styles.travelerHead} />
+      <View style={[styles.travelerCoat, { borderColor: accent }]}>
+        <View style={[styles.travelerBadge, { backgroundColor: accent }]} />
+      </View>
+      <View style={styles.travelerLegs}>
+        <View style={styles.travelerLeg} />
+        <View style={styles.travelerLeg} />
+      </View>
+      <Text style={[styles.travelerTag, { color: accent }]}>YOU</Text>
+    </Animated.View>
   );
 }
 
@@ -158,12 +263,18 @@ function FlaskNode({
   cleared,
   current,
   onPress,
+  flaskBorder,
+  flaskFill,
+  reagent,
 }: {
   level: number;
   locked: boolean;
   cleared: boolean;
   current: boolean;
   onPress: () => void;
+  flaskBorder: string;
+  flaskFill: string;
+  reagent: string;
 }) {
   const pulse = useRef(new Animated.Value(1)).current;
 
@@ -199,8 +310,16 @@ function FlaskNode({
         onPress={onPress}
         style={[
           styles.flask,
-          cleared && styles.flaskCleared,
-          current && styles.flaskCurrent,
+          { borderColor: locked ? 'rgba(255,255,255,0.16)' : flaskBorder },
+          cleared && { borderColor: flaskBorder },
+          current && {
+            borderColor: reagent,
+            shadowColor: reagent,
+            shadowOpacity: 0.55,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 6,
+          },
           locked && styles.flaskLocked,
         ]}
         accessibilityRole="button"
@@ -213,15 +332,20 @@ function FlaskNode({
               : `Play level ${level}`
         }
       >
-        {/* Flask neck */}
-        <View style={[styles.flaskNeck, locked && styles.flaskNeckLocked]} />
-        {/* Liquid fill */}
+        <View
+          style={[
+            styles.flaskNeck,
+            locked && styles.flaskNeckLocked,
+            !locked && { borderColor: flaskBorder },
+          ]}
+        />
         {!locked ? (
           <View
             style={[
               styles.flaskLiquid,
-              cleared && styles.flaskLiquidCleared,
-              current && styles.flaskLiquidCurrent,
+              { backgroundColor: flaskFill },
+              cleared && { height: '72%', opacity: 0.9 },
+              current && { height: '85%', backgroundColor: reagent, opacity: 0.88 },
             ]}
           />
         ) : null}
@@ -233,7 +357,9 @@ function FlaskNode({
         >
           {locked ? '∅' : cleared ? '✓' : level}
         </Text>
-        {current ? <View style={styles.flaskRing} /> : null}
+        {current ? (
+          <View style={[styles.flaskRing, { borderColor: reagent }]} />
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -247,13 +373,20 @@ export function HomeScreen() {
   const unlockedLevel = useGameStore((s) => s.unlockedLevel);
   const highestCompleted = useGameStore((s) => s.highestCompleted);
   const session = useGameStore((s) => s.session);
-  const hydrated = useGameStore((s) => s.hydrated);
+  const equippedPathId = useGameStore((s) => s.equippedPathId);
   const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
+  const hydrated = useGameStore((s) => s.hydrated);
   const startLevel = useGameStore((s) => s.startLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
+  const openStore = useGameStore((s) => s.openStore);
   const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
   const listRef = useRef<FlatList<PathRow>>(null);
+  const [audioOpen, setAudioOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const pathTheme = useMemo(
+    () => getPathTheme(equippedPathId),
+    [equippedPathId],
+  );
 
   const focusIndex = useMemo(() => {
     if (session?.level) return Math.max(0, session.level - 1);
@@ -302,9 +435,15 @@ export function HomeScreen() {
       <View style={styles.row}>
         {showTier ? (
           <View style={styles.stationBanner}>
-            <View style={styles.stationStripe} />
-            <Text style={styles.stationText}>STATION · {item.tierLabel.toUpperCase()}</Text>
-            <View style={styles.stationStripe} />
+            <View
+              style={[styles.stationStripe, { backgroundColor: pathTheme.hazard }]}
+            />
+            <Text style={[styles.stationText, { color: pathTheme.reagent }]}>
+              STATION · {item.tierLabel.toUpperCase()}
+            </Text>
+            <View
+              style={[styles.stationStripe, { backgroundColor: pathTheme.hazard }]}
+            />
           </View>
         ) : null}
 
@@ -316,8 +455,11 @@ export function HomeScreen() {
               {
                 left: pipeLeft,
                 width: Math.max(pipeWidth, 8),
+                backgroundColor: locked ? LAB.pipeLocked : pathTheme.pipe,
+                borderColor: locked
+                  ? 'rgba(255,255,255,0.08)'
+                  : pathTheme.glassBright,
               },
-              locked && styles.pipeLocked,
             ]}
           >
             <View style={[styles.pipeShine, locked && { opacity: 0.15 }]} />
@@ -331,8 +473,23 @@ export function HomeScreen() {
             cleared={cleared}
             current={current || inProgress}
             onPress={() => startLevel(item.level)}
+            flaskBorder={pathTheme.flaskBorder}
+            flaskFill={pathTheme.flaskFill}
+            reagent={pathTheme.reagent}
           />
-          <Text style={[styles.nodeCaption, locked && styles.muted]}>
+          {current || inProgress ? (
+            <LabTraveler
+              side={item.x < 0.5 ? 'right' : 'left'}
+              accent={pathTheme.reagent}
+            />
+          ) : null}
+          <Text
+            style={[
+              styles.nodeCaption,
+              { color: pathTheme.label },
+              locked && styles.muted,
+            ]}
+          >
             {locked
               ? 'Sealed'
               : inProgress
@@ -350,10 +507,15 @@ export function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <LabBackdrop />
+      <LabBackdrop
+        glowColor={pathTheme.glow}
+        reagentColor={pathTheme.reagent}
+      />
 
       <View style={styles.hero}>
-        <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
+        <Text style={[styles.labEyebrow, { color: pathTheme.label }]}>
+          HYDROLOGY LAB
+        </Text>
         <Text style={styles.brand}>AquaSort Lab</Text>
         <Text style={styles.tagline}>
           Trace the glass line. Clear each flask. Unlock the next reagent station.
@@ -378,24 +540,54 @@ export function HomeScreen() {
 
         <View style={styles.heroActions}>
           <Pressable
-            style={styles.helpBtn}
-            onPress={() => setManualOpen(true)}
+            style={styles.audioBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              setManualOpen(true);
+            }}
             accessibilityLabel="Lab manual"
           >
-            <Text style={styles.helpBtnText}>Help</Text>
+            <Text style={styles.audioBtnText}>Help</Text>
           </Pressable>
-          <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
+          <Pressable
+            style={styles.audioBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              setAudioOpen(true);
+            }}
+            accessibilityLabel="Audio settings"
+          >
+            <Text style={styles.audioBtnText}>Audio</Text>
+          </Pressable>
+          <Pressable
+            style={styles.storeBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              openStore();
+            }}
+          >
+            <Text style={styles.storeBtnText}>Store</Text>
+          </Pressable>
+          <Pressable
+            style={styles.jackpotBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              openSlotMachine();
+            }}
+          >
             <Text style={styles.jackpotText}>Centrifuge</Text>
           </Pressable>
         </View>
       </View>
 
       <View style={styles.pathHeader}>
-        <Text style={styles.pathHeading}>REAGENT PATH</Text>
-        <Text style={styles.pathMeta}>
+        <Text style={[styles.pathHeading, { color: pathTheme.glassBright }]}>
+          REAGENT PATH
+        </Text>
+        <Text style={[styles.pathMeta, { color: pathTheme.label }]}>
           {session
-            ? `Continue · Flask ${session.level}`
-            : `Next open · Flask ${Math.min(unlockedLevel, MAX_LEVEL)}`}
+            ? `Lab tech at flask ${session.level}`
+            : `Lab tech at flask ${Math.min(unlockedLevel, MAX_LEVEL)}`}
         </Text>
       </View>
 
@@ -421,6 +613,11 @@ export function HomeScreen() {
           }, 200);
         }}
         initialScrollIndex={Math.min(focusIndex, MAX_LEVEL - 1)}
+      />
+
+      <AudioSettingsModal
+        visible={audioOpen}
+        onClose={() => setAudioOpen(false)}
       />
 
       <View style={styles.legalRow}>
@@ -565,6 +762,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
+  heroActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  audioBtn: {
+    backgroundColor: LAB.glassDim,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
+  },
+  audioBtnText: {
+    color: LAB.glassBright,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  storeBtn: {
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  storeBtnText: {
+    color: COLORS.text,
+    fontWeight: '800',
+    fontSize: 14,
+  },
   jackpotBtn: {
     backgroundColor: LAB.reagent,
     paddingHorizontal: 26,
@@ -572,25 +802,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.45)',
-  },
-  heroActions: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  helpBtn: {
-    backgroundColor: LAB.glassDim,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
-  },
-  helpBtnText: {
-    color: COLORS.text,
-    fontWeight: '800',
-    fontSize: 14,
   },
   jackpotText: {
     color: '#1A1200',
@@ -675,6 +886,73 @@ const styles = StyleSheet.create({
     top: (ROW_H - FLASK) / 2 - 4,
     width: FLASK,
     alignItems: 'center',
+  },
+  traveler: {
+    position: 'absolute',
+    top: 2,
+    width: 36,
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  travelerLeft: {
+    right: FLASK + 4,
+  },
+  travelerRight: {
+    left: FLASK + 4,
+  },
+  travelerGoggles: {
+    flexDirection: 'row',
+    gap: 2,
+    zIndex: 2,
+    marginBottom: -6,
+  },
+  travelerLens: {
+    width: 10,
+    height: 8,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(126, 227, 214, 0.35)',
+  },
+  travelerHead: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E8C4A8',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  travelerCoat: {
+    marginTop: 2,
+    width: 22,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: '#F4F7FB',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  travelerBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.9,
+  },
+  travelerLegs: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 1,
+  },
+  travelerLeg: {
+    width: 5,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: '#0C2A32',
+  },
+  travelerTag: {
+    marginTop: 2,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   flask: {
     width: FLASK,

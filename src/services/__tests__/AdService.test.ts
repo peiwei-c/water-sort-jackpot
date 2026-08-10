@@ -39,7 +39,7 @@ describe('AdService mock', () => {
   it('FailClosedAdService never grants rewards', async () => {
     const ads = new FailClosedAdService();
     await ads.initialize();
-    const rewarded = await ads.showRewarded('rewarded_extra_moves');
+    const rewarded = await ads.showRewarded('rewarded_hint');
     expect(rewarded.success).toBe(false);
     expect(rewarded.rewarded).toBe(false);
   });

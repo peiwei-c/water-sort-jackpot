@@ -3,6 +3,8 @@ import {
   SlotSymbol,
   SPIN_COST,
   LEVEL_COIN_REWARD,
+  REPLAY_COIN_REWARD,
+  coinRewardForClear,
   DEFAULT_BET,
   DEFAULT_LINES,
   BET_OPTIONS,
@@ -24,6 +26,11 @@ describe('JackpotEngine multi-line', () => {
       expect(BET_OPTIONS).toEqual([1, 5, 10, 25]);
       expect(SPIN_COST).toBe(DEFAULT_BET * DEFAULT_LINES);
       expect(LEVEL_COIN_REWARD).toBe(10);
+      expect(REPLAY_COIN_REWARD).toBe(1);
+      expect(coinRewardForClear(3, 0)).toBe(10);
+      expect(coinRewardForClear(3, 2)).toBe(10);
+      expect(coinRewardForClear(3, 3)).toBe(1);
+      expect(coinRewardForClear(2, 5)).toBe(1);
       expect(spinCost(5, 5)).toBe(25);
       expect(spinCost(10, 3)).toBe(30);
     });

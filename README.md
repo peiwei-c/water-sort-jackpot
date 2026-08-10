@@ -9,6 +9,8 @@ Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with AdMob mo
 | `src/engines/WaterSortEngine.ts` | Pure tube logic, pour rules, history, win checks |
 | `src/engines/JackpotEngine.ts` | Pure RNG, spin costs, payout table |
 | `src/services/AdService.ts` | Banner / interstitial / rewarded abstraction + mock |
+| `src/services/AdManager.ts` | Monetization policy (cooldown, first-ad delay, no-ads) |
+| `src/services/IapService.ts` | Mock Remove Ads purchase |
 | `src/services/AdMobAdService.ts` | Real AdMob provider |
 | `src/services/adsBootstrap.ts` | UMP consent + ATT before ads |
 | `src/store/gameStore.ts` | Zustand bridge between engines, economy, ads |
@@ -47,10 +49,17 @@ Legal pages live in `docs/` for GitHub Pages:
 - Privacy: `docs/privacy.html`
 - Terms: `docs/terms.html`
 
+### Policy (AdManager)
+
+- **Interstitial**: on “Next Station” only; suppressed for first **90s** or until **Level 4**; **120s** cooldown; never during pour; suppressed by Remove Ads
+- **Banner**: bottom of screen; hidden when Remove Ads purchased
+- **Rewarded** (always available, even with Remove Ads): extra tube · undo (1–3 pours) · hint · skip level (after 2 fails) · extra moves · free spins · 2× payout
+
 ## Economy
 
 - Level clear → **+10** coins
 - Spin → bet × lines coins (or free spins from rewarded ads)
+- Remove Ads → **$1.99** (mock IAP in `__DEV__` only; hides banner + interstitial only)
 - Interstitial every **3** levels
 - Rewarded: extra tube · 3 free spins · 2× payout
 
@@ -63,6 +72,7 @@ Mid-puzzle progress is written to AsyncStorage on every pour (debounced) and
 
 - `__DEV__` defaults to mock unless `EXPO_PUBLIC_AD_PROVIDER` is set
 - Release defaults to **admob** (also forced in `eas.json`)
-- Mock rewards only when `__DEV__` / Jest / `EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`
-- Missing native SDK → fail closed (no free rewards)
+- Mock rewards / mock IAP only when `__DEV__` / Jest / `EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`
+- Missing native SDK → fail closed (no free rewards / no free Remove Ads)
 - First launch requires **17+** age acknowledgment
+- Wire StoreKit / Play Billing before shipping paid entitlement

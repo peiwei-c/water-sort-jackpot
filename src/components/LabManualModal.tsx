@@ -65,8 +65,11 @@ export function LabManualModal({ visible, onClose }: Props) {
             <Text style={styles.helpHeading}>Controls</Text>
             <Text style={styles.helpBody}>
               Path (top) — return to the reagent path.{'\n'}
-              Undo — reverse your last pour (uses an undo item).{'\n'}
-              +🧪 — add an empty vial from inventory (or watch an ad).{'\n'}
+              Undo — reverse your last pour (uses an undo item, or watch an
+              ad).{'\n'}
+              Hint — watch an ad to highlight a valid pour.{'\n'}
+              +🧪 — add an empty vial from your inventory. If you’re out, watch
+              an ad or win tubes from the Centrifuge.{'\n'}
               Centrifuge — spend coins on the lab spinner.{'\n'}
               Reset — restart the current station (clears saved progress).
             </Text>
@@ -74,7 +77,9 @@ export function LabManualModal({ visible, onClose }: Props) {
             <Text style={styles.helpHeading}>Coins</Text>
             <Text style={styles.helpBody}>
               Clear a station to earn coins. Coins power the Centrifuge — bet
-              them on paylines to win more coins and items.
+              them on paylines to win more coins and items. The Store sells vial
+              cosmetics (looks only) and exclusive harder paths (fewer moves).
+              You can always play the free Standard Lab path.
             </Text>
 
             <Pressable style={styles.helpClose} onPress={onClose} hitSlop={8}>

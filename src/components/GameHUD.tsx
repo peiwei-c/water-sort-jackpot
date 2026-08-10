@@ -80,17 +80,37 @@ function Stat({
 export function GameControls() {
   const undo = useGameStore((s) => s.undo);
   const useExtraTube = useGameStore((s) => s.useExtraTube);
+  const requestHint = useGameStore((s) => s.requestHint);
   const restartLevel = useGameStore((s) => s.restartLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const extraTubeItems = useGameStore((s) => s.extraTubeItems);
   const movesLeft = useGameStore((s) => s.movesLeft);
   const moveLimit = useGameStore((s) => s.moveLimit);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
   const outOfTubes = extraTubeItems <= 0;
   const movesLow = movesLeft <= 3;
+  const hintDisabled = !adsReady || isAdLoading;
   const [confirmReset, setConfirmReset] = useState(false);
 
+  const onHintPress = () => {
+    if (hintDisabled) {
+      useGameStore.setState({
+        lastMessage: !adsReady ? 'Ads loading…' : 'Ad in progress…',
+      });
+      return;
+    }
+    void requestHint();
+  };
+
   return (
-    <View style={styles.controlsWrap}>
+    <View
+      style={[
+        styles.controlsWrap,
+        !isNoAdsPurchased && styles.controlsWrapBanner,
+      ]}
+    >
       <View style={[styles.movesBar, movesLow && styles.movesBarWarn]}>
         <Text style={styles.movesLabel}>Moves left</Text>
         <Text style={[styles.movesValue, movesLow && styles.movesValueWarn]}>
@@ -100,6 +120,12 @@ export function GameControls() {
       </View>
       <View style={styles.controls}>
         <ControlBtn label="Undo" onPress={undo} />
+        <ControlBtn
+          label="Hint"
+          onPress={onHintPress}
+          disabled={false}
+          dimmed={hintDisabled}
+        />
         <View style={styles.tubeBtnCol}>
           {outOfTubes ? (
             <Text style={styles.tubeHint}>
@@ -156,21 +182,39 @@ function ControlBtn({
   label,
   onPress,
   accent,
+  disabled,
+  dimmed,
   accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   accent?: boolean;
+  disabled?: boolean;
+  dimmed?: boolean;
   accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.btn, accent && styles.btnAccent]}
+      disabled={disabled}
+      style={[
+        styles.btn,
+        accent && styles.btnAccent,
+        (disabled || dimmed) && styles.btnDisabled,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!disabled }}
     >
-      <Text style={[styles.btnText, accent && styles.btnTextDark]}>{label}</Text>
+      <Text
+        style={[
+          styles.btnText,
+          accent && styles.btnTextDark,
+          (disabled || dimmed) && styles.btnTextDisabled,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -286,6 +330,9 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 2,
   },
+  controlsWrapBanner: {
+    paddingBottom: 12,
+  },
   movesBar: {
     alignSelf: 'center',
     flexDirection: 'row',
@@ -356,6 +403,9 @@ const styles = StyleSheet.create({
     backgroundColor: LAB.reagent,
     borderColor: 'rgba(255, 230, 150, 0.4)',
   },
+  btnDisabled: {
+    opacity: 0.4,
+  },
   btnText: {
     color: COLORS.text,
     fontWeight: '700',
@@ -363,6 +413,9 @@ const styles = StyleSheet.create({
   },
   btnTextDark: {
     color: '#1A1200',
+  },
+  btnTextDisabled: {
+    color: LAB.label,
   },
   confirmBackdrop: {
     flex: 1,

@@ -7,6 +7,9 @@ import { allowMockMonetization } from './monetizationGate';
 export type AdPlacement =
   | 'interstitial_level'
   | 'rewarded_extra_tube'
+  | 'rewarded_undo'
+  | 'rewarded_hint'
+  | 'rewarded_skip_level'
   | 'rewarded_extra_moves'
   | 'rewarded_free_spins'
   | 'rewarded_2x_payout'

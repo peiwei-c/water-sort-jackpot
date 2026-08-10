@@ -6,16 +6,21 @@ import {
   StatusBar,
   SafeAreaView,
   AppState,
+  type AppStateStatus,
 } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { LinearGradientFallback } from './src/components/LinearGradientFallback';
 import { TubeBoard } from './src/components/TubeBoard';
 import { GameHUD, GameControls } from './src/components/GameHUD';
 import { HomeScreen } from './src/components/HomeScreen';
+import { LoadingScreen } from './src/components/LoadingScreen';
+import { MIN_BOOT_MS, shouldShowBoot } from './src/components/bootGate';
+import { StoreScreen } from './src/components/StoreScreen';
 import { SlotMachineModal } from './src/components/SlotMachineModal';
 import {
   LevelCompleteModal,
   ExtraTubeAdModal,
+  UndoAdModal,
   OutOfMovesModal,
   CampaignCompleteModal,
 } from './src/components/Modals';
@@ -24,6 +29,7 @@ import { AgeGateModal } from './src/components/AgeGateModal';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useGameStore } from './src/store/gameStore';
 import { bootstrapAds } from './src/services/adsBootstrap';
+import { getAudioManager } from './src/services/audio/AudioManager';
 import { LAB } from './src/theme/colors';
 
 void SplashScreen.preventAutoHideAsync();
@@ -35,13 +41,15 @@ function AppShell() {
   const capacity = useGameStore((s) => s.capacity);
   const selectedTube = useGameStore((s) => s.selectedTube);
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
+  const equippedVialId = useGameStore((s) => s.equippedVialId);
   const lastMessage = useGameStore((s) => s.lastMessage);
   const modal = useGameStore((s) => s.modal);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
   const hydrate = useGameStore((s) => s.hydrate);
   const flushSession = useGameStore((s) => s.flushSession);
-
+  const markAdsReady = useGameStore((s) => s.markAdsReady);
+  const [splashElapsed, setSplashElapsed] = useState(false);
   const [ageOk, setAgeOk] = useState(false);
 
   const showSlots =
@@ -52,6 +60,7 @@ function AppShell() {
   const showLevelComplete = modal === 'level_complete';
   const showCampaignComplete = modal === 'campaign_complete';
   const showExtraTube = modal === 'ad_extra_tube';
+  const showUndoAd = modal === 'ad_undo';
   const showOutOfMoves =
     modal === 'out_of_moves' || modal === 'ad_extra_moves';
 
@@ -61,6 +70,7 @@ function AppShell() {
 
   useEffect(() => {
     void hydrate();
+    void getAudioManager().initialize();
   }, [hydrate]);
 
   useEffect(() => {
@@ -68,19 +78,39 @@ function AppShell() {
     void SplashScreen.hideAsync();
   }, [hydrated]);
 
+  // Persistence finishes in ~ms; hold the branded boot so the animation can play.
+  useEffect(() => {
+    const t = setTimeout(() => setSplashElapsed(true), MIN_BOOT_MS);
+    return () => clearTimeout(t);
+  }, []);
+
   useEffect(() => {
     if (!ageOk) return;
     void bootstrapAds().then((result) => {
       console.log('[App] Ads bootstrap', result);
-    });
-  }, [ageOk]);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (next) => {
-      if (next === 'background' || next === 'inactive') {
-        flushSession();
+      if (result.adsReady) {
+        markAdsReady();
       }
     });
+  }, [ageOk, markAdsReady]);
+
+  // BGM: home/store share menu bed; play uses bench bed (crossfades).
+  useEffect(() => {
+    if (shouldShowBoot(hydrated, splashElapsed)) return;
+    const track = screen === 'play' ? 'play' : 'home';
+    void getAudioManager().playBgm(track);
+  }, [screen, hydrated, splashElapsed]);
+
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
+      if (next === 'background' || next === 'inactive') {
+        flushSession();
+        void getAudioManager().handleAppBackground();
+      } else if (next === 'active') {
+        void getAudioManager().handleAppForeground();
+      }
+    };
+    const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
   }, [flushSession]);
 
@@ -90,20 +120,8 @@ function AppShell() {
     return () => clearTimeout(t);
   }, [lastMessage, dismissMessage]);
 
-  if (!hydrated) {
-    return (
-      <LinearGradientFallback
-        colors={[LAB.benchDeep, LAB.benchMid]}
-        style={styles.root}
-      >
-        <SafeAreaView style={styles.safe}>
-          <StatusBar barStyle="light-content" />
-          <View style={styles.boot}>
-            <Text style={styles.bootText}>Loading lab…</Text>
-          </View>
-        </SafeAreaView>
-      </LinearGradientFallback>
-    );
+  if (shouldShowBoot(hydrated, splashElapsed)) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -116,6 +134,8 @@ function AppShell() {
 
         {screen === 'home' ? (
           <HomeScreen />
+        ) : screen === 'store' ? (
+          <StoreScreen />
         ) : (
           <View style={styles.playRoot}>
             <View pointerEvents="none" style={styles.labGrid}>
@@ -146,6 +166,7 @@ function AppShell() {
                   tubes={tubes}
                   capacity={capacity}
                   selectedTube={selectedTube}
+                  vialSkinId={equippedVialId}
                   rareSkin={rareSkinUnlocked}
                   onSelect={selectTube}
                 />
@@ -164,6 +185,7 @@ function AppShell() {
         {showLevelComplete ? <LevelCompleteModal /> : null}
         {showCampaignComplete ? <CampaignCompleteModal /> : null}
         {showExtraTube ? <ExtraTubeAdModal /> : null}
+        {showUndoAd ? <UndoAdModal /> : null}
         {showOutOfMoves ? <OutOfMovesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
         {ageOk ? <AdBanner /> : null}
@@ -282,15 +304,5 @@ const styles = StyleSheet.create({
   toastPlaceholder: {
     minHeight: 22,
     marginTop: 8,
-  },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bootText: {
-    color: LAB.label,
-    fontWeight: '700',
-    letterSpacing: 1,
   },
 });
