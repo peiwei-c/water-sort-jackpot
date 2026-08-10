@@ -1,6 +1,6 @@
-# AquaSort Jackpot
+# AquaSort Lab
 
-Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Jackpot** with mock AdMob/AppLovin hooks.
+Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with mock AdMob/AppLovin hooks.
 
 ## Architecture
 
@@ -26,13 +26,19 @@ Then press `i` (iOS), `a` (Android), or `w` (web).
 
 ## Ad providers
 
-Default is **mock** (console logs + delays). Switch later via:
+Default is **mock** (console logs + delays). AdMob needs a **dev client / native
+build** (not Expo Go):
 
 ```bash
-EXPO_PUBLIC_AD_PROVIDER=admob   # or applovin
+EXPO_PUBLIC_AD_PROVIDER=admob
+npx expo prebuild
+npx expo run:android
 ```
 
-`AdMobAdService` / `AppLovinAdService` are stubs that throw until real SDK IDs are wired.
+App / unit IDs are in `app.json` / `src/services/admobUnitIds.ts` (Android + iOS).
+In `__DEV__`, Google `TestIds` are used so the account is not flagged.
+
+`AppLovinAdService` remains a fail-closed stub.
 
 ## Economy
 
@@ -50,5 +56,6 @@ the app mid-station resumes from the saved flask on next launch.
 ### Monetization safety
 
 Mock rewarded ads run only in `__DEV__` / Jest, or when
-`EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`. Unconfigured AdMob/AppLovin stubs
-fail closed (no throw on boot, no free rewards).
+`EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`. If AdMob native SDK is missing
+(Expo Go, web, Jest), `AdMobAdService` fails closed (no free rewards).
+`AppLovinAdService` remains fail-closed until wired.

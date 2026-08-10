@@ -22,6 +22,8 @@ export type AdResult = {
   message: string;
 };
 
+export type BannerVisibilityListener = (visible: boolean) => void;
+
 export interface IAdService {
   initialize(): Promise<void>;
   isReady(type: AdType): boolean;
@@ -29,6 +31,8 @@ export interface IAdService {
   hideBanner(): Promise<void>;
   showInterstitial(placement?: AdPlacement): Promise<AdResult>;
   showRewarded(placement: AdPlacement): Promise<AdResult>;
+  isBannerVisible?: () => boolean;
+  subscribeBannerVisibility?: (listener: BannerVisibilityListener) => () => void;
 }
 
 const MOCK_DELAY_MS: Record<AdType, number> = {
@@ -165,13 +169,6 @@ export class FailClosedAdService implements IAdService {
   }
 }
 
-/** Soft stubs — never throw on boot. */
-export class AdMobAdService extends FailClosedAdService {
-  constructor() {
-    super('admob');
-  }
-}
-
 export class AppLovinAdService extends FailClosedAdService {
   constructor() {
     super('applovin');
@@ -184,8 +181,12 @@ let singleton: IAdService | null = null;
 
 export function createAdService(provider: AdProviderName = 'mock'): IAdService {
   switch (provider) {
-    case 'admob':
+    case 'admob': {
+      // Lazy require avoids pulling the native SDK into Jest when only mock is used.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { AdMobAdService } = require('./AdMobAdService') as typeof import('./AdMobAdService');
       return new AdMobAdService();
+    }
     case 'applovin':
       return new AppLovinAdService();
     case 'mock':

@@ -1,15 +1,17 @@
 {
   "expo": {
-    "name": "AquaSort Centrifuge",
+    "name": "AquaSort Lab",
     "slug": "water-sort-jackpot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aquasort.lab"
     },
     "android": {
+      "package": "com.aquasort.lab",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +22,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3994151354323315~6576501262",
+          "iosAppId": "ca-app-pub-3994151354323315~6719971499",
+          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
+        }
+      ]
+    ]
   }
 }

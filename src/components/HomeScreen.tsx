@@ -352,7 +352,7 @@ export function HomeScreen() {
 
       <View style={styles.hero}>
         <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
-        <Text style={styles.brand}>AquaSort</Text>
+        <Text style={styles.brand}>AquaSort Lab</Text>
         <Text style={styles.tagline}>
           Trace the glass line. Clear each flask. Unlock the next reagent station.
         </Text>

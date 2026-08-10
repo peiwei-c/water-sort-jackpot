@@ -44,10 +44,19 @@ describe('AdService mock', () => {
     expect(rewarded.rewarded).toBe(false);
   });
 
-  it('admob/applovin stubs initialize without throwing', async () => {
+  it('admob fails closed when native SDK is unavailable', async () => {
     const admob = createAdService('admob');
     await expect(admob.initialize()).resolves.toBeUndefined();
     const result = await admob.showRewarded('rewarded_free_spins');
+    expect(result.provider).toBe('admob');
+    expect(result.success).toBe(false);
+    expect(result.rewarded).toBe(false);
+  });
+
+  it('applovin stub never grants rewards', async () => {
+    const applovin = createAdService('applovin');
+    await expect(applovin.initialize()).resolves.toBeUndefined();
+    const result = await applovin.showRewarded('rewarded_free_spins');
     expect(result.rewarded).toBe(false);
   });
 });

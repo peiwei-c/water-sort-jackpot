@@ -19,6 +19,7 @@ import {
   CampaignCompleteModal,
 } from './src/components/Modals';
 import { useGameStore } from './src/store/gameStore';
+import { AdBanner } from './src/components/AdBanner';
 import { getAdService } from './src/services/AdService';
 import { LAB } from './src/theme/colors';
 
@@ -152,6 +153,7 @@ export default function App() {
         {showExtraTube ? <ExtraTubeAdModal /> : null}
         {showOutOfMoves ? <OutOfMovesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
+        <AdBanner />
       </SafeAreaView>
     </LinearGradientFallback>
   );
