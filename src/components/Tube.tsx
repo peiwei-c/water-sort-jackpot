@@ -12,6 +12,7 @@ type Props = {
   tube: TubeData;
   capacity: number;
   selected: boolean;
+  hinted?: boolean;
   vialSkinId?: string;
   rareSkin?: boolean;
   /** Tilt direction while pouring: -1 left, 1 right, 0 none */
@@ -40,6 +41,7 @@ export function Tube({
   tube,
   capacity,
   selected,
+  hinted,
   vialSkinId = VIAL_DEFAULT,
   rareSkin,
   tiltDir = 0,
@@ -114,6 +116,7 @@ export function Tube({
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 0 },
           },
+          hinted && !selected && styles.hinted,
           {
             transform: [
               { translateY: lift },
@@ -223,6 +226,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   rareSkin: {
+    borderRadius: 8,
+  },
+  hinted: {
+    shadowColor: '#F0B429',
+    shadowOpacity: 0.95,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
     borderRadius: 8,
   },
   rimOuter: {

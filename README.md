@@ -9,6 +9,8 @@ Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Jackpot** with mock AdMob/
 | `src/engines/WaterSortEngine.ts` | Pure tube logic, pour rules, history, win checks |
 | `src/engines/JackpotEngine.ts` | Pure RNG, spin costs, payout table |
 | `src/services/AdService.ts` | Banner / interstitial / rewarded abstraction + mock |
+| `src/services/AdManager.ts` | Monetization policy (cooldown, first-ad delay, no-ads) |
+| `src/services/IapService.ts` | Mock Remove Ads purchase |
 | `src/store/gameStore.ts` | Zustand bridge between engines, economy, ads |
 | `src/components/*` | React Native UI |
 
@@ -34,9 +36,21 @@ EXPO_PUBLIC_AD_PROVIDER=admob   # or applovin
 
 `AdMobAdService` / `AppLovinAdService` are stubs that throw until real SDK IDs are wired.
 
+### Policy (AdManager)
+
+- **Interstitial**: on “Next Station” only; suppressed for first **90s** or until **Level 4**; **120s** cooldown; never during pour; suppressed by Remove Ads
+- **Banner**: bottom of screen; hidden when Remove Ads purchased
+- **Rewarded** (always available, even with Remove Ads): extra tube · undo (1–3 pours) · hint · skip level (after 2 fails) · extra moves · free spins · 2× payout
+
 ## Economy
 
 - Level clear → **+10** coins
 - Spin → **−5** coins (or free spins from rewarded ads)
-- Interstitial every **3** levels
-- Rewarded: extra tube · 3 free spins · 2× payout
+- Remove Ads → **$1.99** (mock IAP in `__DEV__` only; hides banner + interstitial only)
+
+### Monetization safety
+
+Mock IAP and mock rewarded ads run only when `__DEV__` is true, or when
+`EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`. Release builds without a real
+`EXPO_PUBLIC_AD_PROVIDER` fail closed (no free rewards / no free Remove Ads).
+Wire StoreKit / Play Billing before shipping paid entitlement.

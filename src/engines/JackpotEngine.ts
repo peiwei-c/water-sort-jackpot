@@ -38,7 +38,18 @@ export function isFreeSpinBet(bet: number): bet is FreeSpinBet {
 
 /** @deprecated Use bet × lines. Kept as default single-line-ish reference. */
 export const SPIN_COST = DEFAULT_BET * DEFAULT_LINES;
+/** First-clear reward for sorting a station. */
 export const LEVEL_COIN_REWARD = 10;
+/** Replay reward when the station was already cleared. */
+export const REPLAY_COIN_REWARD = 1;
+
+/** Coins earned for clearing `level` given prior `highestCompleted`. */
+export function coinRewardForClear(
+  level: number,
+  highestCompleted: number,
+): number {
+  return level <= highestCompleted ? REPLAY_COIN_REWARD : LEVEL_COIN_REWARD;
+}
 
 /** Relative weights for each symbol (higher = more common). */
 export const SYMBOL_WEIGHTS: Record<SlotSymbol, number> = {
@@ -392,20 +403,27 @@ export function evaluatePayout(
   };
 }
 
-export function applyPayoutMultiplier(payout: Payout, multiplier: number): Payout {
-  if (multiplier <= 1) return payout;
+/** Only 1× (collect) or 2× (rewarded ad) are allowed. */
+export type PayoutMultiplier = 1 | 2;
+
+export function applyPayoutMultiplier(
+  payout: Payout,
+  multiplier: number,
+): Payout {
+  const m: PayoutMultiplier = multiplier === 2 ? 2 : 1;
+  if (m <= 1) return payout;
   return {
     ...payout,
-    coins: payout.coins * multiplier,
-    undoItems: payout.undoItems * multiplier,
-    extraTubeItems: payout.extraTubeItems * multiplier,
-    label: `${payout.label} (×${multiplier})`,
+    coins: payout.coins * m,
+    undoItems: payout.undoItems * m,
+    extraTubeItems: payout.extraTubeItems * m,
+    label: `${payout.label} (×${m})`,
     lineWins: payout.lineWins.map((w) => ({
       ...w,
-      coins: w.coins * multiplier,
-      undoItems: w.undoItems * multiplier,
-      extraTubeItems: w.extraTubeItems * multiplier,
-      label: `${w.label} (×${multiplier})`,
+      coins: w.coins * m,
+      undoItems: w.undoItems * m,
+      extraTubeItems: w.extraTubeItems * m,
+      label: `${w.label} (×${m})`,
     })),
   };
 }

@@ -1,7 +1,7 @@
 import {
   MockAdService,
+  FailClosedAdService,
   createAdService,
-  INTERSTITIAL_EVERY_N_LEVELS,
   resetAdService,
 } from '../AdService';
 
@@ -32,11 +32,15 @@ describe('AdService mock', () => {
     expect(result.rewarded).toBe(false);
   });
 
-  it('createAdService defaults to mock', () => {
+  it('createAdService defaults to mock in __DEV__', () => {
     expect(createAdService('mock')).toBeInstanceOf(MockAdService);
   });
 
-  it('uses interstitial cadence of every 3 levels', () => {
-    expect(INTERSTITIAL_EVERY_N_LEVELS).toBe(3);
+  it('FailClosedAdService never grants rewards', async () => {
+    const ads = new FailClosedAdService();
+    await ads.initialize();
+    const rewarded = await ads.showRewarded('rewarded_hint');
+    expect(rewarded.success).toBe(false);
+    expect(rewarded.rewarded).toBe(false);
   });
 });

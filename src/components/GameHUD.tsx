@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
-import { DialogCloseX } from './DialogCloseX';
+import { LabManualModal } from './LabManualModal';
 
 export function GameHUD() {
   const level = useGameStore((s) => s.level);
@@ -62,76 +55,7 @@ export function GameHUD() {
         </View>
       </View>
 
-      <Modal
-        visible={showHelp}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowHelp(false)}
-      >
-        <View style={styles.helpBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShowHelp(false)}
-          />
-          <View style={styles.helpCard}>
-            <DialogCloseX onPress={() => setShowHelp(false)} />
-            <ScrollView
-              bounces={false}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.helpScroll}
-            >
-              <Text style={styles.helpTitle}>Lab Manual</Text>
-
-              <Text style={styles.helpHeading}>Goal</Text>
-              <Text style={styles.helpBody}>
-                Sort the colored reagents so every vial is either empty or filled
-                with one color only.
-              </Text>
-
-              <Text style={styles.helpHeading}>Pouring</Text>
-              <Text style={styles.helpBody}>
-                1. Tap a vial to pick it up.{'\n'}
-                2. Tap another vial to pour.{'\n'}
-                You can pour only if the target is empty, or its top color
-                matches the color you’re pouring. Contiguous top segments pour
-                together until the target is full.
-              </Text>
-
-              <Text style={styles.helpHeading}>Moves</Text>
-              <Text style={styles.helpBody}>
-                Each successful pour costs 1 move. Run out of moves and you’ll
-                need to retry or watch an ad for more.
-              </Text>
-
-              <Text style={styles.helpHeading}>Controls</Text>
-              <Text style={styles.helpBody}>
-                Path (top) — return to the reagent path. Mid-puzzle progress is
-                saved so you can continue later.{'\n'}
-                Undo — reverse your last pour (uses an undo item).{'\n'}
-                +🧪 — add an empty vial from your inventory. If you’re out,
-                watch an ad or win tubes from the Centrifuge.{'\n'}
-                Centrifuge — spend coins on the lab spinner.{'\n'}
-                Reset — restart the current station (clears saved progress).
-              </Text>
-
-              <Text style={styles.helpHeading}>Coins</Text>
-              <Text style={styles.helpBody}>
-                Clear a station to earn coins. The Store sells vial cosmetics
-                (looks only) and exclusive harder paths (fewer moves). You can
-                always play the free Standard Lab path.
-              </Text>
-
-              <Pressable
-                style={styles.helpClose}
-                onPress={() => setShowHelp(false)}
-                hitSlop={8}
-              >
-                <Text style={styles.helpCloseText}>Got it</Text>
-              </Pressable>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <LabManualModal visible={showHelp} onClose={() => setShowHelp(false)} />
     </>
   );
 }
@@ -156,16 +80,37 @@ function Stat({
 export function GameControls() {
   const undo = useGameStore((s) => s.undo);
   const useExtraTube = useGameStore((s) => s.useExtraTube);
+  const requestHint = useGameStore((s) => s.requestHint);
   const restartLevel = useGameStore((s) => s.restartLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const extraTubeItems = useGameStore((s) => s.extraTubeItems);
   const movesLeft = useGameStore((s) => s.movesLeft);
   const moveLimit = useGameStore((s) => s.moveLimit);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
   const outOfTubes = extraTubeItems <= 0;
   const movesLow = movesLeft <= 3;
+  const hintDisabled = !adsReady || isAdLoading;
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const onHintPress = () => {
+    if (hintDisabled) {
+      useGameStore.setState({
+        lastMessage: !adsReady ? 'Ads loading…' : 'Ad in progress…',
+      });
+      return;
+    }
+    void requestHint();
+  };
 
   return (
-    <View style={styles.controlsWrap}>
+    <View
+      style={[
+        styles.controlsWrap,
+        !isNoAdsPurchased && styles.controlsWrapBanner,
+      ]}
+    >
       <View style={[styles.movesBar, movesLow && styles.movesBarWarn]}>
         <Text style={styles.movesLabel}>Moves left</Text>
         <Text style={[styles.movesValue, movesLow && styles.movesValueWarn]}>
@@ -175,6 +120,12 @@ export function GameControls() {
       </View>
       <View style={styles.controls}>
         <ControlBtn label="Undo" onPress={undo} />
+        <ControlBtn
+          label="Hint"
+          onPress={onHintPress}
+          disabled={false}
+          dimmed={hintDisabled}
+        />
         <View style={styles.tubeBtnCol}>
           {outOfTubes ? (
             <Text style={styles.tubeHint}>
@@ -188,8 +139,41 @@ export function GameControls() {
           />
         </View>
         <ControlBtn label="Centrifuge" onPress={openSlotMachine} accent />
-        <ControlBtn label="Reset" onPress={restartLevel} />
+        <ControlBtn label="Reset" onPress={() => setConfirmReset(true)} />
       </View>
+
+      <Modal
+        visible={confirmReset}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmReset(false)}
+      >
+        <View style={styles.confirmBackdrop}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>Restart station?</Text>
+            <Text style={styles.confirmBody}>
+              Mid-puzzle progress for this station will be cleared.
+            </Text>
+            <View style={styles.confirmRow}>
+              <Pressable
+                style={[styles.confirmBtn, styles.confirmGhost]}
+                onPress={() => setConfirmReset(false)}
+              >
+                <Text style={styles.confirmGhostText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.confirmBtn, styles.confirmMain]}
+                onPress={() => {
+                  setConfirmReset(false);
+                  restartLevel();
+                }}
+              >
+                <Text style={styles.confirmMainText}>Restart</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -198,21 +182,39 @@ function ControlBtn({
   label,
   onPress,
   accent,
+  disabled,
+  dimmed,
   accessibilityLabel,
 }: {
   label: string;
   onPress: () => void;
   accent?: boolean;
+  disabled?: boolean;
+  dimmed?: boolean;
   accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.btn, accent && styles.btnAccent]}
+      disabled={disabled}
+      style={[
+        styles.btn,
+        accent && styles.btnAccent,
+        (disabled || dimmed) && styles.btnDisabled,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!disabled }}
     >
-      <Text style={[styles.btnText, accent && styles.btnTextDark]}>{label}</Text>
+      <Text
+        style={[
+          styles.btnText,
+          accent && styles.btnTextDark,
+          (disabled || dimmed) && styles.btnTextDisabled,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -328,6 +330,9 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 2,
   },
+  controlsWrapBanner: {
+    paddingBottom: 12,
+  },
   movesBar: {
     alignSelf: 'center',
     flexDirection: 'row',
@@ -398,6 +403,9 @@ const styles = StyleSheet.create({
     backgroundColor: LAB.reagent,
     borderColor: 'rgba(255, 230, 150, 0.4)',
   },
+  btnDisabled: {
+    opacity: 0.4,
+  },
   btnText: {
     color: COLORS.text,
     fontWeight: '700',
@@ -406,60 +414,65 @@ const styles = StyleSheet.create({
   btnTextDark: {
     color: '#1A1200',
   },
-  helpBackdrop: {
+  btnTextDisabled: {
+    color: LAB.label,
+  },
+  confirmBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(4, 18, 24, 0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
-  helpCard: {
+  confirmCard: {
     width: '100%',
-    maxWidth: 380,
-    maxHeight: '85%',
+    maxWidth: 340,
     borderRadius: 20,
-    backgroundColor: LAB.benchMid,
+    padding: 22,
+    backgroundColor: LAB.benchDeep,
     borderWidth: 1.5,
     borderColor: 'rgba(126, 227, 214, 0.32)',
-    overflow: 'hidden',
   },
-  helpScroll: {
-    padding: 20,
-    paddingTop: 28,
-  },
-  helpTitle: {
-    color: LAB.reagent,
-    fontWeight: '800',
+  confirmTitle: {
+    color: COLORS.text,
+    fontWeight: '900',
     fontSize: 22,
     textAlign: 'center',
-    marginBottom: 14,
-    letterSpacing: 0.5,
-    paddingHorizontal: 28,
   },
-  helpHeading: {
-    color: LAB.glassBright,
-    fontWeight: '800',
-    fontSize: 14,
-    marginTop: 10,
-    marginBottom: 4,
+  confirmBody: {
+    color: COLORS.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 18,
   },
-  helpBody: {
+  confirmRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  confirmGhost: {
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.22)',
+  },
+  confirmMain: {
+    backgroundColor: LAB.hazard,
+  },
+  confirmGhostText: {
     color: COLORS.text,
-    fontSize: 14,
-    lineHeight: 21,
-    opacity: 0.92,
+    fontWeight: '700',
+    fontSize: 15,
   },
-  helpClose: {
-    alignSelf: 'center',
-    marginTop: 18,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: LAB.glassBright,
-  },
-  helpCloseText: {
-    color: '#062018',
+  confirmMainText: {
+    color: '#FFF8F6',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 15,
   },
 });

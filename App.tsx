@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,22 +6,27 @@ import {
   StatusBar,
   SafeAreaView,
   AppState,
+  type AppStateStatus,
 } from 'react-native';
 import { LinearGradientFallback } from './src/components/LinearGradientFallback';
 import { TubeBoard } from './src/components/TubeBoard';
 import { GameHUD, GameControls } from './src/components/GameHUD';
 import { HomeScreen } from './src/components/HomeScreen';
 import { LoadingScreen } from './src/components/LoadingScreen';
+import { MIN_BOOT_MS, shouldShowBoot } from './src/components/bootGate';
 import { StoreScreen } from './src/components/StoreScreen';
 import { SlotMachineModal } from './src/components/SlotMachineModal';
+import { BannerAd } from './src/components/BannerAd';
 import {
   LevelCompleteModal,
   ExtraTubeAdModal,
+  UndoAdModal,
   OutOfMovesModal,
   CampaignCompleteModal,
 } from './src/components/Modals';
 import { useGameStore } from './src/store/gameStore';
-import { getAdService } from './src/services/AdService';
+import { getAdManager, BANNER_HEIGHT } from './src/services/AdManager';
+import { getAudioManager } from './src/services/audio/AudioManager';
 import { LAB } from './src/theme/colors';
 
 export default function App() {
@@ -33,23 +38,70 @@ export default function App() {
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
   const equippedVialId = useGameStore((s) => s.equippedVialId);
   const lastMessage = useGameStore((s) => s.lastMessage);
+  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
+  const modal = useGameStore((s) => s.modal);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
   const hydrate = useGameStore((s) => s.hydrate);
   const flushSession = useGameStore((s) => s.flushSession);
+  const markAdsReady = useGameStore((s) => s.markAdsReady);
+  const [splashElapsed, setSplashElapsed] = useState(false);
+
+  const bannerPad = isNoAdsPurchased ? 0 : BANNER_HEIGHT;
+  const showSlots =
+    modal === 'slot_machine' ||
+    modal === 'spin_result' ||
+    modal === 'ad_2x_payout' ||
+    modal === 'ad_free_spins';
+  const showLevelComplete = modal === 'level_complete';
+  const showCampaignComplete = modal === 'campaign_complete';
+  const showExtraTube = modal === 'ad_extra_tube';
+  const showUndoAd = modal === 'ad_undo';
+  const showOutOfMoves =
+    modal === 'out_of_moves' || modal === 'ad_extra_moves';
 
   useEffect(() => {
     void hydrate();
-    void getAdService().initialize();
-    void getAdService().showBanner('banner_home');
-  }, [hydrate]);
+    void getAudioManager().initialize();
+    void (async () => {
+      const ads = getAdManager();
+      await ads.initialize();
+      markAdsReady();
+      await ads.showBanner(useGameStore.getState().isNoAdsPurchased);
+    })();
+  }, [hydrate, markAdsReady]);
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (next) => {
+    if (isNoAdsPurchased) {
+      void getAdManager().hideBanner();
+    } else if (useGameStore.getState().adsReady) {
+      void getAdManager().showBanner(false);
+    }
+  }, [isNoAdsPurchased]);
+
+  // Persistence finishes in ~ms; hold the branded boot so the animation can play.
+  useEffect(() => {
+    const t = setTimeout(() => setSplashElapsed(true), MIN_BOOT_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  // BGM: home/store share menu bed; play uses bench bed (crossfades).
+  useEffect(() => {
+    if (shouldShowBoot(hydrated, splashElapsed)) return;
+    const track = screen === 'play' ? 'play' : 'home';
+    void getAudioManager().playBgm(track);
+  }, [screen, hydrated, splashElapsed]);
+
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
       if (next === 'background' || next === 'inactive') {
         flushSession();
+        void getAudioManager().handleAppBackground();
+      } else if (next === 'active') {
+        void getAudioManager().handleAppForeground();
       }
-    });
+    };
+    const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
   }, [flushSession]);
 
@@ -59,7 +111,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, [lastMessage, dismissMessage]);
 
-  if (!hydrated) {
+  if (shouldShowBoot(hydrated, splashElapsed)) {
     return <LoadingScreen />;
   }
 
@@ -68,7 +120,7 @@ export default function App() {
       colors={[LAB.benchDeep, LAB.benchMid]}
       style={styles.root}
     >
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { paddingBottom: bannerPad }]}>
         <StatusBar barStyle="light-content" />
 
         {screen === 'home' ? (
@@ -122,11 +174,13 @@ export default function App() {
           </View>
         )}
 
-        <LevelCompleteModal />
-        <CampaignCompleteModal />
-        <ExtraTubeAdModal />
-        <OutOfMovesModal />
-        <SlotMachineModal />
+        {showLevelComplete ? <LevelCompleteModal /> : null}
+        {showCampaignComplete ? <CampaignCompleteModal /> : null}
+        {showExtraTube ? <ExtraTubeAdModal /> : null}
+        {showUndoAd ? <UndoAdModal /> : null}
+        {showOutOfMoves ? <OutOfMovesModal /> : null}
+        {showSlots ? <SlotMachineModal /> : null}
+        <BannerAd />
       </SafeAreaView>
     </LinearGradientFallback>
   );

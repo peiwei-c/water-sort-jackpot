@@ -1,6 +1,8 @@
 import {
   WaterSortEngine,
   canPour,
+  findHint,
+  adUndoCount,
   pour,
   isWon,
   getTopColor,
@@ -173,6 +175,31 @@ describe('WaterSortEngine', () => {
       engine.addEmptyTube();
       expect(engine.getTubes()).toHaveLength(3);
       expect(engine.getTubes()[2]).toEqual([]);
+    });
+
+    it('findHint returns a valid pour', () => {
+      const tubes = [[1, 1], [], [2]];
+      const hint = findHint(tubes, 4);
+      expect(hint).not.toBeNull();
+      expect(canPour(tubes, hint!.fromIndex, hint!.toIndex, 4)).toBe(true);
+    });
+
+    it('undoMany scales with history and adUndoCount caps at 3', () => {
+      expect(adUndoCount(0)).toBe(0);
+      expect(adUndoCount(1)).toBe(1);
+      expect(adUndoCount(2)).toBe(2);
+      expect(adUndoCount(5)).toBe(3);
+
+      const engine = new WaterSortEngine({
+        tubes: [[1], [2], [3], [], [], []],
+        capacity: 4,
+      });
+      expect(engine.pour(0, 3).success).toBe(true);
+      expect(engine.pour(1, 4).success).toBe(true);
+      expect(engine.pour(2, 5).success).toBe(true);
+      expect(engine.undoDepth()).toBe(3);
+      expect(engine.undoMany(adUndoCount(engine.undoDepth()))).toBe(3);
+      expect(engine.getTubes()).toEqual([[1], [2], [3], [], [], []]);
     });
 
     it('generateLevel creates colorCount + emptyTubes tubes', () => {

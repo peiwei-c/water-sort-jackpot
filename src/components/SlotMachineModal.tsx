@@ -288,7 +288,7 @@ export function SlotMachineModal() {
               <View style={styles.row}>
                 <Pressable
                   style={[styles.btn, styles.btnGhost]}
-                  onPress={() => claimPendingPayout(1)}
+                  onPress={() => claimPendingPayout()}
                 >
                   <Text style={styles.btnGhostText}>Collect</Text>
                 </Pressable>

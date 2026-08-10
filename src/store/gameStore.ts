@@ -4,12 +4,16 @@ import {
   getLevelDifficulty,
   MAX_LEVEL,
   isCampaignComplete,
+  adUndoCount,
   type Tube,
+  type HintMove,
 } from '../engines/WaterSortEngine';
 import {
   JackpotEngine,
   SPIN_COST,
   LEVEL_COIN_REWARD,
+  REPLAY_COIN_REWARD,
+  coinRewardForClear,
   DEFAULT_BET,
   DEFAULT_LINES,
   BET_OPTIONS,
@@ -23,11 +27,12 @@ import {
   type SlotSymbol,
   type BetOption,
 } from '../engines/JackpotEngine';
+import { getAdManager } from '../services/AdManager';
+import { getAudioManager } from '../services/audio/AudioManager';
+import { type AdPlacement } from '../services/AdService';
 import {
-  getAdService,
-  INTERSTITIAL_EVERY_N_LEVELS,
-  type AdPlacement,
-} from '../services/AdService';
+  purchaseRemoveAds as iapPurchaseRemoveAds,
+} from '../services/IapService';
 import {
   loadPersistedGame,
   savePersistedGame,
@@ -46,6 +51,8 @@ import {
 
 export const EXTRA_MOVES_FROM_AD = 5;
 export const POUR_ANIM_MS = 520;
+/** Failures on the same station before Skip Level is offered. */
+export const SKIP_AFTER_FAILS = 2;
 
 export type PourAnim = {
   fromIndex: number;
@@ -58,7 +65,6 @@ export type PourAnim = {
   pendingModal: ModalKind;
   pendingMessage: string | null;
   pendingCoins?: number;
-  pendingLevelsSinceAd?: number;
 };
 
 export type ModalKind =
@@ -68,6 +74,7 @@ export type ModalKind =
   | 'out_of_moves'
   | 'slot_machine'
   | 'ad_extra_tube'
+  | 'ad_undo'
   | 'ad_extra_moves'
   | 'ad_free_spins'
   | 'ad_2x_payout'
@@ -98,15 +105,25 @@ type GameStore = {
   activeLines: number;
   selectedTube: number | null;
   pourAnim: PourAnim | null;
-  levelsCompletedSinceAd: number;
   modal: ModalKind;
   lastSpin: SpinResult | null;
   pendingPayout: Payout | null;
   isAdLoading: boolean;
+  adsReady: boolean;
   lastMessage: string | null;
+  /** Coins granted by the most recent station clear (first clear or replay). */
+  lastClearCoinReward: number;
   /** Saved mid-puzzle run (null when none / cleared). */
   session: PuzzleSession | null;
   hydrated: boolean;
+  /** Remove Ads IAP — hides banner + suppresses interstitial; rewarded stays. */
+  isNoAdsPurchased: boolean;
+  /** First-run Lab Manual shown at least once. */
+  hasSeenLabManual: boolean;
+  /** Consecutive failures on the current station (skip unlocks at SKIP_AFTER_FAILS). */
+  consecutiveFailCount: number;
+  /** Highlighted pour from a rewarded hint. */
+  hintHighlight: HintMove | null;
 
   _puzzle: WaterSortEngine;
   _jackpot: JackpotEngine;
@@ -114,18 +131,27 @@ type GameStore = {
   hydrate: () => Promise<void>;
   /** Persist mid-puzzle without leaving the play screen. */
   flushSession: () => void;
+  markLabManualSeen: () => void;
   selectTube: (index: number) => void;
   clearSelection: () => void;
   completePourAnim: () => void;
   undo: () => void;
   useExtraTube: () => void;
+  requestHint: () => Promise<boolean>;
+  skipLevel: () => Promise<boolean>;
   restartLevel: () => void;
   startLevel: (level: number) => void;
   goHome: () => void;
   openStore: () => void;
   buyItem: (id: string) => boolean;
   equipItem: (id: string) => boolean;
-  nextLevel: (opts?: { openJackpot?: boolean; goHome?: boolean }) => void;
+  purchaseRemoveAds: () => Promise<boolean>;
+  nextLevel: (opts?: {
+    openJackpot?: boolean;
+    goHome?: boolean;
+    /** Used after rewarded skip — don't stack a forced interstitial. */
+    skipInterstitial?: boolean;
+  }) => Promise<void>;
   openSlotMachine: () => void;
   closeModal: () => void;
   setBetPerLine: (bet: number) => void;
@@ -133,10 +159,12 @@ type GameStore = {
   cycleBet: (direction: 1 | -1) => void;
   cycleLines: (direction: 1 | -1) => void;
   spin: () => Promise<void>;
-  claimPendingPayout: (multiplier: number) => void;
+  /** Collect pending jackpot payout at 1×. Doubling only via rewarded ad path. */
+  claimPendingPayout: () => void;
   watchAd: (placement: AdPlacement) => Promise<boolean>;
   requestMoreMoves: () => void;
   dismissMessage: () => void;
+  markAdsReady: () => void;
 };
 
 function syncFromPuzzle(puzzle: WaterSortEngine): Pick<GameStore, 'tubes' | 'capacity'> {
@@ -213,6 +241,9 @@ function buildPersistPayload(state: GameStore): PersistedGame {
     ownedItemIds: state.ownedItemIds,
     equippedPathId: state.equippedPathId,
     equippedVialId: state.equippedVialId,
+    isNoAdsPurchased: state.isNoAdsPurchased,
+    lastInterstitialAt: getAdManager().getLastInterstitialAt(),
+    hasSeenLabManual: state.hasSeenLabManual,
   };
 }
 
@@ -232,6 +263,39 @@ function grantCosmeticFromPayout(
 
 /** Assigned after store creation — safe to call from actions. */
 let persistSoon: () => void = () => {};
+let flushPersistNow: () => void = () => {};
+
+function settlePendingPayout(
+  get: () => GameStore,
+  set: (
+    partial:
+      | Partial<GameStore>
+      | ((state: GameStore) => Partial<GameStore>),
+  ) => void,
+  multiplier: 1 | 2,
+): void {
+  const { pendingPayout, coins, undoItems, extraTubeItems, ownedItemIds } =
+    get();
+  if (!pendingPayout) {
+    set({ modal: 'slot_machine' });
+    return;
+  }
+  const payout = applyPayoutMultiplier(pendingPayout, multiplier);
+  const cosmetics = grantCosmeticFromPayout(
+    ownedItemIds,
+    payout.unlockRareSkin,
+  );
+  set({
+    coins: coins + payout.coins,
+    undoItems: undoItems + payout.undoItems,
+    extraTubeItems: extraTubeItems + payout.extraTubeItems,
+    ...cosmetics,
+    pendingPayout: null,
+    modal: 'spin_result',
+    lastMessage: payout.label,
+  });
+  persistSoon();
+}
 
 export const useGameStore = create<GameStore>((set, get) => {
   const puzzle = createPuzzle(1);
@@ -259,14 +323,19 @@ export const useGameStore = create<GameStore>((set, get) => {
     activeLines: DEFAULT_LINES,
     selectedTube: null,
     pourAnim: null,
-    levelsCompletedSinceAd: 0,
     modal: 'none',
     lastSpin: null,
     pendingPayout: null,
     isAdLoading: false,
+    adsReady: false,
     lastMessage: null,
+    lastClearCoinReward: LEVEL_COIN_REWARD,
     session: null,
     hydrated: false,
+    isNoAdsPurchased: false,
+    hasSeenLabManual: false,
+    consecutiveFailCount: 0,
+    hintHighlight: null,
     _puzzle: puzzle,
     _jackpot: jackpot,
 
@@ -275,8 +344,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       const data = await loadPersistedGame();
       if (!data) {
         set({ hydrated: true });
+        getAdManager().markSessionStart();
         return;
       }
+      if (data.lastInterstitialAt != null) {
+        getAdManager().setLastInterstitialAt(data.lastInterstitialAt);
+      }
+      getAdManager().markSessionStart();
       const updates: Partial<GameStore> = {
         hydrated: true,
         unlockedLevel: data.unlockedLevel,
@@ -292,20 +366,30 @@ export const useGameStore = create<GameStore>((set, get) => {
         betPerLine: clampBet(data.betPerLine),
         activeLines: clampLines(data.activeLines),
         session: data.session,
+        isNoAdsPurchased: data.isNoAdsPurchased,
+        hasSeenLabManual: data.hasSeenLabManual,
         screen: 'home',
       };
       set(updates as GameStore);
     },
 
+    markAdsReady: () => set({ adsReady: true }),
+
+    markLabManualSeen: () => {
+      if (get().hasSeenLabManual) return;
+      set({ hasSeenLabManual: true });
+      persistSoon();
+    },
+
     flushSession: () => {
       const state = get();
       if (state.screen !== 'play') {
-        persistSoon();
+        flushPersistNow();
         return;
       }
       const session = captureSession(state);
       set({ session });
-      persistSoon();
+      flushPersistNow();
     },
 
     selectTube: (index: number) => {
@@ -314,17 +398,26 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       if (selectedTube === null) {
         if (_puzzle.getTubes()[index]?.length === 0) return;
-        set({ selectedTube: index });
+        getAudioManager().playSfx('tap');
+        set({ selectedTube: index, hintHighlight: null });
         return;
       }
 
       if (selectedTube === index) {
+        getAudioManager().playSfx('tap');
         set({ selectedTube: null });
         return;
       }
 
       if (movesLeft <= 0) {
-        set({ modal: 'out_of_moves', selectedTube: null, lastMessage: 'Out of moves!' });
+        getAudioManager().playSfx('fail');
+        set({
+          modal: 'out_of_moves',
+          selectedTube: null,
+          lastMessage: 'Out of moves!',
+          consecutiveFailCount: get().consecutiveFailCount + 1,
+          hintHighlight: null,
+        });
         return;
       }
 
@@ -332,30 +425,33 @@ export const useGameStore = create<GameStore>((set, get) => {
       const result = _puzzle.pour(selectedTube, index);
       if (!result.success || result.color === null) {
         if (_puzzle.getTubes()[index]?.length) {
-          set({ selectedTube: index });
+          getAudioManager().playSfx('tap');
+          set({ selectedTube: index, hintHighlight: null });
         } else {
           set({ selectedTube: null });
         }
         return;
       }
 
+      getAudioManager().playSfx('pour');
       const after = _puzzle.getTubes();
       const nextMoves = movesLeft - 1;
       let pendingModal: ModalKind = 'none';
       let pendingMessage: string | null = null;
       let pendingCoins: number | undefined;
-      let pendingLevelsSinceAd: number | undefined;
+      let clearReward: number | undefined;
 
       if (_puzzle.isWon()) {
-        pendingCoins = get().coins + LEVEL_COIN_REWARD;
-        pendingLevelsSinceAd = get().levelsCompletedSinceAd + 1;
         const currentLevel = get().level;
+        const reward = coinRewardForClear(currentLevel, get().highestCompleted);
+        pendingCoins = get().coins + reward;
         pendingModal = isCampaignComplete(currentLevel)
           ? 'campaign_complete'
           : 'level_complete';
         pendingMessage = isCampaignComplete(currentLevel)
           ? `Campaign complete! All ${MAX_LEVEL} levels cleared`
-          : `Level complete! +${LEVEL_COIN_REWARD} coins`;
+          : `Level complete! +${reward} coin${reward === 1 ? '' : 's'}`;
+        clearReward = reward;
       } else if (nextMoves <= 0) {
         pendingModal = 'out_of_moves';
         pendingMessage = 'Out of moves!';
@@ -365,6 +461,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         // Keep pre-pour visuals while the pour animation plays
         tubes: before,
         selectedTube: null,
+        hintHighlight: null,
+        ...(clearReward !== undefined
+          ? { lastClearCoinReward: clearReward }
+          : {}),
         pourAnim: {
           fromIndex: selectedTube,
           toIndex: index,
@@ -376,7 +476,6 @@ export const useGameStore = create<GameStore>((set, get) => {
           pendingModal,
           pendingMessage,
           pendingCoins,
-          pendingLevelsSinceAd,
         },
       });
     },
@@ -399,9 +498,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (pourAnim.pendingCoins !== undefined) {
         updates.coins = pourAnim.pendingCoins;
       }
-      if (pourAnim.pendingLevelsSinceAd !== undefined) {
-        updates.levelsCompletedSinceAd = pourAnim.pendingLevelsSinceAd;
-      }
       if (
         pourAnim.pendingModal === 'level_complete' ||
         pourAnim.pendingModal === 'campaign_complete'
@@ -413,7 +509,10 @@ export const useGameStore = create<GameStore>((set, get) => {
             get().highestCompleted,
             get().unlockedLevel,
           ),
+          { consecutiveFailCount: 0, hintHighlight: null },
         );
+      } else if (pourAnim.pendingModal === 'out_of_moves') {
+        updates.consecutiveFailCount = get().consecutiveFailCount + 1;
       }
 
       set(updates as GameStore);
@@ -422,17 +521,14 @@ export const useGameStore = create<GameStore>((set, get) => {
         pourAnim.pendingModal === 'level_complete' ||
         pourAnim.pendingModal === 'campaign_complete'
       ) {
+        getAudioManager().playSfx('success');
         set({ session: null });
         persistSoon();
-        const since = get().levelsCompletedSinceAd;
-        if (since >= INTERSTITIAL_EVERY_N_LEVELS) {
-          void (async () => {
-            set({ isAdLoading: true });
-            await getAdService().showInterstitial('interstitial_level');
-            set({ isAdLoading: false, levelsCompletedSinceAd: 0 });
-            persistSoon();
-          })();
-        }
+      } else if (pourAnim.pendingModal === 'out_of_moves') {
+        getAudioManager().playSfx('fail');
+        const session = captureSession(get());
+        set({ session });
+        persistSoon();
       } else {
         // Keep mid-puzzle progress warm for Path / app kill
         const session = captureSession(get());
@@ -444,8 +540,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     undo: () => {
       const { undoItems, _puzzle, movesLeft, moveLimit, modal, pourAnim } = get();
       if (pourAnim || modal === 'level_complete') return;
-      if (undoItems <= 0 || !_puzzle.canUndo()) {
-        set({ lastMessage: 'No undos available' });
+      if (!_puzzle.canUndo()) {
+        set({ lastMessage: 'Nothing to undo' });
+        return;
+      }
+      if (undoItems <= 0) {
+        set({
+          modal: 'ad_undo',
+          lastMessage: 'Watch an ad to undo recent pours?',
+        });
         return;
       }
       _puzzle.undo();
@@ -454,6 +557,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         movesLeft: Math.min(moveLimit, movesLeft + 1),
         ...syncFromPuzzle(_puzzle),
         selectedTube: null,
+        hintHighlight: null,
         modal: modal === 'out_of_moves' ? 'none' : modal,
         lastMessage: 'Move undone',
         session: captureSession({
@@ -478,10 +582,35 @@ export const useGameStore = create<GameStore>((set, get) => {
       set({
         extraTubeItems: extraTubeItems - 1,
         ...syncFromPuzzle(_puzzle),
+        hintHighlight: null,
         lastMessage: 'Extra tube added',
         session: captureSession(get()),
       });
       persistSoon();
+    },
+
+    requestHint: async () => {
+      const { pourAnim, modal, adsReady } = get();
+      if (pourAnim || modal === 'level_complete' || modal === 'out_of_moves') {
+        return false;
+      }
+      if (!adsReady || !getAdManager().isRewardedReady()) {
+        set({ lastMessage: 'Hint ad not available' });
+        return false;
+      }
+      return get().watchAd('rewarded_hint');
+    },
+
+    skipLevel: async () => {
+      if (get().consecutiveFailCount < SKIP_AFTER_FAILS) {
+        set({ lastMessage: 'Skip unlocks after 2 fails on this station' });
+        return false;
+      }
+      if (!get().adsReady || !getAdManager().isRewardedReady()) {
+        set({ lastMessage: 'Skip ad not available' });
+        return false;
+      }
+      return get().watchAd('rewarded_skip_level');
     },
 
     startLevel: (level) => {
@@ -492,6 +621,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
       const diff = getLevelDifficulty(safe);
+      const sameLevel = get().level === safe;
 
       if (session && session.level === safe) {
         const next = WaterSortEngine.fromSnapshot(session);
@@ -506,6 +636,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           selectedTube: null,
           pourAnim: null,
           modal: 'none',
+          hintHighlight: null,
+          consecutiveFailCount: sameLevel ? get().consecutiveFailCount : 0,
           lastMessage: 'Continuing station…',
         });
         return;
@@ -522,6 +654,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         selectedTube: null,
         pourAnim: null,
         modal: 'none',
+        hintHighlight: null,
+        consecutiveFailCount: 0,
         lastMessage: null,
         session: null,
       });
@@ -629,13 +763,14 @@ export const useGameStore = create<GameStore>((set, get) => {
         selectedTube: null,
         pourAnim: null,
         modal: 'none',
+        hintHighlight: null,
         lastMessage: 'Level restarted',
         session: null,
       });
       persistSoon();
     },
 
-    nextLevel: (opts) => {
+    nextLevel: async (opts) => {
       const current = get().level;
 
       if (opts?.goHome) {
@@ -647,9 +782,33 @@ export const useGameStore = create<GameStore>((set, get) => {
           pendingPayout: null,
           lastMessage: null,
           session: null,
+          hintHighlight: null,
         });
         persistSoon();
         return;
+      }
+
+      // Interstitial on Next Level tap (never during pour / active gameplay).
+      const mgr = getAdManager();
+      if (
+        !opts?.skipInterstitial &&
+        mgr.canShowInterstitial({
+          level: current,
+          pourAnimActive: get().pourAnim != null,
+          isNoAdsPurchased: get().isNoAdsPurchased,
+        })
+      ) {
+        set({ isAdLoading: true });
+        try {
+          await mgr.showInterstitialSafe({
+            level: current,
+            pourAnimActive: get().pourAnim != null,
+            isNoAdsPurchased: get().isNoAdsPurchased,
+          });
+        } finally {
+          set({ isAdLoading: false });
+          persistSoon();
+        }
       }
 
       if (isCampaignComplete(current)) {
@@ -658,6 +817,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           modal: opts?.openJackpot ? 'slot_machine' : 'campaign_complete',
           lastMessage: `You finished all ${MAX_LEVEL} levels!`,
           session: null,
+          consecutiveFailCount: 0,
+          hintHighlight: null,
         });
         persistSoon();
         return;
@@ -670,6 +831,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           modal: 'none',
           lastMessage: 'New level unlocked — pick it on the path',
           session: null,
+          consecutiveFailCount: 0,
+          hintHighlight: null,
         });
         persistSoon();
         return;
@@ -687,12 +850,43 @@ export const useGameStore = create<GameStore>((set, get) => {
         selectedTube: null,
         pourAnim: null,
         modal: opts?.openJackpot ? 'slot_machine' : 'none',
+        consecutiveFailCount: 0,
+        hintHighlight: null,
         lastMessage: opts?.openJackpot
           ? `Level ${level} ready · spin the Centrifuge`
           : `Level ${level} · ${diff.tierLabel}`,
         session: null,
       });
       persistSoon();
+    },
+
+    purchaseRemoveAds: async () => {
+      if (get().isNoAdsPurchased) {
+        set({ lastMessage: 'Ads already removed' });
+        return true;
+      }
+      set({ isAdLoading: true });
+      try {
+        const result = await iapPurchaseRemoveAds();
+        if (!result.success) {
+          set({ isAdLoading: false, lastMessage: result.message });
+          return false;
+        }
+        set({
+          isNoAdsPurchased: true,
+          isAdLoading: false,
+          lastMessage: 'Ads removed — rewarded ads still available',
+        });
+        await getAdManager().hideBanner();
+        persistSoon();
+        return true;
+      } catch (e) {
+        set({
+          isAdLoading: false,
+          lastMessage: e instanceof Error ? e.message : 'Purchase failed',
+        });
+        return false;
+      }
     },
 
     openSlotMachine: () => set({ modal: 'slot_machine' }),
@@ -795,34 +989,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       });
     },
 
-    claimPendingPayout: (multiplier: number) => {
-      const { pendingPayout, coins, undoItems, extraTubeItems, ownedItemIds } =
-        get();
-      if (!pendingPayout) {
-        set({ modal: 'slot_machine' });
-        return;
-      }
-      const payout = applyPayoutMultiplier(pendingPayout, multiplier);
-      const cosmetics = grantCosmeticFromPayout(
-        ownedItemIds,
-        payout.unlockRareSkin,
-      );
-      set({
-        coins: coins + payout.coins,
-        undoItems: undoItems + payout.undoItems,
-        extraTubeItems: extraTubeItems + payout.extraTubeItems,
-        ...cosmetics,
-        pendingPayout: null,
-        modal: 'spin_result',
-        lastMessage: payout.label,
-      });
-      persistSoon();
+    claimPendingPayout: () => {
+      settlePendingPayout(get, set, 1);
     },
 
     watchAd: async (placement: AdPlacement) => {
       set({ isAdLoading: true });
       try {
-        const result = await getAdService().showRewarded(placement);
+        const result = await getAdManager().showRewarded(placement);
         if (!result.success || !result.rewarded) {
           set({ isAdLoading: false, lastMessage: 'Ad not completed' });
           return false;
@@ -835,10 +1009,81 @@ export const useGameStore = create<GameStore>((set, get) => {
             isAdLoading: false,
             ...syncFromPuzzle(_puzzle),
             modal: 'none',
+            hintHighlight: null,
             lastMessage: '+1 Extra Empty Tube',
             session: captureSession(get()),
           });
           persistSoon();
+        } else if (placement === 'rewarded_undo') {
+          const { _puzzle, movesLeft, moveLimit } = get();
+          const count = adUndoCount(_puzzle.undoDepth());
+          if (count <= 0) {
+            set({
+              isAdLoading: false,
+              modal: 'none',
+              lastMessage: 'Nothing to undo',
+            });
+            return false;
+          }
+          const undone = _puzzle.undoMany(count);
+          set({
+            isAdLoading: false,
+            movesLeft: Math.min(moveLimit, movesLeft + undone),
+            ...syncFromPuzzle(_puzzle),
+            selectedTube: null,
+            hintHighlight: null,
+            modal: 'none',
+            lastMessage: `Undid ${undone} pour${undone === 1 ? '' : 's'}`,
+            session: captureSession({
+              ...get(),
+              movesLeft: Math.min(moveLimit, movesLeft + undone),
+              modal: 'none',
+            }),
+          });
+          persistSoon();
+        } else if (placement === 'rewarded_hint') {
+          const hint = get()._puzzle.findHint();
+          if (!hint) {
+            set({
+              isAdLoading: false,
+              lastMessage: 'No valid pour right now',
+            });
+            return false;
+          }
+          set({
+            isAdLoading: false,
+            hintHighlight: hint,
+            modal: 'none',
+            lastMessage: 'Hint: pour the highlighted vials',
+          });
+        } else if (placement === 'rewarded_skip_level') {
+          const current = get().level;
+          const unlockedLevel = Math.min(
+            MAX_LEVEL,
+            Math.max(
+              get().unlockedLevel,
+              current >= MAX_LEVEL ? MAX_LEVEL : current + 1,
+            ),
+          );
+          set({
+            isAdLoading: false,
+            unlockedLevel,
+            consecutiveFailCount: 0,
+            hintHighlight: null,
+            session: null,
+            modal: 'none',
+            lastMessage:
+              current >= MAX_LEVEL
+                ? 'Station skipped'
+                : `Skipped · Station ${current + 1} unlocked`,
+          });
+          persistSoon();
+          if (current < MAX_LEVEL && unlockedLevel >= current + 1) {
+            await get().nextLevel({ openJackpot: false, skipInterstitial: true });
+          } else {
+            set({ screen: 'home' });
+            persistSoon();
+          }
         } else if (placement === 'rewarded_extra_moves') {
           set({
             isAdLoading: false,
@@ -864,7 +1109,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           });
         } else if (placement === 'rewarded_2x_payout') {
           set({ isAdLoading: false });
-          get().claimPendingPayout(2);
+          settlePendingPayout(get, set, 2);
         } else {
           set({ isAdLoading: false });
         }
@@ -884,11 +1129,28 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 });
 
+const PERSIST_DEBOUNCE_MS = 400;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function writePersistPayload(): void {
+  void savePersistedGame(buildPersistPayload(useGameStore.getState()));
+}
+
 persistSoon = () => {
-  queueMicrotask(() => {
-    void savePersistedGame(buildPersistPayload(useGameStore.getState()));
-  });
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    writePersistPayload();
+  }, PERSIST_DEBOUNCE_MS);
+};
+
+flushPersistNow = () => {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  writePersistPayload();
 };
 
 export type { Tube, SpinResult, SlotSymbol, Payout, BetOption };
-export { SPIN_COST, LEVEL_COIN_REWARD, MAX_LEVEL, BET_OPTIONS, spinCost, isFreeSpinBet };
+export { SPIN_COST, LEVEL_COIN_REWARD, REPLAY_COIN_REWARD, coinRewardForClear, MAX_LEVEL, BET_OPTIONS, spinCost, isFreeSpinBet };

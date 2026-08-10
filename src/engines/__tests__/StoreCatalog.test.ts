@@ -1,6 +1,7 @@
 import {
   STORE_ITEMS,
   ensureOwnedDefaults,
+  sanitizeOwnedItemIds,
   getStoreItem,
   getPathTheme,
   getVialTheme,
@@ -23,6 +24,17 @@ describe('StoreCatalog', () => {
     expect(ensureOwnedDefaults([])).toEqual(
       expect.arrayContaining(DEFAULT_OWNED),
     );
+  });
+
+  it('sanitizeOwnedItemIds drops unknown catalog ids', () => {
+    const owned = sanitizeOwnedItemIds(
+      [PATH_DEFAULT, 'hacked_skin', VIAL_CROWN],
+      false,
+    );
+    expect(owned).toContain(PATH_DEFAULT);
+    expect(owned).toContain(VIAL_DEFAULT);
+    expect(owned).toContain(VIAL_CROWN);
+    expect(owned).not.toContain('hacked_skin');
   });
 
   it('migrates rareSkinUnlocked to crown vial', () => {

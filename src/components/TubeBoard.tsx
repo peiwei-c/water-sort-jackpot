@@ -36,6 +36,7 @@ export function TubeBoard({
   onSelect,
 }: Props) {
   const pourAnim = useGameStore((s) => s.pourAnim);
+  const hintHighlight = useGameStore((s) => s.hintHighlight);
   const completePourAnim = useGameStore((s) => s.completePourAnim);
   const layouts = useRef<Record<number, Layout>>({});
 
@@ -174,6 +175,11 @@ export function TubeBoard({
           tube={tube}
           capacity={capacity}
           selected={selectedTube === index && !pourAnim}
+          hinted={
+            !!hintHighlight &&
+            (hintHighlight.fromIndex === index ||
+              hintHighlight.toIndex === index)
+          }
           rareSkin={rareSkin}
           vialSkinId={vialSkinId}
           tiltDir={tiltFor(index)}

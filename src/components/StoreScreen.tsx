@@ -12,6 +12,9 @@ import {
   type StoreKind,
   type StoreItem,
 } from '../engines/StoreCatalog';
+import {
+  REMOVE_ADS_PRICE_LABEL,
+} from '../services/IapService';
 import { COLORS, LAB } from '../theme/colors';
 
 export function StoreScreen() {
@@ -20,8 +23,11 @@ export function StoreScreen() {
   const equippedPathId = useGameStore((s) => s.equippedPathId);
   const equippedVialId = useGameStore((s) => s.equippedVialId);
   const lastMessage = useGameStore((s) => s.lastMessage);
+  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
   const buyItem = useGameStore((s) => s.buyItem);
   const equipItem = useGameStore((s) => s.equipItem);
+  const purchaseRemoveAds = useGameStore((s) => s.purchaseRemoveAds);
   const goHome = useGameStore((s) => s.goHome);
   const [tab, setTab] = useState<StoreKind>('path');
 
@@ -40,6 +46,30 @@ export function StoreScreen() {
         <View style={styles.balance}>
           <Text style={styles.balanceText}>🪙 {coins}</Text>
         </View>
+      </View>
+
+      <View style={styles.removeAdsCard}>
+        <Text style={styles.removeAdsTitle}>Remove Ads</Text>
+        <Text style={styles.removeAdsSub}>
+          Hide banner & forced interstitials. Rewarded ads for hints/tubes stay
+          available. {REMOVE_ADS_PRICE_LABEL}
+        </Text>
+        <Pressable
+          style={[
+            styles.removeAdsBtn,
+            (isNoAdsPurchased || isAdLoading) && styles.removeAdsBtnDisabled,
+          ]}
+          disabled={isNoAdsPurchased || isAdLoading}
+          onPress={() => void purchaseRemoveAds()}
+        >
+          <Text style={styles.removeAdsBtnText}>
+            {isNoAdsPurchased
+              ? 'Owned'
+              : isAdLoading
+                ? 'Processing…'
+                : `Buy · ${REMOVE_ADS_PRICE_LABEL}`}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.tabs}>
@@ -195,6 +225,40 @@ const styles = StyleSheet.create({
     color: LAB.reagent,
     fontWeight: '800',
     fontSize: 16,
+  },
+  removeAdsCard: {
+    marginBottom: 14,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(240, 180, 41, 0.35)',
+  },
+  removeAdsTitle: {
+    color: LAB.reagent,
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  removeAdsSub: {
+    marginTop: 4,
+    marginBottom: 10,
+    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  removeAdsBtn: {
+    backgroundColor: LAB.reagent,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  removeAdsBtnDisabled: {
+    opacity: 0.5,
+  },
+  removeAdsBtnText: {
+    color: '#1A1200',
+    fontWeight: '800',
+    fontSize: 15,
   },
   tabs: {
     flexDirection: 'row',

@@ -224,3 +224,16 @@ export function ensureOwnedDefaults(
   if (rareSkinUnlocked) set.add(VIAL_CROWN);
   return Array.from(set);
 }
+
+const CATALOG_IDS = new Set(STORE_ITEMS.map((i) => i.id));
+
+/** Drop unknown / injected IDs, then apply free defaults. */
+export function sanitizeOwnedItemIds(
+  owned: unknown,
+  rareSkinUnlocked?: boolean,
+): string[] {
+  const list = Array.isArray(owned)
+    ? owned.filter((id): id is string => typeof id === 'string' && CATALOG_IDS.has(id))
+    : [];
+  return ensureOwnedDefaults(list, rareSkinUnlocked);
+}

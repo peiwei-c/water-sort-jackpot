@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,9 @@ import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
 import { getPathTheme } from '../engines/StoreCatalog';
 import { COLORS, LAB } from '../theme/colors';
+import { AudioSettingsModal } from './AudioSettingsModal';
+import { LabManualModal } from './LabManualModal';
+import { getAudioManager } from '../services/audio/AudioManager';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const ROW_H = 108;
@@ -184,6 +187,74 @@ function LabBackdrop({
   );
 }
 
+function LabTraveler({
+  side,
+  accent,
+}: {
+  side: 'left' | 'right';
+  accent: string;
+}) {
+  const bob = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bob, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [bob]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        styles.traveler,
+        side === 'left' ? styles.travelerLeft : styles.travelerRight,
+        {
+          transform: [
+            {
+              translateY: bob.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -5],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      {/* Goggles / visor */}
+      <View style={styles.travelerGoggles}>
+        <View style={[styles.travelerLens, { borderColor: accent }]} />
+        <View style={[styles.travelerLens, { borderColor: accent }]} />
+      </View>
+      <View style={styles.travelerHead} />
+      <View style={[styles.travelerCoat, { borderColor: accent }]}>
+        <View style={[styles.travelerBadge, { backgroundColor: accent }]} />
+      </View>
+      <View style={styles.travelerLegs}>
+        <View style={styles.travelerLeg} />
+        <View style={styles.travelerLeg} />
+      </View>
+      <Text style={[styles.travelerTag, { color: accent }]}>YOU</Text>
+    </Animated.View>
+  );
+}
+
 function FlaskNode({
   level,
   locked,
@@ -272,7 +343,7 @@ function FlaskNode({
               styles.flaskLiquid,
               { backgroundColor: flaskFill },
               cleared && { height: '72%', opacity: 0.9 },
-              current && { height: '62%', backgroundColor: reagent, opacity: 0.35 },
+              current && { height: '85%', backgroundColor: reagent, opacity: 0.88 },
             ]}
           />
         ) : null}
@@ -280,7 +351,6 @@ function FlaskNode({
           style={[
             styles.flaskText,
             locked && styles.flaskTextLocked,
-            current && styles.flaskTextCurrent,
           ]}
         >
           {locked ? '∅' : cleared ? '✓' : level}
@@ -302,10 +372,15 @@ export function HomeScreen() {
   const highestCompleted = useGameStore((s) => s.highestCompleted);
   const session = useGameStore((s) => s.session);
   const equippedPathId = useGameStore((s) => s.equippedPathId);
+  const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
+  const hydrated = useGameStore((s) => s.hydrated);
   const startLevel = useGameStore((s) => s.startLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const openStore = useGameStore((s) => s.openStore);
+  const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
   const listRef = useRef<FlatList<PathRow>>(null);
+  const [audioOpen, setAudioOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const pathTheme = useMemo(
     () => getPathTheme(equippedPathId),
     [equippedPathId],
@@ -326,6 +401,16 @@ export function HomeScreen() {
     }, 120);
     return () => clearTimeout(t);
   }, [focusIndex]);
+
+  useEffect(() => {
+    if (!hydrated || hasSeenLabManual) return;
+    setManualOpen(true);
+  }, [hydrated, hasSeenLabManual]);
+
+  const closeManual = () => {
+    setManualOpen(false);
+    markLabManualSeen();
+  };
 
   const usableW = SCREEN_W - PATH_PAD * 2 - FLASK;
 
@@ -390,6 +475,12 @@ export function HomeScreen() {
             flaskFill={pathTheme.flaskFill}
             reagent={pathTheme.reagent}
           />
+          {current || inProgress ? (
+            <LabTraveler
+              side={item.x < 0.5 ? 'right' : 'left'}
+              accent={pathTheme.reagent}
+            />
+          ) : null}
           <Text
             style={[
               styles.nodeCaption,
@@ -446,10 +537,42 @@ export function HomeScreen() {
         </View>
 
         <View style={styles.heroActions}>
-          <Pressable style={styles.storeBtn} onPress={openStore}>
+          <Pressable
+            style={styles.audioBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              setManualOpen(true);
+            }}
+            accessibilityLabel="Lab manual"
+          >
+            <Text style={styles.audioBtnText}>Help</Text>
+          </Pressable>
+          <Pressable
+            style={styles.audioBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              setAudioOpen(true);
+            }}
+            accessibilityLabel="Audio settings"
+          >
+            <Text style={styles.audioBtnText}>Audio</Text>
+          </Pressable>
+          <Pressable
+            style={styles.storeBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              openStore();
+            }}
+          >
             <Text style={styles.storeBtnText}>Store</Text>
           </Pressable>
-          <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
+          <Pressable
+            style={styles.jackpotBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              openSlotMachine();
+            }}
+          >
             <Text style={styles.jackpotText}>Centrifuge</Text>
           </Pressable>
         </View>
@@ -461,8 +584,8 @@ export function HomeScreen() {
         </Text>
         <Text style={[styles.pathMeta, { color: pathTheme.label }]}>
           {session
-            ? `Continue · Flask ${session.level}`
-            : `Next open · Flask ${Math.min(unlockedLevel, MAX_LEVEL)}`}
+            ? `Lab tech at flask ${session.level}`
+            : `Lab tech at flask ${Math.min(unlockedLevel, MAX_LEVEL)}`}
         </Text>
       </View>
 
@@ -489,6 +612,12 @@ export function HomeScreen() {
         }}
         initialScrollIndex={Math.min(focusIndex, MAX_LEVEL - 1)}
       />
+
+      <AudioSettingsModal
+        visible={audioOpen}
+        onClose={() => setAudioOpen(false)}
+      />
+      <LabManualModal visible={manualOpen} onClose={closeManual} />
     </View>
   );
 }
@@ -616,6 +745,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 14,
+    flexWrap: 'wrap',
+  },
+  audioBtn: {
+    backgroundColor: LAB.glassDim,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
+  },
+  audioBtnText: {
+    color: LAB.glassBright,
+    fontWeight: '800',
+    fontSize: 14,
   },
   storeBtn: {
     backgroundColor: LAB.glassDim,
@@ -722,6 +865,73 @@ const styles = StyleSheet.create({
     width: FLASK,
     alignItems: 'center',
   },
+  traveler: {
+    position: 'absolute',
+    top: 2,
+    width: 36,
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  travelerLeft: {
+    right: FLASK + 4,
+  },
+  travelerRight: {
+    left: FLASK + 4,
+  },
+  travelerGoggles: {
+    flexDirection: 'row',
+    gap: 2,
+    zIndex: 2,
+    marginBottom: -6,
+  },
+  travelerLens: {
+    width: 10,
+    height: 8,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(126, 227, 214, 0.35)',
+  },
+  travelerHead: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E8C4A8',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  travelerCoat: {
+    marginTop: 2,
+    width: 22,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: '#F4F7FB',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  travelerBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.9,
+  },
+  travelerLegs: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 1,
+  },
+  travelerLeg: {
+    width: 5,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: '#0C2A32',
+  },
+  travelerTag: {
+    marginTop: 2,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
   flask: {
     width: FLASK,
     height: FLASK,
@@ -795,9 +1005,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '900',
     fontSize: 16,
-  },
-  flaskTextCurrent: {
-    color: '#1A1200',
   },
   flaskTextLocked: {
     color: COLORS.textMuted,

@@ -7,18 +7,30 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useGameStore, LEVEL_COIN_REWARD, EXTRA_MOVES_FROM_AD, MAX_LEVEL } from '../store/gameStore';
+import {
+  useGameStore,
+  LEVEL_COIN_REWARD,
+  EXTRA_MOVES_FROM_AD,
+  MAX_LEVEL,
+  SKIP_AFTER_FAILS,
+} from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
 
 export function LevelCompleteModal() {
   const modal = useGameStore((s) => s.modal);
   const level = useGameStore((s) => s.level);
   const unlockedLevel = useGameStore((s) => s.unlockedLevel);
+  const lastClearCoinReward = useGameStore((s) => s.lastClearCoinReward);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
   const nextLevel = useGameStore((s) => s.nextLevel);
 
   const isFinal = level >= MAX_LEVEL;
-  const nextUnlocked = !isFinal && unlockedLevel >= level + 1;
+  const firstClear = lastClearCoinReward === LEVEL_COIN_REWARD;
+  const nextUnlocked = firstClear && !isFinal && unlockedLevel >= level + 1;
+  const coinLabel =
+    lastClearCoinReward === 1
+      ? '+1 coin earned'
+      : `+${lastClearCoinReward} coins earned`;
 
   return (
     <Modal visible={modal === 'level_complete'} transparent animationType="fade">
@@ -27,24 +39,37 @@ export function LevelCompleteModal() {
           <Text style={styles.eyebrow}>STATION {level}</Text>
           <Text style={styles.title}>Sorted!</Text>
           <Text style={styles.sub}>
-            +{LEVEL_COIN_REWARD} coins earned
+            {coinLabel}
             {nextUnlocked ? `\nStation ${level + 1} unlocked` : ''}
+            {!firstClear ? '\nReplay bonus' : ''}
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <View style={styles.col}>
+              <ActivityIndicator
+                color={LAB.glassBright}
+                style={{ marginVertical: 8 }}
+              />
+              <Text style={styles.sub}>Loading ad…</Text>
+              <Pressable
+                style={[styles.btn, styles.btnGhost]}
+                onPress={() => void nextLevel({ goHome: true })}
+              >
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.col}>
               {!isFinal ? (
                 <Pressable
                   style={[styles.btn, styles.btnMain]}
-                  onPress={() => nextLevel({ openJackpot: false })}
+                  onPress={() => void nextLevel({ openJackpot: false })}
                 >
                   <Text style={styles.btnMainText}>Next Station</Text>
                 </Pressable>
               ) : null}
               <Pressable
                 style={[styles.btn, isFinal ? styles.btnMain : styles.btnGhost]}
-                onPress={() => nextLevel({ openJackpot: true })}
+                onPress={() => void nextLevel({ openJackpot: true })}
               >
                 <Text style={isFinal ? styles.btnMainText : styles.btnGhostText}>
                   {isFinal ? 'Spin Centrifuge' : 'Next · Centrifuge'}
@@ -52,7 +77,7 @@ export function LevelCompleteModal() {
               </Pressable>
               <Pressable
                 style={[styles.btn, styles.btnGhost]}
-                onPress={() => nextLevel({ goHome: true })}
+                onPress={() => void nextLevel({ goHome: true })}
               >
                 <Text style={styles.btnGhostText}>Back to Path</Text>
               </Pressable>
@@ -96,6 +121,7 @@ export function CampaignCompleteModal() {
 export function ExtraTubeAdModal() {
   const modal = useGameStore((s) => s.modal);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const adsReady = useGameStore((s) => s.adsReady);
   const closeModal = useGameStore((s) => s.closeModal);
   const watchAd = useGameStore((s) => s.watchAd);
 
@@ -113,16 +139,72 @@ export function ExtraTubeAdModal() {
           ) : (
             <View style={styles.row}>
               <Pressable
-                style={[styles.btn, styles.btnGhost]}
+                style={[styles.btn, styles.btnRow, styles.btnGhost]}
                 onPress={closeModal}
               >
                 <Text style={styles.btnGhostText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.btn, styles.btnMain]}
-                onPress={() => watchAd('rewarded_extra_tube')}
+                style={[
+                  styles.btn,
+                  styles.btnRow,
+                  styles.btnMain,
+                  !adsReady && styles.btnDisabled,
+                ]}
+                disabled={!adsReady}
+                onPress={() => void watchAd('rewarded_extra_tube')}
               >
-                <Text style={styles.btnMainText}>Watch Ad</Text>
+                <Text style={styles.btnMainText}>
+                  {adsReady ? 'Watch Ad' : 'Ad Unavailable'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export function UndoAdModal() {
+  const modal = useGameStore((s) => s.modal);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const closeModal = useGameStore((s) => s.closeModal);
+  const watchAd = useGameStore((s) => s.watchAd);
+
+  return (
+    <Modal visible={modal === 'ad_undo'} transparent animationType="fade">
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Undo pours?</Text>
+          <Text style={styles.sub}>
+            You’re out of undo items. Watch an ad to reverse your last 1–3 pours
+            (based on how many you can undo).
+          </Text>
+          {isAdLoading ? (
+            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+          ) : (
+            <View style={styles.row}>
+              <Pressable
+                style={[styles.btn, styles.btnRow, styles.btnGhost]}
+                onPress={closeModal}
+              >
+                <Text style={styles.btnGhostText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.btn,
+                  styles.btnRow,
+                  styles.btnMain,
+                  !adsReady && styles.btnDisabled,
+                ]}
+                disabled={!adsReady}
+                onPress={() => void watchAd('rewarded_undo')}
+              >
+                <Text style={styles.btnMainText}>
+                  {adsReady ? 'Watch Ad' : 'Ad Unavailable'}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -135,12 +217,17 @@ export function ExtraTubeAdModal() {
 export function OutOfMovesModal() {
   const modal = useGameStore((s) => s.modal);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const consecutiveFailCount = useGameStore((s) => s.consecutiveFailCount);
   const restartLevel = useGameStore((s) => s.restartLevel);
   const watchAd = useGameStore((s) => s.watchAd);
   const requestMoreMoves = useGameStore((s) => s.requestMoreMoves);
+  const skipLevel = useGameStore((s) => s.skipLevel);
+  const goHome = useGameStore((s) => s.goHome);
 
   const showExtraMovesAd = modal === 'ad_extra_moves';
   const visible = modal === 'out_of_moves' || showExtraMovesAd;
+  const canSkip = consecutiveFailCount >= SKIP_AFTER_FAILS;
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -151,31 +238,58 @@ export function OutOfMovesModal() {
           <Text style={styles.sub}>
             {showExtraMovesAd
               ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} moves, or restart the station.`
-              : 'Retry the station, or watch an ad for extra moves.'}
+              : canSkip
+                ? 'Retry, get more moves, or skip this station (unlocks the next).'
+                : 'Retry the station, or watch an ad for extra moves.'}
           </Text>
           {isAdLoading ? (
             <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
           ) : (
             <View style={styles.col}>
               <Pressable
-                style={[styles.btn, styles.btnMain]}
+                style={[
+                  styles.btn,
+                  styles.btnMain,
+                  showExtraMovesAd && !adsReady && styles.btnDisabled,
+                ]}
+                disabled={showExtraMovesAd && !adsReady}
                 onPress={() =>
                   showExtraMovesAd
-                    ? watchAd('rewarded_extra_moves')
+                    ? void watchAd('rewarded_extra_moves')
                     : requestMoreMoves()
                 }
               >
                 <Text style={styles.btnMainText}>
                   {showExtraMovesAd
-                    ? `Watch Ad · +${EXTRA_MOVES_FROM_AD} Moves`
+                    ? adsReady
+                      ? `Watch Ad · +${EXTRA_MOVES_FROM_AD} Moves`
+                      : 'Ad Unavailable'
                     : 'Get More Moves'}
                 </Text>
               </Pressable>
+              {canSkip && !showExtraMovesAd ? (
+                <Pressable
+                  style={[
+                    styles.btn,
+                    styles.btnMain,
+                    !adsReady && styles.btnDisabled,
+                  ]}
+                  disabled={!adsReady}
+                  onPress={() => void skipLevel()}
+                >
+                  <Text style={styles.btnMainText}>
+                    {adsReady ? 'Watch Ad · Skip Station' : 'Skip Unavailable'}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 style={[styles.btn, styles.btnGhost]}
                 onPress={restartLevel}
               >
                 <Text style={styles.btnGhostText}>Retry Station</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
               </Pressable>
             </View>
           )}
@@ -232,10 +346,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   btn: {
-    flex: 1,
     paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  btnRow: {
+    flex: 1,
   },
   btnGhost: {
     backgroundColor: LAB.glassDim,
@@ -247,12 +366,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.35)',
   },
+  btnDisabled: {
+    opacity: 0.45,
+  },
   btnGhostText: {
     color: COLORS.text,
     fontWeight: '700',
+    fontSize: 15,
+    textAlign: 'center',
   },
   btnMainText: {
     color: '#1A1200',
     fontWeight: '800',
+    fontSize: 15,
+    textAlign: 'center',
   },
 });

@@ -2,9 +2,14 @@
  * Abstract ad layer for AdMob / AppLovin with a mock fallback for local play.
  */
 
+import { allowMockMonetization } from './monetizationGate';
+
 export type AdPlacement =
   | 'interstitial_level'
   | 'rewarded_extra_tube'
+  | 'rewarded_undo'
+  | 'rewarded_hint'
+  | 'rewarded_skip_level'
   | 'rewarded_extra_moves'
   | 'rewarded_free_spins'
   | 'rewarded_2x_payout'
@@ -177,6 +182,60 @@ export class AppLovinAdService implements IAdService {
   }
 }
 
+/**
+ * Release-safe stub: initializes but never grants rewards or shows inventory.
+ * Used when the provider would be mock outside __DEV__ / explicit allow flag.
+ */
+export class FailClosedAdService implements IAdService {
+  readonly provider = 'mock' as const;
+  private ready = false;
+
+  async initialize(): Promise<void> {
+    console.warn(
+      '[AdService] Mock ads blocked outside dev — set EXPO_PUBLIC_AD_PROVIDER or EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true',
+    );
+    this.ready = true;
+  }
+
+  isReady(): boolean {
+    return this.ready;
+  }
+
+  async showBanner(placement: AdPlacement = 'banner_home'): Promise<AdResult> {
+    return {
+      success: false,
+      rewarded: false,
+      placement,
+      provider: this.provider,
+      message: 'Mock ads disabled outside development',
+    };
+  }
+
+  async hideBanner(): Promise<void> {}
+
+  async showInterstitial(
+    placement: AdPlacement = 'interstitial_level',
+  ): Promise<AdResult> {
+    return {
+      success: false,
+      rewarded: false,
+      placement,
+      provider: this.provider,
+      message: 'Mock ads disabled outside development',
+    };
+  }
+
+  async showRewarded(placement: AdPlacement): Promise<AdResult> {
+    return {
+      success: false,
+      rewarded: false,
+      placement,
+      provider: this.provider,
+      message: 'Mock ads disabled outside development',
+    };
+  }
+}
+
 export type AdProviderName = 'mock' | 'admob' | 'applovin';
 
 let singleton: IAdService | null = null;
@@ -189,6 +248,9 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
       return new AppLovinAdService();
     case 'mock':
     default:
+      if (!allowMockMonetization()) {
+        return new FailClosedAdService();
+      }
       return new MockAdService();
   }
 }
@@ -206,5 +268,8 @@ export function resetAdService(): void {
   singleton = null;
 }
 
-/** Levels between automatic interstitial ads. */
+/**
+ * @deprecated Forced interstitials use AdManager time/level gates, not level cadence.
+ * Kept for older tests / docs references.
+ */
 export const INTERSTITIAL_EVERY_N_LEVELS = 3;
