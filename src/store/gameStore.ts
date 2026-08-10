@@ -90,20 +90,27 @@ type GameStore = {
   lastSpin: SpinResult | null;
   pendingPayout: Payout | null;
   isAdLoading: boolean;
+  /** Prevents double-debit Centrifuge spins. */
+  spinInFlight: boolean;
   lastMessage: string | null;
   /** Saved mid-puzzle run (null when none / cleared). */
   session: PuzzleSession | null;
   hydrated: boolean;
+  hasSeenLabManual: boolean;
 
   _puzzle: WaterSortEngine;
   _jackpot: JackpotEngine;
 
   hydrate: () => Promise<void>;
-  /** Persist mid-puzzle without leaving the play screen. */
+  /**
+   * Immediately finalize pour + persist puzzle/economy.
+   * Call on app background / kill so mid-station progress survives.
+   */
   flushSession: () => void;
+  markLabManualSeen: () => void;
   selectTube: (index: number) => void;
   clearSelection: () => void;
-  completePourAnim: () => void;
+  completePourAnim: (opts?: { skipAds?: boolean }) => void;
   undo: () => void;
   useExtraTube: () => void;
   restartLevel: () => void;
@@ -117,7 +124,8 @@ type GameStore = {
   cycleBet: (direction: 1 | -1) => void;
   cycleLines: (direction: 1 | -1) => void;
   spin: () => Promise<void>;
-  claimPendingPayout: (multiplier: number) => void;
+  /** Collect pending jackpot payout at 1×. Doubling only via rewarded ad path. */
+  claimPendingPayout: () => void;
   watchAd: (placement: AdPlacement) => Promise<boolean>;
   requestMoreMoves: () => void;
   dismissMessage: () => void;
@@ -190,11 +198,43 @@ function buildPersistPayload(state: GameStore): PersistedGame {
     betPerLine: state.betPerLine,
     activeLines: state.activeLines,
     session: state.session,
+    levelsCompletedSinceAd: state.levelsCompletedSinceAd,
+    pendingPayout: state.pendingPayout,
+    hasSeenLabManual: state.hasSeenLabManual,
   };
 }
 
 /** Assigned after store creation — safe to call from actions. */
 let persistSoon: () => void = () => {};
+let flushPersistNow: () => void = () => {};
+
+function settlePendingPayout(
+  get: () => GameStore,
+  set: (
+    partial:
+      | Partial<GameStore>
+      | ((state: GameStore) => Partial<GameStore>),
+  ) => void,
+  multiplier: 1 | 2,
+): void {
+  const { pendingPayout, coins, undoItems, extraTubeItems, rareSkinUnlocked } =
+    get();
+  if (!pendingPayout) {
+    set({ modal: 'slot_machine' });
+    return;
+  }
+  const payout = applyPayoutMultiplier(pendingPayout, multiplier);
+  set({
+    coins: coins + payout.coins,
+    undoItems: undoItems + payout.undoItems,
+    extraTubeItems: extraTubeItems + payout.extraTubeItems,
+    rareSkinUnlocked: rareSkinUnlocked || payout.unlockRareSkin,
+    pendingPayout: null,
+    modal: 'spin_result',
+    lastMessage: payout.label,
+  });
+  persistSoon();
+}
 
 export const useGameStore = create<GameStore>((set, get) => {
   const puzzle = createPuzzle(1);
@@ -224,9 +264,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     lastSpin: null,
     pendingPayout: null,
     isAdLoading: false,
+    spinInFlight: false,
     lastMessage: null,
     session: null,
     hydrated: false,
+    hasSeenLabManual: false,
     _puzzle: puzzle,
     _jackpot: jackpot,
 
@@ -249,20 +291,36 @@ export const useGameStore = create<GameStore>((set, get) => {
         betPerLine: clampBet(data.betPerLine),
         activeLines: clampLines(data.activeLines),
         session: data.session,
+        levelsCompletedSinceAd: data.levelsCompletedSinceAd,
+        pendingPayout: data.pendingPayout,
+        hasSeenLabManual: data.hasSeenLabManual,
         screen: 'home',
       };
       set(updates as GameStore);
     },
 
-    flushSession: () => {
-      const state = get();
-      if (state.screen !== 'play') {
-        persistSoon();
-        return;
-      }
-      const session = captureSession(state);
-      set({ session });
+    markLabManualSeen: () => {
+      if (get().hasSeenLabManual) return;
+      set({ hasSeenLabManual: true });
       persistSoon();
+    },
+
+    flushSession: () => {
+      // Finalize in-flight pour so the board on disk matches the engine.
+      if (get().pourAnim) {
+        get().completePourAnim({ skipAds: true });
+      }
+      // Auto-collect unclaimed Centrifuge wins at 1× so kill doesn't drop payout.
+      if (get().pendingPayout) {
+        settlePendingPayout(get, set, 1);
+      }
+
+      const state = get();
+      if (state.screen === 'play') {
+        const session = captureSession(get());
+        set({ session });
+      }
+      flushPersistNow();
     },
 
     selectTube: (index: number) => {
@@ -340,7 +398,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     clearSelection: () => set({ selectedTube: null }),
 
-    completePourAnim: () => {
+    completePourAnim: (opts) => {
       const { pourAnim, _puzzle } = get();
       if (!pourAnim) return;
 
@@ -382,7 +440,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({ session: null });
         persistSoon();
         const since = get().levelsCompletedSinceAd;
-        if (since >= INTERSTITIAL_EVERY_N_LEVELS) {
+        if (!opts?.skipAds && since >= INTERSTITIAL_EVERY_N_LEVELS) {
           void (async () => {
             set({ isAdLoading: true });
             await getAdService().showInterstitial('interstitial_level');
@@ -391,7 +449,6 @@ export const useGameStore = create<GameStore>((set, get) => {
           })();
         }
       } else {
-        // Keep mid-puzzle progress warm for Path / app kill
         const session = captureSession(get());
         set({ session });
         persistSoon();
@@ -486,18 +543,23 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     goHome: () => {
-      if (get().pourAnim) return;
-      const session = captureSession(get());
+      if (get().pourAnim) {
+        get().completePourAnim({ skipAds: true });
+      }
+      const session =
+        get().screen === 'play' ? captureSession(get()) : get().session;
       set({
         screen: 'home',
         selectedTube: null,
         pourAnim: null,
         modal: 'none',
-        pendingPayout: null,
-        lastMessage: session ? 'Progress saved — tap the flask to continue' : null,
+        pendingPayout: get().pendingPayout,
+        lastMessage: session
+          ? 'Progress saved — tap the flask to continue'
+          : null,
         session,
       });
-      persistSoon();
+      flushPersistNow();
     },
 
     restartLevel: () => {
@@ -578,7 +640,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       persistSoon();
     },
 
-    openSlotMachine: () => set({ modal: 'slot_machine' }),
+    openSlotMachine: () => {
+      const pending = get().pendingPayout;
+      set({
+        modal: pending ? 'ad_2x_payout' : 'slot_machine',
+      });
+    },
 
     closeModal: () => set({ modal: 'none', pendingPayout: null }),
 
@@ -589,7 +656,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     cycleBet: (direction: 1 | -1) => {
       const current = get().betPerLine;
       const idx = BET_OPTIONS.indexOf(current);
-      const next = BET_OPTIONS[(idx + direction + BET_OPTIONS.length) % BET_OPTIONS.length];
+      const next =
+        BET_OPTIONS[(idx + direction + BET_OPTIONS.length) % BET_OPTIONS.length];
       set({ betPerLine: next });
     },
 
@@ -600,98 +668,89 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     spin: async () => {
-      const { coins, freeSpins, _jackpot, betPerLine, activeLines } = get();
-      const cost = spinCost(betPerLine, activeLines);
-      const canUseFreeSpin = freeSpins > 0 && isFreeSpinBet(betPerLine);
+      if (get().spinInFlight) return;
+      set({ spinInFlight: true });
+      try {
+        const { coins, freeSpins, _jackpot, betPerLine, activeLines } = get();
+        const cost = spinCost(betPerLine, activeLines);
+        const canUseFreeSpin = freeSpins > 0 && isFreeSpinBet(betPerLine);
 
-      if (canUseFreeSpin) {
-        const remaining = freeSpins - 1;
-        const result = _jackpot.freeSpin(betPerLine, activeLines);
-        const payout = result.payout;
+        if (canUseFreeSpin) {
+          const remaining = freeSpins - 1;
+          const result = _jackpot.freeSpin(betPerLine, activeLines);
+          const payout = result.payout;
 
-        // While free spins remain, auto-collect — no Collect / 2× dialog
-        if (remaining > 0) {
+          if (remaining > 0) {
+            set({
+              freeSpins: remaining,
+              lastSpin: result,
+              pendingPayout: null,
+              coins: coins + payout.coins,
+              undoItems: get().undoItems + payout.undoItems,
+              extraTubeItems: get().extraTubeItems + payout.extraTubeItems,
+              rareSkinUnlocked:
+                get().rareSkinUnlocked || payout.unlockRareSkin,
+              modal: 'spin_result',
+              lastMessage:
+                payout.kind === 'none'
+                  ? `No win · ${remaining} free spin${remaining === 1 ? '' : 's'} left`
+                  : `${payout.label} · auto collected · ${remaining} free left`,
+            });
+            persistSoon();
+            return;
+          }
+
           set({
-            freeSpins: remaining,
+            freeSpins: 0,
             lastSpin: result,
-            pendingPayout: null,
-            coins: coins + payout.coins,
-            undoItems: get().undoItems + payout.undoItems,
-            extraTubeItems: get().extraTubeItems + payout.extraTubeItems,
-            rareSkinUnlocked:
-              get().rareSkinUnlocked || payout.unlockRareSkin,
-            modal: 'spin_result',
-            lastMessage:
-              payout.kind === 'none'
-                ? `No win · ${remaining} free spin${remaining === 1 ? '' : 's'} left`
-                : `${payout.label} · auto collected · ${remaining} free left`,
+            pendingPayout: payout.kind === 'none' ? null : payout,
+            modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
+            lastMessage: payout.label,
           });
+          persistSoon();
           return;
         }
 
-        // Last free spin — offer Collect / 2× like a paid win
-        set({
-          freeSpins: 0,
-          lastSpin: result,
-          pendingPayout: payout.kind === 'none' ? null : payout,
-          modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-          lastMessage: payout.label,
-        });
-        return;
-      }
+        if (freeSpins > 0 && !isFreeSpinBet(betPerLine)) {
+          if (!_jackpot.canAffordSpin(coins, betPerLine, activeLines)) {
+            set({
+              lastMessage:
+                'Free spins only work on bet 1 / 5 / 10 — lower your bet to use them',
+            });
+            return;
+          }
+          set({
+            lastMessage:
+              'Free spins only work on bet 1 / 5 / 10 — this spin is paid',
+          });
+        }
 
-      if (freeSpins > 0 && !isFreeSpinBet(betPerLine)) {
         if (!_jackpot.canAffordSpin(coins, betPerLine, activeLines)) {
           set({
-            lastMessage:
-              'Free spins only work on bet 1 / 5 / 10 — lower your bet to use them',
+            modal: 'ad_free_spins',
+            lastMessage: `Need ${cost} coins to bet — watch an ad?`,
           });
           return;
         }
-        // Can afford bet 25 — continue as paid spin below
+
+        const result = _jackpot.spin(coins, betPerLine, activeLines);
+        if (!result) return;
+
         set({
-          lastMessage: 'Free spins only work on bet 1 / 5 / 10 — this spin is paid',
+          coins: coins - result.tokensSpent,
+          lastSpin: result,
+          pendingPayout: result.payout.kind === 'none' ? null : result.payout,
+          modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
+          lastMessage: result.payout.label,
         });
+        persistSoon();
+      } finally {
+        set({ spinInFlight: false });
       }
-
-      if (!_jackpot.canAffordSpin(coins, betPerLine, activeLines)) {
-        set({
-          modal: 'ad_free_spins',
-          lastMessage: `Need ${cost} coins to bet — watch an ad?`,
-        });
-        return;
-      }
-
-      const result = _jackpot.spin(coins, betPerLine, activeLines);
-      if (!result) return;
-
-      set({
-        coins: coins - result.tokensSpent,
-        lastSpin: result,
-        pendingPayout: result.payout.kind === 'none' ? null : result.payout,
-        modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-        lastMessage: result.payout.label,
-      });
     },
 
-    claimPendingPayout: (multiplier: number) => {
-      const { pendingPayout, coins, undoItems, extraTubeItems, rareSkinUnlocked } =
-        get();
-      if (!pendingPayout) {
-        set({ modal: 'slot_machine' });
-        return;
-      }
-      const payout = applyPayoutMultiplier(pendingPayout, multiplier);
-      set({
-        coins: coins + payout.coins,
-        undoItems: undoItems + payout.undoItems,
-        extraTubeItems: extraTubeItems + payout.extraTubeItems,
-        rareSkinUnlocked: rareSkinUnlocked || payout.unlockRareSkin,
-        pendingPayout: null,
-        modal: 'spin_result',
-        lastMessage: payout.label,
-      });
-      persistSoon();
+    claimPendingPayout: () => {
+      settlePendingPayout(get, set, 1);
     },
 
     watchAd: async (placement: AdPlacement) => {
@@ -732,14 +791,14 @@ export const useGameStore = create<GameStore>((set, get) => {
           set({
             isAdLoading: false,
             freeSpins: get().freeSpins + 3,
-            // Free spins only apply at 1/5/10 — clamp if on 25
             betPerLine: isFreeSpinBet(bet) ? bet : 10,
             modal: 'slot_machine',
             lastMessage: '+3 Free Centrifuge Spins (bet 1 / 5 / 10 only)',
           });
+          persistSoon();
         } else if (placement === 'rewarded_2x_payout') {
           set({ isAdLoading: false });
-          get().claimPendingPayout(2);
+          settlePendingPayout(get, set, 2);
         } else {
           set({ isAdLoading: false });
         }
@@ -759,11 +818,35 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 });
 
+const PERSIST_DEBOUNCE_MS = 400;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function writePersistPayload(): void {
+  void savePersistedGame(buildPersistPayload(useGameStore.getState()));
+}
+
 persistSoon = () => {
-  queueMicrotask(() => {
-    void savePersistedGame(buildPersistPayload(useGameStore.getState()));
-  });
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    writePersistPayload();
+  }, PERSIST_DEBOUNCE_MS);
+};
+
+flushPersistNow = () => {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  writePersistPayload();
 };
 
 export type { Tube, SpinResult, SlotSymbol, Payout, BetOption };
-export { SPIN_COST, LEVEL_COIN_REWARD, MAX_LEVEL, BET_OPTIONS, spinCost, isFreeSpinBet };
+export {
+  SPIN_COST,
+  LEVEL_COIN_REWARD,
+  MAX_LEVEL,
+  BET_OPTIONS,
+  spinCost,
+  isFreeSpinBet,
+};

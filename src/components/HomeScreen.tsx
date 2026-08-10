@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
 import { COLORS, LAB } from '../theme/colors';
+import { LabManualModal } from './LabManualModal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const ROW_H = 108;
@@ -226,7 +227,6 @@ function FlaskNode({
           style={[
             styles.flaskText,
             locked && styles.flaskTextLocked,
-            current && styles.flaskTextCurrent,
           ]}
         >
           {locked ? '∅' : cleared ? '✓' : level}
@@ -245,9 +245,13 @@ export function HomeScreen() {
   const unlockedLevel = useGameStore((s) => s.unlockedLevel);
   const highestCompleted = useGameStore((s) => s.highestCompleted);
   const session = useGameStore((s) => s.session);
+  const hydrated = useGameStore((s) => s.hydrated);
+  const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
   const startLevel = useGameStore((s) => s.startLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
+  const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
   const listRef = useRef<FlatList<PathRow>>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const focusIndex = useMemo(() => {
     if (session?.level) return Math.max(0, session.level - 1);
@@ -264,6 +268,16 @@ export function HomeScreen() {
     }, 120);
     return () => clearTimeout(t);
   }, [focusIndex]);
+
+  useEffect(() => {
+    if (!hydrated || hasSeenLabManual) return;
+    setManualOpen(true);
+  }, [hydrated, hasSeenLabManual]);
+
+  const closeManual = () => {
+    setManualOpen(false);
+    markLabManualSeen();
+  };
 
   const usableW = SCREEN_W - PATH_PAD * 2 - FLASK;
 
@@ -360,9 +374,18 @@ export function HomeScreen() {
           ) : null}
         </View>
 
-        <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
-          <Text style={styles.jackpotText}>Centrifuge</Text>
-        </Pressable>
+        <View style={styles.heroActions}>
+          <Pressable
+            style={styles.helpBtn}
+            onPress={() => setManualOpen(true)}
+            accessibilityLabel="Lab manual"
+          >
+            <Text style={styles.helpBtnText}>Help</Text>
+          </Pressable>
+          <Pressable style={styles.jackpotBtn} onPress={openSlotMachine}>
+            <Text style={styles.jackpotText}>Centrifuge</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.pathHeader}>
@@ -397,6 +420,8 @@ export function HomeScreen() {
         }}
         initialScrollIndex={Math.min(focusIndex, MAX_LEVEL - 1)}
       />
+
+      <LabManualModal visible={manualOpen} onClose={closeManual} />
     </View>
   );
 }
@@ -521,13 +546,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   jackpotBtn: {
-    marginTop: 14,
     backgroundColor: LAB.reagent,
     paddingHorizontal: 26,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.45)',
+  },
+  heroActions: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  helpBtn: {
+    backgroundColor: LAB.glassDim,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.28)',
+  },
+  helpBtnText: {
+    color: COLORS.text,
+    fontWeight: '800',
+    fontSize: 14,
   },
   jackpotText: {
     color: '#1A1200',
@@ -650,8 +693,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(46, 196, 182, 0.75)',
   },
   flaskLiquidCurrent: {
-    height: '62%',
-    backgroundColor: LAB.reagentSoft,
+    height: '85%',
+    backgroundColor: LAB.reagent,
+    opacity: 0.88,
   },
   flaskCleared: {
     borderColor: LAB.glassBright,
@@ -686,9 +730,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '900',
     fontSize: 16,
-  },
-  flaskTextCurrent: {
-    color: '#1A1200',
   },
   flaskTextLocked: {
     color: COLORS.textMuted,

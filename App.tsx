@@ -30,17 +30,37 @@ export default function App() {
   const selectedTube = useGameStore((s) => s.selectedTube);
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
   const lastMessage = useGameStore((s) => s.lastMessage);
+  const modal = useGameStore((s) => s.modal);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
   const hydrate = useGameStore((s) => s.hydrate);
   const flushSession = useGameStore((s) => s.flushSession);
 
+  const showSlots =
+    modal === 'slot_machine' ||
+    modal === 'spin_result' ||
+    modal === 'ad_2x_payout' ||
+    modal === 'ad_free_spins';
+  const showLevelComplete = modal === 'level_complete';
+  const showCampaignComplete = modal === 'campaign_complete';
+  const showExtraTube = modal === 'ad_extra_tube';
+  const showOutOfMoves =
+    modal === 'out_of_moves' || modal === 'ad_extra_moves';
+
   useEffect(() => {
     void hydrate();
-    void getAdService().initialize();
-    void getAdService().showBanner('banner_home');
+    void (async () => {
+      try {
+        const ads = getAdService();
+        await ads.initialize();
+        await ads.showBanner('banner_home');
+      } catch (e) {
+        console.warn('[App] Ad init failed softly', e);
+      }
+    })();
   }, [hydrate]);
 
+  // Persist puzzle + economy when the app backgrounds or is killed.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'background' || next === 'inactive') {
@@ -84,7 +104,6 @@ export default function App() {
           <HomeScreen />
         ) : (
           <View style={styles.playRoot}>
-            {/* Soft lab grid behind the bench */}
             <View pointerEvents="none" style={styles.labGrid}>
               {Array.from({ length: 10 }, (_, i) => (
                 <View key={`h-${i}`} style={[styles.gridH, { top: 24 + i * 72 }]} />
@@ -128,11 +147,11 @@ export default function App() {
           </View>
         )}
 
-        <LevelCompleteModal />
-        <CampaignCompleteModal />
-        <ExtraTubeAdModal />
-        <OutOfMovesModal />
-        <SlotMachineModal />
+        {showLevelComplete ? <LevelCompleteModal /> : null}
+        {showCampaignComplete ? <CampaignCompleteModal /> : null}
+        {showExtraTube ? <ExtraTubeAdModal /> : null}
+        {showOutOfMoves ? <OutOfMovesModal /> : null}
+        {showSlots ? <SlotMachineModal /> : null}
       </SafeAreaView>
     </LinearGradientFallback>
   );

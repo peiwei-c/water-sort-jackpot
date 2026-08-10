@@ -258,13 +258,12 @@ export function evaluateLine(
   const pairSymbol =
     a === b && a !== c
       ? a
-      : a === c && a !== b
-        ? a
-        : b === c && b !== a
-          ? b
-          : null;
+      : b === c && b !== a
+        ? b
+        : null;
 
   // Drop pairs never pay — they only dilute other hits
+  // Only adjacent pairs (left-to-right) pay; a===c with different middle does not.
   if (pairSymbol !== null && pairSymbol !== SlotSymbol.Drop) {
     const coins = PAIR_MULTIPLIER * bet;
     return {
@@ -392,20 +391,27 @@ export function evaluatePayout(
   };
 }
 
-export function applyPayoutMultiplier(payout: Payout, multiplier: number): Payout {
-  if (multiplier <= 1) return payout;
+/** Only 1× (collect) or 2× (rewarded ad) are allowed. */
+export type PayoutMultiplier = 1 | 2;
+
+export function applyPayoutMultiplier(
+  payout: Payout,
+  multiplier: number,
+): Payout {
+  const m: PayoutMultiplier = multiplier === 2 ? 2 : 1;
+  if (m <= 1) return payout;
   return {
     ...payout,
-    coins: payout.coins * multiplier,
-    undoItems: payout.undoItems * multiplier,
-    extraTubeItems: payout.extraTubeItems * multiplier,
-    label: `${payout.label} (×${multiplier})`,
+    coins: payout.coins * m,
+    undoItems: payout.undoItems * m,
+    extraTubeItems: payout.extraTubeItems * m,
+    label: `${payout.label} (×${m})`,
     lineWins: payout.lineWins.map((w) => ({
       ...w,
-      coins: w.coins * multiplier,
-      undoItems: w.undoItems * multiplier,
-      extraTubeItems: w.extraTubeItems * multiplier,
-      label: `${w.label} (×${multiplier})`,
+      coins: w.coins * m,
+      undoItems: w.undoItems * m,
+      extraTubeItems: w.extraTubeItems * m,
+      label: `${w.label} (×${m})`,
     })),
   };
 }

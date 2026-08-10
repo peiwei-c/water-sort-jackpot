@@ -7,7 +7,12 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { useGameStore, LEVEL_COIN_REWARD, EXTRA_MOVES_FROM_AD, MAX_LEVEL } from '../store/gameStore';
+import {
+  useGameStore,
+  LEVEL_COIN_REWARD,
+  EXTRA_MOVES_FROM_AD,
+  MAX_LEVEL,
+} from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
 
 export function LevelCompleteModal() {
@@ -31,7 +36,19 @@ export function LevelCompleteModal() {
             {nextUnlocked ? `\nStation ${level + 1} unlocked` : ''}
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <View style={styles.col}>
+              <ActivityIndicator
+                color={LAB.glassBright}
+                style={{ marginVertical: 8 }}
+              />
+              <Text style={styles.sub}>Loading ad…</Text>
+              <Pressable
+                style={[styles.btn, styles.btnGhost]}
+                onPress={() => nextLevel({ goHome: true })}
+              >
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.col}>
               {!isFinal ? (
@@ -66,27 +83,48 @@ export function LevelCompleteModal() {
 
 export function CampaignCompleteModal() {
   const modal = useGameStore((s) => s.modal);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const goHome = useGameStore((s) => s.goHome);
 
   return (
-    <Modal visible={modal === 'campaign_complete'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'campaign_complete'}
+      transparent
+      animationType="fade"
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>LAB CLEAR</Text>
           <Text style={styles.title}>All {MAX_LEVEL} Stations!</Text>
           <Text style={styles.sub}>
-            You beat every tier from Beginner to Legend. Spin the Centrifuge or return
-            to the path to replay.
+            You beat every tier from Beginner to Legend. Spin the Centrifuge or
+            return to the path to replay.
           </Text>
-          <View style={styles.col}>
-            <Pressable style={[styles.btn, styles.btnMain]} onPress={openSlotMachine}>
-              <Text style={styles.btnMainText}>Spin Centrifuge</Text>
-            </Pressable>
-            <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
-              <Text style={styles.btnGhostText}>Back to Path</Text>
-            </Pressable>
-          </View>
+          {isAdLoading ? (
+            <View style={styles.col}>
+              <ActivityIndicator
+                color={LAB.glassBright}
+                style={{ marginVertical: 8 }}
+              />
+              <Text style={styles.sub}>Loading ad…</Text>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.col}>
+              <Pressable
+                style={[styles.btn, styles.btnMain]}
+                onPress={openSlotMachine}
+              >
+                <Text style={styles.btnMainText}>Spin Centrifuge</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -109,7 +147,10 @@ export function ExtraTubeAdModal() {
             from the Centrifuge.
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <ActivityIndicator
+              color={LAB.glassBright}
+              style={{ marginVertical: 16 }}
+            />
           ) : (
             <View style={styles.row}>
               <Pressable
@@ -120,7 +161,7 @@ export function ExtraTubeAdModal() {
               </Pressable>
               <Pressable
                 style={[styles.btn, styles.btnMain]}
-                onPress={() => watchAd('rewarded_extra_tube')}
+                onPress={() => void watchAd('rewarded_extra_tube')}
               >
                 <Text style={styles.btnMainText}>Watch Ad</Text>
               </Pressable>
@@ -138,6 +179,7 @@ export function OutOfMovesModal() {
   const restartLevel = useGameStore((s) => s.restartLevel);
   const watchAd = useGameStore((s) => s.watchAd);
   const requestMoreMoves = useGameStore((s) => s.requestMoreMoves);
+  const goHome = useGameStore((s) => s.goHome);
 
   const showExtraMovesAd = modal === 'ad_extra_moves';
   const visible = modal === 'out_of_moves' || showExtraMovesAd;
@@ -151,17 +193,20 @@ export function OutOfMovesModal() {
           <Text style={styles.sub}>
             {showExtraMovesAd
               ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} moves, or restart the station.`
-              : 'Retry the station, or watch an ad for extra moves.'}
+              : 'Retry the station, watch an ad for extra moves, or return to the path (progress is saved).'}
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <ActivityIndicator
+              color={LAB.glassBright}
+              style={{ marginVertical: 16 }}
+            />
           ) : (
             <View style={styles.col}>
               <Pressable
                 style={[styles.btn, styles.btnMain]}
                 onPress={() =>
                   showExtraMovesAd
-                    ? watchAd('rewarded_extra_moves')
+                    ? void watchAd('rewarded_extra_moves')
                     : requestMoreMoves()
                 }
               >
@@ -176,6 +221,9 @@ export function OutOfMovesModal() {
                 onPress={restartLevel}
               >
                 <Text style={styles.btnGhostText}>Retry Station</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
               </Pressable>
             </View>
           )}
@@ -224,6 +272,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  btn: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
   row: {
     flexDirection: 'row',
     gap: 10,
@@ -231,28 +287,28 @@ const styles = StyleSheet.create({
   col: {
     gap: 10,
   },
-  btn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
   btnGhost: {
     backgroundColor: LAB.glassDim,
     borderWidth: 1,
     borderColor: 'rgba(126, 227, 214, 0.22)',
+    flexGrow: 1,
   },
   btnMain: {
     backgroundColor: LAB.reagent,
     borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.35)',
+    flexGrow: 1,
   },
   btnGhostText: {
     color: COLORS.text,
     fontWeight: '700',
+    fontSize: 15,
+    textAlign: 'center',
   },
   btnMainText: {
     color: '#1A1200',
     fontWeight: '800',
+    fontSize: 15,
+    textAlign: 'center',
   },
 });

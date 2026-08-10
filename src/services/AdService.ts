@@ -2,6 +2,8 @@
  * Abstract ad layer for AdMob / AppLovin with a mock fallback for local play.
  */
 
+import { allowMockMonetization } from './monetizationGate';
+
 export type AdPlacement =
   | 'interstitial_level'
   | 'rewarded_extra_tube'
@@ -39,9 +41,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function denied(
+  provider: AdResult['provider'],
+  placement: AdPlacement,
+  message: string,
+): AdResult {
+  return { success: false, rewarded: false, placement, provider, message };
+}
+
 /**
  * Mock ad provider — always "fills", logs to console, simulates latency.
- * Swap for AdMobAdService / AppLovinAdService when real SDK IDs are wired.
+ * Only used when allowMockMonetization() is true.
  */
 export class MockAdService implements IAdService {
   private ready = false;
@@ -115,65 +125,56 @@ export class MockAdService implements IAdService {
 }
 
 /**
- * Stub for future Google AdMob wiring.
- * Throws until real App IDs / unit IDs are configured.
+ * Release-safe stub: never grants rewards. Used when mock is blocked
+ * or when real SDK IDs are not configured.
  */
-export class AdMobAdService implements IAdService {
+export class FailClosedAdService implements IAdService {
+  readonly provider: AdResult['provider'];
+  private ready = false;
+
+  constructor(provider: AdResult['provider'] = 'mock') {
+    this.provider = provider;
+  }
+
   async initialize(): Promise<void> {
-    throw new Error(
-      'AdMobAdService: set EXPO_PUBLIC_ADMOB_APP_ID and unit IDs before use',
+    console.warn(
+      `[AdService:${this.provider}] Ads unavailable — rewards disabled until SDK is wired`,
     );
+    this.ready = true;
   }
 
-  isReady(): boolean {
-    return false;
+  isReady(_type?: AdType): boolean {
+    void _type;
+    return this.ready;
   }
 
-  async showBanner(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
+  async showBanner(placement: AdPlacement = 'banner_home'): Promise<AdResult> {
+    return denied(this.provider, placement, 'Ads unavailable');
   }
 
-  async hideBanner(): Promise<void> {
-    throw new Error('AdMob not configured');
+  async hideBanner(): Promise<void> {}
+
+  async showInterstitial(
+    placement: AdPlacement = 'interstitial_level',
+  ): Promise<AdResult> {
+    return denied(this.provider, placement, 'Ads unavailable');
   }
 
-  async showInterstitial(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
-  }
-
-  async showRewarded(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
+  async showRewarded(placement: AdPlacement): Promise<AdResult> {
+    return denied(this.provider, placement, 'Ads unavailable');
   }
 }
 
-/**
- * Stub for future AppLovin MAX wiring.
- */
-export class AppLovinAdService implements IAdService {
-  async initialize(): Promise<void> {
-    throw new Error(
-      'AppLovinAdService: set EXPO_PUBLIC_APPLOVIN_SDK_KEY before use',
-    );
+/** Soft stubs — never throw on boot. */
+export class AdMobAdService extends FailClosedAdService {
+  constructor() {
+    super('admob');
   }
+}
 
-  isReady(): boolean {
-    return false;
-  }
-
-  async showBanner(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async hideBanner(): Promise<void> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async showInterstitial(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async showRewarded(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
+export class AppLovinAdService extends FailClosedAdService {
+  constructor() {
+    super('applovin');
   }
 }
 
@@ -189,6 +190,9 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
       return new AppLovinAdService();
     case 'mock':
     default:
+      if (!allowMockMonetization()) {
+        return new FailClosedAdService('mock');
+      }
       return new MockAdService();
   }
 }
