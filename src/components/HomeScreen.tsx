@@ -8,10 +8,12 @@ import {
   Dimensions,
   Animated,
   Easing,
+  Linking,
   type ListRenderItemInfo,
 } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
+import { LEGAL } from '../constants/legal';
 import { COLORS, LAB } from '../theme/colors';
 import { LabManualModal } from './LabManualModal';
 
@@ -421,6 +423,24 @@ export function HomeScreen() {
         initialScrollIndex={Math.min(focusIndex, MAX_LEVEL - 1)}
       />
 
+      <View style={styles.legalRow}>
+        <Pressable
+          onPress={() => void Linking.openURL(LEGAL.privacyUrl)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.legalLink}>Privacy</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable
+          onPress={() => void Linking.openURL(LEGAL.termsUrl)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.legalLink}>Terms</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Text style={styles.legalMeta}>{LEGAL.minimumAge}+</Text>
+      </View>
+
       <LabManualModal visible={manualOpen} onClose={closeManual} />
     </View>
   );
@@ -744,5 +764,29 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: COLORS.textMuted,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingBottom: 14,
+    zIndex: 2,
+  },
+  legalLink: {
+    color: LAB.label,
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+  },
+  legalMeta: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -200,7 +200,12 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
 
 export function getAdService(): IAdService {
   if (!singleton) {
-    const name = (process.env.EXPO_PUBLIC_AD_PROVIDER as AdProviderName) || 'mock';
+    const fromEnv = process.env.EXPO_PUBLIC_AD_PROVIDER as
+      | AdProviderName
+      | undefined;
+    const name: AdProviderName =
+      fromEnv ||
+      (typeof __DEV__ !== 'undefined' && __DEV__ ? 'mock' : 'admob');
     singleton = createAdService(name);
   }
   return singleton;

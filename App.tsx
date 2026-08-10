@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   AppState,
 } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { LinearGradientFallback } from './src/components/LinearGradientFallback';
 import { TubeBoard } from './src/components/TubeBoard';
 import { GameHUD, GameControls } from './src/components/GameHUD';
@@ -18,12 +19,16 @@ import {
   OutOfMovesModal,
   CampaignCompleteModal,
 } from './src/components/Modals';
-import { useGameStore } from './src/store/gameStore';
 import { AdBanner } from './src/components/AdBanner';
-import { getAdService } from './src/services/AdService';
+import { AgeGateModal } from './src/components/AgeGateModal';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { useGameStore } from './src/store/gameStore';
+import { bootstrapAds } from './src/services/adsBootstrap';
 import { LAB } from './src/theme/colors';
 
-export default function App() {
+void SplashScreen.preventAutoHideAsync();
+
+function AppShell() {
   const screen = useGameStore((s) => s.screen);
   const hydrated = useGameStore((s) => s.hydrated);
   const tubes = useGameStore((s) => s.tubes);
@@ -37,6 +42,8 @@ export default function App() {
   const hydrate = useGameStore((s) => s.hydrate);
   const flushSession = useGameStore((s) => s.flushSession);
 
+  const [ageOk, setAgeOk] = useState(false);
+
   const showSlots =
     modal === 'slot_machine' ||
     modal === 'spin_result' ||
@@ -48,20 +55,26 @@ export default function App() {
   const showOutOfMoves =
     modal === 'out_of_moves' || modal === 'ad_extra_moves';
 
+  const onAgeResolved = useCallback((accepted: boolean) => {
+    setAgeOk(accepted);
+  }, []);
+
   useEffect(() => {
     void hydrate();
-    void (async () => {
-      try {
-        const ads = getAdService();
-        await ads.initialize();
-        await ads.showBanner('banner_home');
-      } catch (e) {
-        console.warn('[App] Ad init failed softly', e);
-      }
-    })();
   }, [hydrate]);
 
-  // Persist puzzle + economy when the app backgrounds or is killed.
+  useEffect(() => {
+    if (!hydrated) return;
+    void SplashScreen.hideAsync();
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!ageOk) return;
+    void bootstrapAds().then((result) => {
+      console.log('[App] Ads bootstrap', result);
+    });
+  }, [ageOk]);
+
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next === 'background' || next === 'inactive') {
@@ -153,9 +166,18 @@ export default function App() {
         {showExtraTube ? <ExtraTubeAdModal /> : null}
         {showOutOfMoves ? <OutOfMovesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
-        <AdBanner />
+        {ageOk ? <AdBanner /> : null}
+        <AgeGateModal onResolved={onAgeResolved} />
       </SafeAreaView>
     </LinearGradientFallback>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppShell />
+    </ErrorBoundary>
   );
 }
 

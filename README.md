@@ -1,6 +1,6 @@
 # AquaSort Lab
 
-Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with mock AdMob/AppLovin hooks.
+Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with AdMob monetization.
 
 ## Architecture
 
@@ -9,12 +9,14 @@ Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with mock AdM
 | `src/engines/WaterSortEngine.ts` | Pure tube logic, pour rules, history, win checks |
 | `src/engines/JackpotEngine.ts` | Pure RNG, spin costs, payout table |
 | `src/services/AdService.ts` | Banner / interstitial / rewarded abstraction + mock |
+| `src/services/AdMobAdService.ts` | Real AdMob provider |
+| `src/services/adsBootstrap.ts` | UMP consent + ATT before ads |
 | `src/store/gameStore.ts` | Zustand bridge between engines, economy, ads |
 | `src/components/*` | React Native UI |
 
 Engines have **zero** UI or ad imports.
 
-## Run
+## Run (local / mock ads)
 
 ```bash
 npm install
@@ -22,23 +24,28 @@ npm test
 npm start
 ```
 
-Then press `i` (iOS), `a` (Android), or `w` (web).
+Mock ads are the default in `__DEV__`. AdMob needs a **native build** (not Expo Go).
 
-## Ad providers
-
-Default is **mock** (console logs + delays). AdMob needs a **dev client / native
-build** (not Expo Go):
+## AdMob native builds
 
 ```bash
-EXPO_PUBLIC_AD_PROVIDER=admob
-npx expo prebuild
-npx expo run:android
+# development client
+eas build --profile development --platform ios
+# or local
+EXPO_PUBLIC_AD_PROVIDER=admob npx expo prebuild
+EXPO_PUBLIC_AD_PROVIDER=admob npx expo run:ios
 ```
 
-App / unit IDs are in `app.json` / `src/services/admobUnitIds.ts` (Android + iOS).
-In `__DEV__`, Google `TestIds` are used so the account is not flagged.
+Production EAS profiles already set `EXPO_PUBLIC_AD_PROVIDER=admob`.
+Unit IDs: `src/services/admobUnitIds.ts`. In `__DEV__`, Google `TestIds` are used.
 
-`AppLovinAdService` remains a fail-closed stub.
+## Store release
+
+Follow **[`store/STORE_CHECKLIST.md`](store/STORE_CHECKLIST.md)** end-to-end (EAS, GitHub Pages legal URLs, AdMob Privacy & messaging, App Store / Play Console).
+
+Legal pages live in `docs/` for GitHub Pages:
+- Privacy: `docs/privacy.html`
+- Terms: `docs/terms.html`
 
 ## Economy
 
@@ -50,12 +57,12 @@ In `__DEV__`, Google `TestIds` are used so the account is not flagged.
 ### Persistence / app kill
 
 Mid-puzzle progress is written to AsyncStorage on every pour (debounced) and
-**flushed immediately** when the app backgrounds or becomes inactive. Killing
-the app mid-station resumes from the saved flask on next launch.
+**flushed immediately** when the app backgrounds or becomes inactive.
 
 ### Monetization safety
 
-Mock rewarded ads run only in `__DEV__` / Jest, or when
-`EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`. If AdMob native SDK is missing
-(Expo Go, web, Jest), `AdMobAdService` fails closed (no free rewards).
-`AppLovinAdService` remains fail-closed until wired.
+- `__DEV__` defaults to mock unless `EXPO_PUBLIC_AD_PROVIDER` is set
+- Release defaults to **admob** (also forced in `eas.json`)
+- Mock rewards only when `__DEV__` / Jest / `EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`
+- Missing native SDK → fail closed (no free rewards)
+- First launch requires **17+** age acknowledgment
