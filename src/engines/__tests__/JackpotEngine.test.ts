@@ -131,6 +131,15 @@ describe('JackpotEngine multi-line', () => {
       expect(win!.kind).toBe('consolation');
       expect(win!.coins).toBe(10);
     });
+
+    it('does not pay non-adjacent a===c pairs', () => {
+      const win = evaluateLine(
+        [SlotSymbol.Coin, SlotSymbol.Crown, SlotSymbol.Coin],
+        PAYLINES[1],
+        10,
+      );
+      expect(win).toBeNull();
+    });
   });
 
   describe('legacy evaluatePayout', () => {
@@ -159,8 +168,7 @@ describe('JackpotEngine multi-line', () => {
         [SlotSymbol.Coin, SlotSymbol.Coin, SlotSymbol.Coin],
         5,
       );
-      const capped = applyPayoutMultiplier(base, 1000);
-      expect(capped.coins).toBe(base.coins);
+      expect(applyPayoutMultiplier(base, 1000).coins).toBe(base.coins);
     });
   });
 });

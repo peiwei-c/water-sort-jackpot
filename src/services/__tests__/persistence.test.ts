@@ -13,7 +13,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 describe('persistence sanitization', () => {
-  it('clamps economy fields and filters owned ids', () => {
+  it('clamps economy fields, filters owned ids, and drops corrupt session', () => {
     const data = sanitizePersistedGame({
       unlockedLevel: 9999,
       highestCompleted: -3,
@@ -21,8 +21,17 @@ describe('persistence sanitization', () => {
       undoItems: -1,
       ownedItemIds: [PATH_DEFAULT, 'not_real', VIAL_DEFAULT],
       isNoAdsPurchased: true,
-      lastInterstitialAt: Date.now() + 86_400_000,
+      rareSkinUnlocked: true,
+      levelsCompletedSinceAd: 99,
       hasSeenLabManual: true,
+      session: {
+        level: 1,
+        capacity: 4,
+        tubes: [[99], [1]],
+        history: [],
+        movesLeft: 10,
+        moveLimit: 10,
+      },
     });
     expect(data).not.toBeNull();
     expect(data!.unlockedLevel).toBe(300);
@@ -34,8 +43,10 @@ describe('persistence sanitization', () => {
       expect.arrayContaining([PATH_DEFAULT, VIAL_DEFAULT]),
     );
     expect(data!.isNoAdsPurchased).toBe(true);
-    expect(data!.lastInterstitialAt).toBeLessThanOrEqual(Date.now());
+    expect(data!.session).toBeNull();
+    expect(data!.levelsCompletedSinceAd).toBe(99);
     expect(data!.hasSeenLabManual).toBe(true);
+    expect(data!.rareSkinUnlocked).toBe(true);
   });
 
   it('rejects corrupt sessions', () => {

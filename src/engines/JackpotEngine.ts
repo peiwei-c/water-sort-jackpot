@@ -269,13 +269,12 @@ export function evaluateLine(
   const pairSymbol =
     a === b && a !== c
       ? a
-      : a === c && a !== b
-        ? a
-        : b === c && b !== a
-          ? b
-          : null;
+      : b === c && b !== a
+        ? b
+        : null;
 
   // Drop pairs never pay — they only dilute other hits
+  // Only adjacent pairs (left-to-right) pay; a===c with different middle does not.
   if (pairSymbol !== null && pairSymbol !== SlotSymbol.Drop) {
     const coins = PAIR_MULTIPLIER * bet;
     return {

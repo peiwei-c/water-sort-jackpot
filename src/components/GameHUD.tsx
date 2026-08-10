@@ -21,7 +21,7 @@ export function GameHUD() {
         <View>
           <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
           <View style={styles.brandRow}>
-            <Text style={styles.brand}>AquaSort</Text>
+            <Text style={styles.brand}>AquaSort Lab</Text>
             <Pressable
               style={styles.infoBtn}
               onPress={() => setShowHelp(true)}
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brand: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     color: COLORS.text,
     letterSpacing: -0.5,

@@ -93,16 +93,19 @@ export function SlotMachineModal() {
   ];
 
   const onSpin = async () => {
+    if (spinning || isAdLoading) return;
     setSuppressWins(false);
-    // Resolve outcome first so reels scroll toward the real result
-    await spin();
-    const result = useGameStore.getState().lastSpin;
-    if (result?.grid) {
-      setDisplayGrid(result.grid);
-    }
     setSpinning(true);
-    await new Promise((r) => setTimeout(r, SPIN_ANIM_MS));
-    setSpinning(false);
+    try {
+      await spin();
+      const result = useGameStore.getState().lastSpin;
+      if (result?.grid) {
+        setDisplayGrid(result.grid);
+      }
+      await new Promise((r) => setTimeout(r, SPIN_ANIM_MS));
+    } finally {
+      setSpinning(false);
+    }
   };
 
   const onCycleLines = (direction: 1 | -1) => {

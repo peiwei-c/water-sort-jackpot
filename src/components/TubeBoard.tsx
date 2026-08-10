@@ -104,7 +104,7 @@ export function TubeBoard({
         toValue: 1,
         duration: POUR_ANIM_MS,
         easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.timing(droplet, {
         toValue: 1,
@@ -114,27 +114,8 @@ export function TubeBoard({
       }),
     ]).start();
 
-    const amount = Math.max(1, pourAnim.amount);
-    const step = Math.max(55, Math.floor(POUR_ANIM_MS / amount));
+    // Single end-of-pour update (avoid per-unit React remounts on the JS thread).
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    for (let i = 0; i < amount; i++) {
-      timers.push(
-        setTimeout(() => {
-          if (animToken.current !== token) return;
-          setDisplayTubes((prev) => {
-            const next = prev.map((t) => [...t]);
-            const src = next[pourAnim.fromIndex];
-            const dst = next[pourAnim.toIndex];
-            if (src.length > 0 && dst.length < capacity) {
-              dst.push(src.pop()!);
-            }
-            return next;
-          });
-        }, (i + 1) * step),
-      );
-    }
-
     timers.push(
       setTimeout(() => {
         if (animToken.current !== token) return;

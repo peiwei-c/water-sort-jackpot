@@ -1,7 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Tube } from '../engines/WaterSortEngine';
-import type { BetOption } from '../engines/JackpotEngine';
-import { BET_OPTIONS, clampBet } from '../engines/JackpotEngine';
+import {
+  BET_OPTIONS,
+  clampBet,
+  SLOT_SYMBOLS,
+  type BetOption,
+  type Payout,
+  type PayoutKind,
+  type LineWin,
+  type PaylineId,
+  type SlotSymbol,
+} from '../engines/JackpotEngine';
 import { MAX_LEVEL } from '../engines/LevelProgression';
 import {
   PATH_DEFAULT,
@@ -44,9 +53,9 @@ export type PersistedGame = {
   equippedVialId: string;
   /** Remove Ads IAP — suppresses banner + interstitial only. */
   isNoAdsPurchased: boolean;
-  /** Epoch ms of last forced interstitial (cooldown across sessions). */
-  lastInterstitialAt: number | null;
-  /** First-run Lab Manual has been shown. */
+  levelsCompletedSinceAd: number;
+  /** Unclaimed Centrifuge payout (survives brief background; flush may auto-collect). */
+  pendingPayout: Payout | null;
   hasSeenLabManual: boolean;
 };
 
@@ -61,7 +70,9 @@ function clampInt(
 }
 
 function isValidColorId(n: unknown): n is number {
-  return typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= MAX_COLOR_ID;
+  return (
+    typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= MAX_COLOR_ID
+  );
 }
 
 function sanitizeTube(tube: unknown, capacity: number): Tube | null {
@@ -112,13 +123,66 @@ export function sanitizeSession(raw: unknown): PuzzleSession | null {
   const moveLimit = clampInt(data.moveLimit, 20, 1, 500);
   const movesLeft = clampInt(data.movesLeft, moveLimit, 0, moveLimit);
 
+  return { level, tubes, capacity, history, movesLeft, moveLimit };
+}
+
+const SYMBOL_SET = new Set<string>(SLOT_SYMBOLS);
+const PAYOUT_KINDS = new Set<PayoutKind>([
+  'grand_jackpot',
+  'extra_tube',
+  'undo_pack',
+  'triple_coin',
+  'drop_min',
+  'line_win',
+  'consolation',
+  'none',
+]);
+
+function sanitizeLineWin(raw: unknown): LineWin | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const w = raw as Partial<LineWin>;
+  if (typeof w.lineId !== 'number' || w.lineId < 1 || w.lineId > 5) return null;
+  if (typeof w.lineName !== 'string') return null;
+  if (!Array.isArray(w.symbols) || w.symbols.length !== 3) return null;
+  if (!w.symbols.every((s) => typeof s === 'string' && SYMBOL_SET.has(s))) {
+    return null;
+  }
+  if (typeof w.kind !== 'string' || !PAYOUT_KINDS.has(w.kind as PayoutKind)) {
+    return null;
+  }
   return {
-    level,
-    tubes,
-    capacity,
-    history,
-    movesLeft,
-    moveLimit,
+    lineId: w.lineId as PaylineId,
+    lineName: w.lineName,
+    symbols: w.symbols as [SlotSymbol, SlotSymbol, SlotSymbol],
+    kind: w.kind as PayoutKind,
+    coins: clampInt(w.coins, 0, 0, MAX_COINS),
+    undoItems: clampInt(w.undoItems, 0, 0, MAX_CONSUMABLE),
+    extraTubeItems: clampInt(w.extraTubeItems, 0, 0, MAX_CONSUMABLE),
+    unlockRareSkin: w.unlockRareSkin === true,
+    label: typeof w.label === 'string' ? w.label : 'Win',
+  };
+}
+
+export function sanitizePendingPayout(raw: unknown): Payout | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as Partial<Payout>;
+  if (typeof p.kind !== 'string' || !PAYOUT_KINDS.has(p.kind as PayoutKind)) {
+    return null;
+  }
+  if (p.kind === 'none') return null;
+  const lineWins = Array.isArray(p.lineWins)
+    ? p.lineWins.map(sanitizeLineWin).filter((w): w is LineWin => w != null)
+    : [];
+  return {
+    kind: p.kind as PayoutKind,
+    coins: clampInt(p.coins, 0, 0, MAX_COINS),
+    undoItems: clampInt(p.undoItems, 0, 0, MAX_CONSUMABLE),
+    extraTubeItems: clampInt(p.extraTubeItems, 0, 0, MAX_CONSUMABLE),
+    unlockRareSkin: p.unlockRareSkin === true,
+    label: typeof p.label === 'string' ? p.label : 'Win',
+    lineWins,
+    linesPlayed: clampInt(p.linesPlayed, 1, 1, 5),
+    betPerLine: clampBet(typeof p.betPerLine === 'number' ? p.betPerLine : 5),
   };
 }
 
@@ -128,11 +192,9 @@ export function sanitizePersistedGame(
   if (!data || typeof data.unlockedLevel !== 'number') return null;
 
   const unlockedLevel = clampInt(data.unlockedLevel, 1, 1, MAX_LEVEL);
-  const highestCompleted = clampInt(
-    data.highestCompleted,
-    0,
-    0,
-    MAX_LEVEL,
+  const highestCompleted = Math.min(
+    clampInt(data.highestCompleted, 0, 0, MAX_LEVEL),
+    unlockedLevel,
   );
   const owned = sanitizeOwnedItemIds(
     data.ownedItemIds,
@@ -147,21 +209,16 @@ export function sanitizePersistedGame(
       ? data.equippedVialId
       : VIAL_DEFAULT;
 
-  const now = Date.now();
-  let lastInterstitialAt: number | null = null;
-  if (typeof data.lastInterstitialAt === 'number' && Number.isFinite(data.lastInterstitialAt)) {
-    lastInterstitialAt = Math.min(Math.max(0, Math.floor(data.lastInterstitialAt)), now);
-  }
-
   const betRaw = data.betPerLine;
   const betPerLine =
-    typeof betRaw === 'number' && (BET_OPTIONS as readonly number[]).includes(betRaw)
+    typeof betRaw === 'number' &&
+    (BET_OPTIONS as readonly number[]).includes(betRaw)
       ? (betRaw as BetOption)
       : clampBet(typeof betRaw === 'number' ? betRaw : 5);
 
   return {
     unlockedLevel,
-    highestCompleted: Math.min(highestCompleted, unlockedLevel),
+    highestCompleted,
     coins: clampInt(data.coins, 50, 0, MAX_COINS),
     undoItems: clampInt(data.undoItems, 2, 0, MAX_CONSUMABLE),
     extraTubeItems: clampInt(data.extraTubeItems, 1, 0, MAX_CONSUMABLE),
@@ -174,7 +231,8 @@ export function sanitizePersistedGame(
     equippedPathId,
     equippedVialId,
     isNoAdsPurchased: data.isNoAdsPurchased === true,
-    lastInterstitialAt,
+    levelsCompletedSinceAd: clampInt(data.levelsCompletedSinceAd, 0, 0, 100),
+    pendingPayout: sanitizePendingPayout(data.pendingPayout),
     hasSeenLabManual: data.hasSeenLabManual === true,
   };
 }

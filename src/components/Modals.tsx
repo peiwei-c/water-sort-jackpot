@@ -91,27 +91,48 @@ export function LevelCompleteModal() {
 
 export function CampaignCompleteModal() {
   const modal = useGameStore((s) => s.modal);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const goHome = useGameStore((s) => s.goHome);
 
   return (
-    <Modal visible={modal === 'campaign_complete'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'campaign_complete'}
+      transparent
+      animationType="fade"
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>LAB CLEAR</Text>
           <Text style={styles.title}>All {MAX_LEVEL} Stations!</Text>
           <Text style={styles.sub}>
-            You beat every tier from Beginner to Legend. Spin the Centrifuge or return
-            to the path to replay.
+            You beat every tier from Beginner to Legend. Spin the Centrifuge or
+            return to the path to replay.
           </Text>
-          <View style={styles.col}>
-            <Pressable style={[styles.btn, styles.btnMain]} onPress={openSlotMachine}>
-              <Text style={styles.btnMainText}>Spin Centrifuge</Text>
-            </Pressable>
-            <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
-              <Text style={styles.btnGhostText}>Back to Path</Text>
-            </Pressable>
-          </View>
+          {isAdLoading ? (
+            <View style={styles.col}>
+              <ActivityIndicator
+                color={LAB.glassBright}
+                style={{ marginVertical: 8 }}
+              />
+              <Text style={styles.sub}>Loading ad…</Text>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.col}>
+              <Pressable
+                style={[styles.btn, styles.btnMain]}
+                onPress={openSlotMachine}
+              >
+                <Text style={styles.btnMainText}>Spin Centrifuge</Text>
+              </Pressable>
+              <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -135,7 +156,10 @@ export function ExtraTubeAdModal() {
             from the Centrifuge.
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <ActivityIndicator
+              color={LAB.glassBright}
+              style={{ marginVertical: 16 }}
+            />
           ) : (
             <View style={styles.row}>
               <Pressable
@@ -239,11 +263,14 @@ export function OutOfMovesModal() {
             {showExtraMovesAd
               ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} moves, or restart the station.`
               : canSkip
-                ? 'Retry, get more moves, or skip this station (unlocks the next).'
-                : 'Retry the station, or watch an ad for extra moves.'}
+                ? 'Retry, get more moves, or skip this station (unlocks the next). Progress is saved if you return to the path.'
+                : 'Retry the station, watch an ad for extra moves, or return to the path (progress is saved).'}
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <ActivityIndicator
+              color={LAB.glassBright}
+              style={{ marginVertical: 16 }}
+            />
           ) : (
             <View style={styles.col}>
               <Pressable
@@ -338,13 +365,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  col: {
-    gap: 10,
-  },
   btn: {
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -353,6 +373,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'stretch',
   },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  col: {
+    gap: 10,
+  },
   btnRow: {
     flex: 1,
   },
@@ -360,11 +387,13 @@ const styles = StyleSheet.create({
     backgroundColor: LAB.glassDim,
     borderWidth: 1,
     borderColor: 'rgba(126, 227, 214, 0.22)',
+    flexGrow: 1,
   },
   btnMain: {
     backgroundColor: LAB.reagent,
     borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.35)',
+    flexGrow: 1,
   },
   btnDisabled: {
     opacity: 0.45,

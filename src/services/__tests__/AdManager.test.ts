@@ -10,9 +10,20 @@ import {
 import { resetAdService } from '../AdService';
 
 describe('AdManager policy', () => {
+  const prevProvider = process.env.EXPO_PUBLIC_AD_PROVIDER;
+
   beforeEach(() => {
+    process.env.EXPO_PUBLIC_AD_PROVIDER = 'mock';
     resetAdService();
     resetAdManager();
+  });
+
+  afterEach(() => {
+    if (prevProvider === undefined) {
+      delete process.env.EXPO_PUBLIC_AD_PROVIDER;
+    } else {
+      process.env.EXPO_PUBLIC_AD_PROVIDER = prevProvider;
+    }
   });
 
   async function readyManager(

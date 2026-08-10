@@ -8,11 +8,13 @@ import {
   Dimensions,
   Animated,
   Easing,
+  Linking,
   type ListRenderItemInfo,
 } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
 import { getPathTheme } from '../engines/StoreCatalog';
+import { LEGAL } from '../constants/legal';
 import { COLORS, LAB } from '../theme/colors';
 import { AudioSettingsModal } from './AudioSettingsModal';
 import { LabManualModal } from './LabManualModal';
@@ -514,7 +516,7 @@ export function HomeScreen() {
         <Text style={[styles.labEyebrow, { color: pathTheme.label }]}>
           HYDROLOGY LAB
         </Text>
-        <Text style={styles.brand}>AquaSort</Text>
+        <Text style={styles.brand}>AquaSort Lab</Text>
         <Text style={styles.tagline}>
           Trace the glass line. Clear each flask. Unlock the next reagent station.
         </Text>
@@ -617,6 +619,25 @@ export function HomeScreen() {
         visible={audioOpen}
         onClose={() => setAudioOpen(false)}
       />
+
+      <View style={styles.legalRow}>
+        <Pressable
+          onPress={() => void Linking.openURL(LEGAL.privacyUrl)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.legalLink}>Privacy</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable
+          onPress={() => void Linking.openURL(LEGAL.termsUrl)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.legalLink}>Terms</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Text style={styles.legalMeta}>{LEGAL.minimumAge}+</Text>
+      </View>
+
       <LabManualModal visible={manualOpen} onClose={closeManual} />
     </View>
   );
@@ -746,6 +767,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 14,
     flexWrap: 'wrap',
+    alignItems: 'center',
   },
   audioBtn: {
     backgroundColor: LAB.glassDim,
@@ -969,8 +991,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(46, 196, 182, 0.75)',
   },
   flaskLiquidCurrent: {
-    height: '62%',
-    backgroundColor: LAB.reagentSoft,
+    height: '85%',
+    backgroundColor: LAB.reagent,
+    opacity: 0.88,
   },
   flaskCleared: {
     borderColor: LAB.glassBright,
@@ -1019,5 +1042,29 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: COLORS.textMuted,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingBottom: 14,
+    zIndex: 2,
+  },
+  legalLink: {
+    color: LAB.label,
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+  },
+  legalMeta: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -27,9 +27,12 @@ import {
   type SlotSymbol,
   type BetOption,
 } from '../engines/JackpotEngine';
-import { getAdManager } from '../services/AdManager';
 import { getAudioManager } from '../services/audio/AudioManager';
-import { type AdPlacement } from '../services/AdService';
+import {
+  getAdService,
+  INTERSTITIAL_EVERY_N_LEVELS,
+  type AdPlacement,
+} from '../services/AdService';
 import {
   purchaseRemoveAds as iapPurchaseRemoveAds,
 } from '../services/IapService';
@@ -65,6 +68,7 @@ export type PourAnim = {
   pendingModal: ModalKind;
   pendingMessage: string | null;
   pendingCoins?: number;
+  pendingLevelsSinceAd?: number;
 };
 
 export type ModalKind =
@@ -110,6 +114,9 @@ type GameStore = {
   pendingPayout: Payout | null;
   isAdLoading: boolean;
   adsReady: boolean;
+  /** Prevents double-debit Centrifuge spins. */
+  spinInFlight: boolean;
+  levelsCompletedSinceAd: number;
   lastMessage: string | null;
   /** Coins granted by the most recent station clear (first clear or replay). */
   lastClearCoinReward: number;
@@ -134,7 +141,7 @@ type GameStore = {
   markLabManualSeen: () => void;
   selectTube: (index: number) => void;
   clearSelection: () => void;
-  completePourAnim: () => void;
+  completePourAnim: (opts?: { skipAds?: boolean }) => void;
   undo: () => void;
   useExtraTube: () => void;
   requestHint: () => Promise<boolean>;
@@ -242,7 +249,8 @@ function buildPersistPayload(state: GameStore): PersistedGame {
     equippedPathId: state.equippedPathId,
     equippedVialId: state.equippedVialId,
     isNoAdsPurchased: state.isNoAdsPurchased,
-    lastInterstitialAt: getAdManager().getLastInterstitialAt(),
+    levelsCompletedSinceAd: state.levelsCompletedSinceAd,
+    pendingPayout: state.pendingPayout,
     hasSeenLabManual: state.hasSeenLabManual,
   };
 }
@@ -323,11 +331,13 @@ export const useGameStore = create<GameStore>((set, get) => {
     activeLines: DEFAULT_LINES,
     selectedTube: null,
     pourAnim: null,
+    levelsCompletedSinceAd: 0,
     modal: 'none',
     lastSpin: null,
     pendingPayout: null,
     isAdLoading: false,
     adsReady: false,
+    spinInFlight: false,
     lastMessage: null,
     lastClearCoinReward: LEVEL_COIN_REWARD,
     session: null,
@@ -344,13 +354,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       const data = await loadPersistedGame();
       if (!data) {
         set({ hydrated: true });
-        getAdManager().markSessionStart();
         return;
       }
-      if (data.lastInterstitialAt != null) {
-        getAdManager().setLastInterstitialAt(data.lastInterstitialAt);
-      }
-      getAdManager().markSessionStart();
       const updates: Partial<GameStore> = {
         hydrated: true,
         unlockedLevel: data.unlockedLevel,
@@ -367,6 +372,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         activeLines: clampLines(data.activeLines),
         session: data.session,
         isNoAdsPurchased: data.isNoAdsPurchased,
+        levelsCompletedSinceAd: data.levelsCompletedSinceAd,
+        pendingPayout: data.pendingPayout,
         hasSeenLabManual: data.hasSeenLabManual,
         screen: 'home',
       };
@@ -382,13 +389,20 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     flushSession: () => {
-      const state = get();
-      if (state.screen !== 'play') {
-        flushPersistNow();
-        return;
+      // Finalize in-flight pour so the board on disk matches the engine.
+      if (get().pourAnim) {
+        get().completePourAnim({ skipAds: true });
       }
-      const session = captureSession(state);
-      set({ session });
+      // Auto-collect unclaimed Centrifuge wins at 1× so kill doesn't drop payout.
+      if (get().pendingPayout) {
+        settlePendingPayout(get, set, 1);
+      }
+
+      const state = get();
+      if (state.screen === 'play') {
+        const session = captureSession(get());
+        set({ session });
+      }
       flushPersistNow();
     },
 
@@ -440,11 +454,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       let pendingMessage: string | null = null;
       let pendingCoins: number | undefined;
       let clearReward: number | undefined;
+      let pendingLevelsSinceAd: number | undefined;
 
       if (_puzzle.isWon()) {
         const currentLevel = get().level;
         const reward = coinRewardForClear(currentLevel, get().highestCompleted);
         pendingCoins = get().coins + reward;
+        pendingLevelsSinceAd = get().levelsCompletedSinceAd + 1;
         pendingModal = isCampaignComplete(currentLevel)
           ? 'campaign_complete'
           : 'level_complete';
@@ -476,13 +492,14 @@ export const useGameStore = create<GameStore>((set, get) => {
           pendingModal,
           pendingMessage,
           pendingCoins,
+          pendingLevelsSinceAd,
         },
       });
     },
 
     clearSelection: () => set({ selectedTube: null }),
 
-    completePourAnim: () => {
+    completePourAnim: (opts) => {
       const { pourAnim, _puzzle } = get();
       if (!pourAnim) return;
 
@@ -497,6 +514,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       };
       if (pourAnim.pendingCoins !== undefined) {
         updates.coins = pourAnim.pendingCoins;
+      }
+      if (pourAnim.pendingLevelsSinceAd !== undefined) {
+        updates.levelsCompletedSinceAd = pourAnim.pendingLevelsSinceAd;
       }
       if (
         pourAnim.pendingModal === 'level_complete' ||
@@ -524,6 +544,19 @@ export const useGameStore = create<GameStore>((set, get) => {
         getAudioManager().playSfx('success');
         set({ session: null });
         persistSoon();
+        const since = get().levelsCompletedSinceAd;
+        if (
+          !opts?.skipAds &&
+          !get().isNoAdsPurchased &&
+          since >= INTERSTITIAL_EVERY_N_LEVELS
+        ) {
+          void (async () => {
+            set({ isAdLoading: true });
+            await getAdService().showInterstitial('interstitial_level');
+            set({ isAdLoading: false, levelsCompletedSinceAd: 0 });
+            persistSoon();
+          })();
+        }
       } else if (pourAnim.pendingModal === 'out_of_moves') {
         getAudioManager().playSfx('fail');
         const session = captureSession(get());
@@ -594,7 +627,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (pourAnim || modal === 'level_complete' || modal === 'out_of_moves') {
         return false;
       }
-      if (!adsReady || !getAdManager().isRewardedReady()) {
+      if (!adsReady || !getAdService().isReady('rewarded')) {
         set({ lastMessage: 'Hint ad not available' });
         return false;
       }
@@ -606,7 +639,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({ lastMessage: 'Skip unlocks after 2 fails on this station' });
         return false;
       }
-      if (!get().adsReady || !getAdManager().isRewardedReady()) {
+      if (!get().adsReady || !getAdService().isReady('rewarded')) {
         set({ lastMessage: 'Skip ad not available' });
         return false;
       }
@@ -663,7 +696,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     goHome: () => {
-      if (get().pourAnim) return;
+      if (get().pourAnim) {
+        get().completePourAnim({ skipAds: true });
+      }
       const session =
         get().screen === 'play' ? captureSession(get()) : get().session;
       set({
@@ -671,14 +706,13 @@ export const useGameStore = create<GameStore>((set, get) => {
         selectedTube: null,
         pourAnim: null,
         modal: 'none',
-        pendingPayout: null,
-        lastMessage:
-          get().screen === 'play' && session
-            ? 'Progress saved — tap the flask to continue'
-            : null,
+        pendingPayout: get().pendingPayout,
+        lastMessage: session
+          ? 'Progress saved — tap the flask to continue'
+          : null,
         session,
       });
-      persistSoon();
+      flushPersistNow();
     },
 
     openStore: () => {
@@ -788,29 +822,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      // Interstitial on Next Level tap (never during pour / active gameplay).
-      const mgr = getAdManager();
-      if (
-        !opts?.skipInterstitial &&
-        mgr.canShowInterstitial({
-          level: current,
-          pourAnimActive: get().pourAnim != null,
-          isNoAdsPurchased: get().isNoAdsPurchased,
-        })
-      ) {
-        set({ isAdLoading: true });
-        try {
-          await mgr.showInterstitialSafe({
-            level: current,
-            pourAnimActive: get().pourAnim != null,
-            isNoAdsPurchased: get().isNoAdsPurchased,
-          });
-        } finally {
-          set({ isAdLoading: false });
-          persistSoon();
-        }
-      }
-
       if (isCampaignComplete(current)) {
         set({
           screen: opts?.openJackpot ? 'play' : 'home',
@@ -877,7 +888,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           isAdLoading: false,
           lastMessage: 'Ads removed — rewarded ads still available',
         });
-        await getAdManager().hideBanner();
+        await getAdService().hideBanner();
         persistSoon();
         return true;
       } catch (e) {
@@ -889,7 +900,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
     },
 
-    openSlotMachine: () => set({ modal: 'slot_machine' }),
+    openSlotMachine: () => {
+      const pending = get().pendingPayout;
+      set({
+        modal: pending ? 'ad_2x_payout' : 'slot_machine',
+      });
+    },
 
     closeModal: () => set({ modal: 'none', pendingPayout: null }),
 
@@ -911,6 +927,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     spin: async () => {
+      if (get().spinInFlight) return;
+      set({ spinInFlight: true });
+      try {
       const { coins, freeSpins, _jackpot, betPerLine, activeLines } = get();
       const cost = spinCost(betPerLine, activeLines);
       const canUseFreeSpin = freeSpins > 0 && isFreeSpinBet(betPerLine);
@@ -952,6 +971,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
           lastMessage: payout.label,
         });
+        persistSoon();
         return;
       }
 
@@ -987,6 +1007,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
         lastMessage: result.payout.label,
       });
+      persistSoon();
+      } finally {
+        set({ spinInFlight: false });
+      }
     },
 
     claimPendingPayout: () => {
@@ -996,7 +1020,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     watchAd: async (placement: AdPlacement) => {
       set({ isAdLoading: true });
       try {
-        const result = await getAdManager().showRewarded(placement);
+        const result = await getAdService().showRewarded(placement);
         if (!result.success || !result.rewarded) {
           set({ isAdLoading: false, lastMessage: 'Ad not completed' });
           return false;

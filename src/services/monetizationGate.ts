@@ -1,6 +1,6 @@
 /**
  * Mock IAP / ads are for local and explicit staging only.
- * Production builds must set a real EXPO_PUBLIC_AD_PROVIDER and real billing.
+ * Production must set a real EXPO_PUBLIC_AD_PROVIDER (or allow mock explicitly) and real billing.
  */
 
 export function allowMockMonetization(): boolean {

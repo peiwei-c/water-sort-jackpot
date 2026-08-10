@@ -25,6 +25,8 @@ export type AdResult = {
   message: string;
 };
 
+export type BannerVisibilityListener = (visible: boolean) => void;
+
 export interface IAdService {
   initialize(): Promise<void>;
   isReady(type: AdType): boolean;
@@ -32,6 +34,8 @@ export interface IAdService {
   hideBanner(): Promise<void>;
   showInterstitial(placement?: AdPlacement): Promise<AdResult>;
   showRewarded(placement: AdPlacement): Promise<AdResult>;
+  isBannerVisible?: () => boolean;
+  subscribeBannerVisibility?: (listener: BannerVisibilityListener) => () => void;
 }
 
 const MOCK_DELAY_MS: Record<AdType, number> = {
@@ -44,9 +48,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function denied(
+  provider: AdResult['provider'],
+  placement: AdPlacement,
+  message: string,
+): AdResult {
+  return { success: false, rewarded: false, placement, provider, message };
+}
+
 /**
  * Mock ad provider — always "fills", logs to console, simulates latency.
- * Swap for AdMobAdService / AppLovinAdService when real SDK IDs are wired.
+ * Only used when allowMockMonetization() is true.
  */
 export class MockAdService implements IAdService {
   private ready = false;
@@ -120,95 +132,31 @@ export class MockAdService implements IAdService {
 }
 
 /**
- * Stub for future Google AdMob wiring.
- * Throws until real App IDs / unit IDs are configured.
- */
-export class AdMobAdService implements IAdService {
-  async initialize(): Promise<void> {
-    throw new Error(
-      'AdMobAdService: set EXPO_PUBLIC_ADMOB_APP_ID and unit IDs before use',
-    );
-  }
-
-  isReady(): boolean {
-    return false;
-  }
-
-  async showBanner(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
-  }
-
-  async hideBanner(): Promise<void> {
-    throw new Error('AdMob not configured');
-  }
-
-  async showInterstitial(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
-  }
-
-  async showRewarded(): Promise<AdResult> {
-    throw new Error('AdMob not configured');
-  }
-}
-
-/**
- * Stub for future AppLovin MAX wiring.
- */
-export class AppLovinAdService implements IAdService {
-  async initialize(): Promise<void> {
-    throw new Error(
-      'AppLovinAdService: set EXPO_PUBLIC_APPLOVIN_SDK_KEY before use',
-    );
-  }
-
-  isReady(): boolean {
-    return false;
-  }
-
-  async showBanner(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async hideBanner(): Promise<void> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async showInterstitial(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
-  }
-
-  async showRewarded(): Promise<AdResult> {
-    throw new Error('AppLovin not configured');
-  }
-}
-
-/**
- * Release-safe stub: initializes but never grants rewards or shows inventory.
- * Used when the provider would be mock outside __DEV__ / explicit allow flag.
+ * Release-safe stub: never grants rewards. Used when mock is blocked
+ * or when real SDK IDs are not configured.
  */
 export class FailClosedAdService implements IAdService {
-  readonly provider = 'mock' as const;
+  readonly provider: AdResult['provider'];
   private ready = false;
+
+  constructor(provider: AdResult['provider'] = 'mock') {
+    this.provider = provider;
+  }
 
   async initialize(): Promise<void> {
     console.warn(
-      '[AdService] Mock ads blocked outside dev — set EXPO_PUBLIC_AD_PROVIDER or EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true',
+      `[AdService:${this.provider}] Ads unavailable — rewards disabled until SDK is wired`,
     );
     this.ready = true;
   }
 
-  isReady(): boolean {
+  isReady(_type?: AdType): boolean {
+    void _type;
     return this.ready;
   }
 
   async showBanner(placement: AdPlacement = 'banner_home'): Promise<AdResult> {
-    return {
-      success: false,
-      rewarded: false,
-      placement,
-      provider: this.provider,
-      message: 'Mock ads disabled outside development',
-    };
+    return denied(this.provider, placement, 'Ads unavailable');
   }
 
   async hideBanner(): Promise<void> {}
@@ -216,23 +164,17 @@ export class FailClosedAdService implements IAdService {
   async showInterstitial(
     placement: AdPlacement = 'interstitial_level',
   ): Promise<AdResult> {
-    return {
-      success: false,
-      rewarded: false,
-      placement,
-      provider: this.provider,
-      message: 'Mock ads disabled outside development',
-    };
+    return denied(this.provider, placement, 'Ads unavailable');
   }
 
   async showRewarded(placement: AdPlacement): Promise<AdResult> {
-    return {
-      success: false,
-      rewarded: false,
-      placement,
-      provider: this.provider,
-      message: 'Mock ads disabled outside development',
-    };
+    return denied(this.provider, placement, 'Ads unavailable');
+  }
+}
+
+export class AppLovinAdService extends FailClosedAdService {
+  constructor() {
+    super('applovin');
   }
 }
 
@@ -242,14 +184,18 @@ let singleton: IAdService | null = null;
 
 export function createAdService(provider: AdProviderName = 'mock'): IAdService {
   switch (provider) {
-    case 'admob':
+    case 'admob': {
+      // Lazy require avoids pulling the native SDK into Jest when only mock is used.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { AdMobAdService } = require('./AdMobAdService') as typeof import('./AdMobAdService');
       return new AdMobAdService();
+    }
     case 'applovin':
       return new AppLovinAdService();
     case 'mock':
     default:
       if (!allowMockMonetization()) {
-        return new FailClosedAdService();
+        return new FailClosedAdService('mock');
       }
       return new MockAdService();
   }
@@ -257,7 +203,12 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
 
 export function getAdService(): IAdService {
   if (!singleton) {
-    const name = (process.env.EXPO_PUBLIC_AD_PROVIDER as AdProviderName) || 'mock';
+    const fromEnv = process.env.EXPO_PUBLIC_AD_PROVIDER as
+      | AdProviderName
+      | undefined;
+    const name: AdProviderName =
+      fromEnv ||
+      (typeof __DEV__ !== 'undefined' && __DEV__ ? 'mock' : 'admob');
     singleton = createAdService(name);
   }
   return singleton;
@@ -268,8 +219,5 @@ export function resetAdService(): void {
   singleton = null;
 }
 
-/**
- * @deprecated Forced interstitials use AdManager time/level gates, not level cadence.
- * Kept for older tests / docs references.
- */
+/** Levels between automatic interstitial ads. */
 export const INTERSTITIAL_EVERY_N_LEVELS = 3;

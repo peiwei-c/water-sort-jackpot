@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   AppState,
   type AppStateStatus,
 } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { LinearGradientFallback } from './src/components/LinearGradientFallback';
 import { TubeBoard } from './src/components/TubeBoard';
 import { GameHUD, GameControls } from './src/components/GameHUD';
@@ -16,7 +17,6 @@ import { LoadingScreen } from './src/components/LoadingScreen';
 import { MIN_BOOT_MS, shouldShowBoot } from './src/components/bootGate';
 import { StoreScreen } from './src/components/StoreScreen';
 import { SlotMachineModal } from './src/components/SlotMachineModal';
-import { BannerAd } from './src/components/BannerAd';
 import {
   LevelCompleteModal,
   ExtraTubeAdModal,
@@ -24,12 +24,17 @@ import {
   OutOfMovesModal,
   CampaignCompleteModal,
 } from './src/components/Modals';
+import { AdBanner } from './src/components/AdBanner';
+import { AgeGateModal } from './src/components/AgeGateModal';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useGameStore } from './src/store/gameStore';
-import { getAdManager, BANNER_HEIGHT } from './src/services/AdManager';
+import { bootstrapAds } from './src/services/adsBootstrap';
 import { getAudioManager } from './src/services/audio/AudioManager';
 import { LAB } from './src/theme/colors';
 
-export default function App() {
+void SplashScreen.preventAutoHideAsync();
+
+function AppShell() {
   const screen = useGameStore((s) => s.screen);
   const hydrated = useGameStore((s) => s.hydrated);
   const tubes = useGameStore((s) => s.tubes);
@@ -38,7 +43,6 @@ export default function App() {
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
   const equippedVialId = useGameStore((s) => s.equippedVialId);
   const lastMessage = useGameStore((s) => s.lastMessage);
-  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
   const modal = useGameStore((s) => s.modal);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
@@ -46,8 +50,8 @@ export default function App() {
   const flushSession = useGameStore((s) => s.flushSession);
   const markAdsReady = useGameStore((s) => s.markAdsReady);
   const [splashElapsed, setSplashElapsed] = useState(false);
+  const [ageOk, setAgeOk] = useState(false);
 
-  const bannerPad = isNoAdsPurchased ? 0 : BANNER_HEIGHT;
   const showSlots =
     modal === 'slot_machine' ||
     modal === 'spin_result' ||
@@ -60,30 +64,35 @@ export default function App() {
   const showOutOfMoves =
     modal === 'out_of_moves' || modal === 'ad_extra_moves';
 
+  const onAgeResolved = useCallback((accepted: boolean) => {
+    setAgeOk(accepted);
+  }, []);
+
   useEffect(() => {
     void hydrate();
     void getAudioManager().initialize();
-    void (async () => {
-      const ads = getAdManager();
-      await ads.initialize();
-      markAdsReady();
-      await ads.showBanner(useGameStore.getState().isNoAdsPurchased);
-    })();
-  }, [hydrate, markAdsReady]);
+  }, [hydrate]);
 
   useEffect(() => {
-    if (isNoAdsPurchased) {
-      void getAdManager().hideBanner();
-    } else if (useGameStore.getState().adsReady) {
-      void getAdManager().showBanner(false);
-    }
-  }, [isNoAdsPurchased]);
+    if (!hydrated) return;
+    void SplashScreen.hideAsync();
+  }, [hydrated]);
 
   // Persistence finishes in ~ms; hold the branded boot so the animation can play.
   useEffect(() => {
     const t = setTimeout(() => setSplashElapsed(true), MIN_BOOT_MS);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (!ageOk) return;
+    void bootstrapAds().then((result) => {
+      console.log('[App] Ads bootstrap', result);
+      if (result.adsReady) {
+        markAdsReady();
+      }
+    });
+  }, [ageOk, markAdsReady]);
 
   // BGM: home/store share menu bed; play uses bench bed (crossfades).
   useEffect(() => {
@@ -120,7 +129,7 @@ export default function App() {
       colors={[LAB.benchDeep, LAB.benchMid]}
       style={styles.root}
     >
-      <SafeAreaView style={[styles.safe, { paddingBottom: bannerPad }]}>
+      <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" />
 
         {screen === 'home' ? (
@@ -129,7 +138,6 @@ export default function App() {
           <StoreScreen />
         ) : (
           <View style={styles.playRoot}>
-            {/* Soft lab grid behind the bench */}
             <View pointerEvents="none" style={styles.labGrid}>
               {Array.from({ length: 10 }, (_, i) => (
                 <View key={`h-${i}`} style={[styles.gridH, { top: 24 + i * 72 }]} />
@@ -180,9 +188,18 @@ export default function App() {
         {showUndoAd ? <UndoAdModal /> : null}
         {showOutOfMoves ? <OutOfMovesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
-        <BannerAd />
+        {ageOk ? <AdBanner /> : null}
+        <AgeGateModal onResolved={onAgeResolved} />
       </SafeAreaView>
     </LinearGradientFallback>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppShell />
+    </ErrorBoundary>
   );
 }
 
