@@ -21,10 +21,22 @@ Code is largely ready for both stores. Work through **Shared** first, then **App
 3. Confirm unit IDs match `src/services/admobUnitIds.ts`
 
 ### 3. Remove Ads IAP (same product ID both stores)
-Product ID: **`com.aquasort.lab.remove_ads`**
-- Type: **Non-consumable** / one-time (Play: managed product, non-consumable)
-- Suggested price: **$1.99**
-- Without this SKU, purchase fails → store rejection risk (broken IAP)
+**Full steps + copy-paste fields:** [IAP_REMOVE_ADS.md](./IAP_REMOVE_ADS.md)
+
+| | |
+|--|--|
+| Product ID | **`com.aquasort.lab.remove_ads`** |
+| Type | Non-consumable / one-time (Play: managed, non-consumable) |
+| Price | **$1.99** |
+| Effect | Hides banner + interstitial; rewarded stays |
+
+Without this SKU, purchase fails → store rejection risk (broken IAP).
+
+**Quick path**
+1. Finish Paid Apps Agreement (Apple) + Payments profile (Play).
+2. Create the product on ASC and Play with the exact Product ID above.
+3. Activate (Play) / submit with next binary (Apple).
+4. Smoke-test Buy + Restore on TestFlight / Play internal.
 
 ### 4. Production builds
 ```bash
