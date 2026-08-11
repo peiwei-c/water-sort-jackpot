@@ -64,7 +64,12 @@ export function StoreScreen() {
           Paths are exclusive challenges with fewer moves — never an advantage.
         </Text>
         <View style={styles.balance}>
-          <Text style={styles.balanceText}>🪙 {coins}</Text>
+          <Text
+            style={styles.balanceText}
+            accessibilityLabel={`${coins} coins`}
+          >
+            🪙 {coins}
+          </Text>
         </View>
       </View>
 
@@ -81,6 +86,12 @@ export function StoreScreen() {
           ]}
           disabled={isNoAdsPurchased || isAdLoading}
           onPress={() => void purchaseRemoveAds()}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isNoAdsPurchased
+              ? 'Remove Ads owned'
+              : `Buy Remove Ads for ${priceLabel}`
+          }
         >
           <Text style={styles.removeAdsBtnText}>
             {isNoAdsPurchased
@@ -95,13 +106,15 @@ export function StoreScreen() {
             style={styles.restoreBtn}
             disabled={isAdLoading}
             onPress={() => void restorePurchases()}
+            accessibilityRole="button"
+            accessibilityLabel="Restore purchases"
           >
             <Text style={styles.restoreBtnText}>Restore Purchases</Text>
           </Pressable>
         ) : null}
       </View>
 
-      <View style={styles.tabs}>
+      <View style={styles.tabs} accessibilityRole="tablist">
         <TabBtn
           label="Colors"
           active={tab === 'palette'}
@@ -138,7 +151,12 @@ export function StoreScreen() {
         ))}
       </ScrollView>
 
-      <Pressable style={styles.backBtn} onPress={goHome}>
+      <Pressable
+        style={styles.backBtn}
+        onPress={goHome}
+        accessibilityRole="button"
+        accessibilityLabel="Back to path"
+      >
         <Text style={styles.backText}>Back to Path</Text>
       </Pressable>
     </View>
@@ -158,6 +176,9 @@ function TabBtn({
     <Pressable
       onPress={onPress}
       style={[styles.tab, active && styles.tabActive]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`${label} store tab`}
     >
       <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
     </Pressable>
@@ -224,13 +245,25 @@ function StoreRow({
             <Text style={styles.equippedText}>Equipped</Text>
           </View>
         ) : owned ? (
-          <Pressable style={styles.equipBtn} onPress={onEquip}>
+          <Pressable
+            style={styles.equipBtn}
+            onPress={onEquip}
+            accessibilityRole="button"
+            accessibilityLabel={`Equip ${item.name}`}
+          >
             <Text style={styles.equipText}>Equip</Text>
           </Pressable>
         ) : (
           <Pressable
             style={[styles.buyBtn, !canAfford && styles.buyDisabled]}
             onPress={onBuy}
+            accessibilityRole="button"
+            accessibilityLabel={
+              canAfford
+                ? `Buy ${item.name} for ${item.price} coins`
+                : `Cannot afford ${item.name}, costs ${item.price} coins`
+            }
+            accessibilityState={{ disabled: !canAfford }}
           >
             <Text style={styles.buyText}>Buy</Text>
           </Pressable>

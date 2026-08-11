@@ -80,7 +80,12 @@ export function MissionsScreen() {
         ))}
       </ScrollView>
 
-      <Pressable style={styles.backBtn} onPress={goHome}>
+      <Pressable
+        style={styles.backBtn}
+        onPress={goHome}
+        accessibilityRole="button"
+        accessibilityLabel="Back to path"
+      >
         <Text style={styles.backText}>Back to Path</Text>
       </Pressable>
     </View>
@@ -102,6 +107,7 @@ function MissionRow({
         mission.claimable && styles.cardReady,
         mission.claimed && styles.cardClaimed,
       ]}
+      accessibilityLabel={`${mission.title}, ${mission.progress} of ${mission.target}, ${formatRewardLabel(mission.reward)}`}
     >
       <View style={styles.cardTop}>
         <Text style={styles.itemName}>{mission.title}</Text>
@@ -122,6 +128,13 @@ function MissionRow({
             style={[styles.claimBtn, !mission.claimable && styles.claimDisabled]}
             disabled={!mission.claimable}
             onPress={onClaim}
+            accessibilityRole="button"
+            accessibilityLabel={
+              mission.claimable
+                ? `Claim reward for ${mission.title}`
+                : `${mission.title} in progress`
+            }
+            accessibilityState={{ disabled: !mission.claimable }}
           >
             <Text
               style={[

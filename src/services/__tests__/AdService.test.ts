@@ -36,9 +36,11 @@ describe('AdService mock', () => {
     expect(createAdService('mock')).toBeInstanceOf(MockAdService);
   });
 
-  it('FailClosedAdService never grants rewards', async () => {
+  it('FailClosedAdService never grants rewards and stays not ready', async () => {
     const ads = new FailClosedAdService();
     await ads.initialize();
+    expect(ads.isReady('rewarded')).toBe(false);
+    expect(ads.isReady('interstitial')).toBe(false);
     const rewarded = await ads.showRewarded('rewarded_hint');
     expect(rewarded.success).toBe(false);
     expect(rewarded.rewarded).toBe(false);

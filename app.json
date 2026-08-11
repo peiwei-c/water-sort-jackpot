@@ -5,7 +5,7 @@
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "primaryColor": "#0C2A32",
     "description": "Sort colorful reagents in glass flasks, then spin the Centrifuge for boosts. A hydrology-lab puzzle with optional rewarded ads.",
     "privacy": "public",

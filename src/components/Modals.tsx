@@ -36,7 +36,12 @@ export function LevelCompleteModal() {
       : `+${lastClearCoinReward} coins earned`;
 
   return (
-    <Modal visible={modal === 'level_complete'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'level_complete'}
+      transparent
+      animationType="fade"
+      onRequestClose={() => void nextLevel({ goHome: true })}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>STATION {level}</Text>
@@ -103,6 +108,7 @@ export function CampaignCompleteModal() {
       visible={modal === 'campaign_complete'}
       transparent
       animationType="fade"
+      onRequestClose={goHome}
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
@@ -171,7 +177,15 @@ export function OutOfLivesModal() {
   }, [modal, lives, closeModal]);
 
   return (
-    <Modal visible={modal === 'out_of_lives'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'out_of_lives'}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        closeModal();
+        goHome();
+      }}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>NO LIVES LEFT</Text>
@@ -227,7 +241,12 @@ export function ExtraTubeAdModal() {
   const watchAd = useGameStore((s) => s.watchAd);
 
   return (
-    <Modal visible={modal === 'ad_extra_tube'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'ad_extra_tube'}
+      transparent
+      animationType="fade"
+      onRequestClose={closeModal}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Need a vial?</Text>
@@ -278,7 +297,12 @@ export function UndoAdModal() {
   const watchAd = useGameStore((s) => s.watchAd);
 
   return (
-    <Modal visible={modal === 'ad_undo'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'ad_undo'}
+      transparent
+      animationType="fade"
+      onRequestClose={closeModal}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Undo pours?</Text>
@@ -334,7 +358,12 @@ export function OutOfMovesModal() {
   const canSkip = consecutiveFailCount >= SKIP_AFTER_FAILS;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={goHome}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>NO MOVES LEFT</Text>

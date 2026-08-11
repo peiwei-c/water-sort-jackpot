@@ -114,7 +114,18 @@ export function SlotMachineModal() {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        if (showPaytable) {
+          setShowPaytable(false);
+          return;
+        }
+        closeModal();
+      }}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <ScrollView

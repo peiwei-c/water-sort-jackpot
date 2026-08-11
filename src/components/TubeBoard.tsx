@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Tube, SEGMENT_H, TUBE_GLASS_PAD } from './Tube';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
@@ -58,6 +58,10 @@ export function TubeBoard({
   const ribbon = useRef(new Animated.Value(0)).current;
   const droplet = useRef(new Animated.Value(0)).current;
   const animToken = useRef(0);
+
+  const onLayoutTube = useCallback((index: number, layout: Layout) => {
+    layouts.current[index] = layout;
+  }, []);
 
   useEffect(() => {
     if (!pourAnim) {
@@ -157,6 +161,7 @@ export function TubeBoard({
           key={`tube-${index}`}
           tube={tube}
           capacity={capacity}
+          index={index}
           selected={selectedTube === index && !pourAnim}
           hinted={
             !!hintHighlight &&
@@ -168,10 +173,8 @@ export function TubeBoard({
           paletteId={paletteId}
           tiltDir={tiltFor(index)}
           disabled={!!pourAnim}
-          onPress={() => onSelect(index)}
-          onLayout={(layout) => {
-            layouts.current[index] = layout;
-          }}
+          onSelect={onSelect}
+          onLayoutTube={onLayoutTube}
         />
       ))}
 

@@ -48,6 +48,22 @@ export const WATER_PALETTE: Record<number, string> = {
   12: '#DEDE7C', // pale gold
 };
 
+/** Spoken labels for water color IDs (a11y). */
+export const WATER_COLOR_LABELS: Record<number, string> = {
+  1: 'orange-red',
+  2: 'yellow',
+  3: 'green',
+  4: 'neon green',
+  5: 'aqua',
+  6: 'sky blue',
+  7: 'royal blue',
+  8: 'violet',
+  9: 'magenta',
+  10: 'pink',
+  11: 'brown',
+  12: 'pale gold',
+};
+
 export const SYMBOL_EMOJI = {
   drop: '💧',
   coin: '🪙',

@@ -33,6 +33,11 @@ export function AgeGateModal({ onResolved }: Props) {
           setReady(true);
           return;
         }
+        if (stored === 'declined') {
+          onResolved(false);
+          setReady(true);
+          return;
+        }
         setVisible(true);
         setReady(true);
       } catch {
@@ -50,12 +55,25 @@ export function AgeGateModal({ onResolved }: Props) {
     onResolved(true);
   };
 
+  const decline = async () => {
+    await AsyncStorage.setItem(STORAGE_KEY, 'declined');
+    setVisible(false);
+    onResolved(false);
+  };
+
   const openPrivacy = () => {
     void Linking.openURL(LEGAL.privacyUrl);
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={() => {
+        /* Keep gate up until accept or decline — Android back is a no-op. */
+      }}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>ACCESS PROTOCOL</Text>
@@ -68,8 +86,25 @@ export function AgeGateModal({ onResolved }: Props) {
           <Pressable onPress={openPrivacy} accessibilityRole="link">
             <Text style={styles.link}>Read Privacy Policy</Text>
           </Pressable>
-          <Pressable style={styles.btn} onPress={() => void accept()}>
-            <Text style={styles.btnText}>I am {LEGAL.minimumAge}+ — Enter lab</Text>
+          <Pressable
+            style={styles.btn}
+            onPress={() => void accept()}
+            accessibilityRole="button"
+            accessibilityLabel={`I am ${LEGAL.minimumAge} or older — enter lab`}
+          >
+            <Text style={styles.btnText}>
+              I am {LEGAL.minimumAge}+ — Enter lab
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.btnGhost}
+            onPress={() => void decline()}
+            accessibilityRole="button"
+            accessibilityLabel={`I am under ${LEGAL.minimumAge} — exit without ads or Centrifuge`}
+          >
+            <Text style={styles.btnGhostText}>
+              Under {LEGAL.minimumAge} — Exit (no ads / Centrifuge)
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -88,7 +123,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: '#0A222A',
+    backgroundColor: LAB.benchDeep,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(126, 227, 214, 0.35)',
@@ -125,7 +160,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnText: {
-    color: '#06141C',
+    color: LAB.benchDeep,
     fontWeight: '900',
+  },
+  btnGhost: {
+    marginTop: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.22)',
+  },
+  btnGhostText: {
+    color: 'rgba(244,247,251,0.85)',
+    fontWeight: '700',
   },
 });
