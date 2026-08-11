@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from '../engines/StoreCatalog';
 import {
   REMOVE_ADS_PRICE_LABEL,
+  getRemoveAdsPriceLabel,
 } from '../services/IapService';
 import { COLORS, LAB } from '../theme/colors';
 
@@ -22,17 +23,36 @@ export function StoreScreen() {
   const ownedItemIds = useGameStore((s) => s.ownedItemIds);
   const equippedPathId = useGameStore((s) => s.equippedPathId);
   const equippedVialId = useGameStore((s) => s.equippedVialId);
+  const equippedPaletteId = useGameStore((s) => s.equippedPaletteId);
   const lastMessage = useGameStore((s) => s.lastMessage);
   const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
   const buyItem = useGameStore((s) => s.buyItem);
   const equipItem = useGameStore((s) => s.equipItem);
   const purchaseRemoveAds = useGameStore((s) => s.purchaseRemoveAds);
+  const restorePurchases = useGameStore((s) => s.restorePurchases);
   const goHome = useGameStore((s) => s.goHome);
-  const [tab, setTab] = useState<StoreKind>('path');
+  const [tab, setTab] = useState<StoreKind>('palette');
+  const [priceLabel, setPriceLabel] = useState(REMOVE_ADS_PRICE_LABEL);
 
   const items = useMemo(() => itemsOfKind(tab), [tab]);
   const owned = useMemo(() => new Set(ownedItemIds), [ownedItemIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getRemoveAdsPriceLabel().then((label) => {
+      if (!cancelled) setPriceLabel(label);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isEquipped = (item: StoreItem) => {
+    if (item.kind === 'path') return equippedPathId === item.id;
+    if (item.kind === 'palette') return equippedPaletteId === item.id;
+    return equippedVialId === item.id;
+  };
 
   return (
     <View style={styles.root}>
@@ -40,8 +60,8 @@ export function StoreScreen() {
         <Text style={styles.eyebrow}>HYDROLOGY LAB</Text>
         <Text style={styles.title}>Supply Store</Text>
         <Text style={styles.sub}>
-          Vials are cosmetic only. Paths are exclusive challenges with fewer
-          moves — never an advantage. The free Standard Lab path always works.
+          Buy color themes with coins for new liquid looks. Vials are cosmetic.
+          Paths are exclusive challenges with fewer moves — never an advantage.
         </Text>
         <View style={styles.balance}>
           <Text style={styles.balanceText}>🪙 {coins}</Text>
@@ -52,7 +72,7 @@ export function StoreScreen() {
         <Text style={styles.removeAdsTitle}>Remove Ads</Text>
         <Text style={styles.removeAdsSub}>
           Hide banner & forced interstitials. Rewarded ads for hints/tubes stay
-          available. {REMOVE_ADS_PRICE_LABEL}
+          available. {priceLabel}
         </Text>
         <Pressable
           style={[
@@ -67,14 +87,36 @@ export function StoreScreen() {
               ? 'Owned'
               : isAdLoading
                 ? 'Processing…'
-                : `Buy · ${REMOVE_ADS_PRICE_LABEL}`}
+                : `Buy · ${priceLabel}`}
           </Text>
         </Pressable>
+        {!isNoAdsPurchased ? (
+          <Pressable
+            style={styles.restoreBtn}
+            disabled={isAdLoading}
+            onPress={() => void restorePurchases()}
+          >
+            <Text style={styles.restoreBtnText}>Restore Purchases</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.tabs}>
-        <TabBtn label="Paths" active={tab === 'path'} onPress={() => setTab('path')} />
-        <TabBtn label="Vials" active={tab === 'vial'} onPress={() => setTab('vial')} />
+        <TabBtn
+          label="Colors"
+          active={tab === 'palette'}
+          onPress={() => setTab('palette')}
+        />
+        <TabBtn
+          label="Paths"
+          active={tab === 'path'}
+          onPress={() => setTab('path')}
+        />
+        <TabBtn
+          label="Vials"
+          active={tab === 'vial'}
+          onPress={() => setTab('vial')}
+        />
       </View>
 
       {lastMessage ? <Text style={styles.toast}>{lastMessage}</Text> : null}
@@ -88,11 +130,7 @@ export function StoreScreen() {
             key={item.id}
             item={item}
             owned={owned.has(item.id)}
-            equipped={
-              item.kind === 'path'
-                ? equippedPathId === item.id
-                : equippedVialId === item.id
-            }
+            equipped={isEquipped(item)}
             canAfford={coins >= item.price}
             onBuy={() => buyItem(item.id)}
             onEquip={() => equipItem(item.id)}
@@ -126,6 +164,19 @@ function TabBtn({
   );
 }
 
+function PalettePreview({ colors }: { colors: string[] }) {
+  return (
+    <View style={styles.palettePreview}>
+      {colors.map((c, i) => (
+        <View
+          key={`${c}-${i}`}
+          style={[styles.paletteDot, { backgroundColor: c }]}
+        />
+      ))}
+    </View>
+  );
+}
+
 function StoreRow({
   item,
   owned,
@@ -144,7 +195,14 @@ function StoreRow({
   const swatch =
     item.kind === 'path'
       ? item.pathTheme?.glassBright
-      : item.vialTheme?.selectGlow;
+      : item.kind === 'palette'
+        ? item.waterPalette?.[1]
+        : item.vialTheme?.selectGlow;
+
+  const previewColors =
+    item.kind === 'palette' && item.waterPalette
+      ? [1, 2, 3, 4, 5, 6].map((id) => item.waterPalette![id])
+      : null;
 
   return (
     <View style={styles.card}>
@@ -152,6 +210,7 @@ function StoreRow({
       <View style={styles.cardBody}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemBlurb}>{item.blurb}</Text>
+        {previewColors ? <PalettePreview colors={previewColors} /> : null}
         <Text style={styles.itemPrice}>
           {item.price === 0 ? 'Free' : `🪙 ${item.price}`}
           {item.kind === 'path' && item.moveScale != null && item.moveScale < 1
@@ -187,61 +246,59 @@ const styles = StyleSheet.create({
     backgroundColor: LAB.benchDeep,
     paddingHorizontal: 16,
     paddingTop: 8,
+    paddingBottom: 16,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   eyebrow: {
     color: LAB.label,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2.2,
+    letterSpacing: 2,
   },
   title: {
-    marginTop: 4,
-    fontSize: 30,
-    fontWeight: '900',
     color: COLORS.text,
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontWeight: '900',
+    marginTop: 2,
   },
   sub: {
-    marginTop: 6,
     color: COLORS.textMuted,
-    textAlign: 'center',
-    fontSize: 13,
-    maxWidth: 280,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
   },
   balance: {
-    marginTop: 12,
+    marginTop: 10,
+    alignSelf: 'flex-start',
     backgroundColor: LAB.glassDim,
     borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.3)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderColor: 'rgba(126, 227, 214, 0.28)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
   },
   balanceText: {
-    color: LAB.reagent,
+    color: COLORS.text,
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 14,
   },
   removeAdsCard: {
-    marginBottom: 14,
-    padding: 14,
+    backgroundColor: LAB.benchMid,
+    borderWidth: 1.5,
+    borderColor: 'rgba(126, 227, 214, 0.28)',
     borderRadius: 16,
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(240, 180, 41, 0.35)',
+    padding: 14,
+    marginBottom: 12,
+    gap: 8,
   },
   removeAdsTitle: {
-    color: LAB.reagent,
+    color: COLORS.text,
     fontWeight: '800',
     fontSize: 16,
   },
   removeAdsSub: {
-    marginTop: 4,
-    marginBottom: 10,
     color: COLORS.textMuted,
     fontSize: 13,
     lineHeight: 18,
@@ -258,12 +315,21 @@ const styles = StyleSheet.create({
   removeAdsBtnText: {
     color: '#1A1200',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 14,
+  },
+  restoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  restoreBtnText: {
+    color: LAB.glassBright,
+    fontWeight: '700',
+    fontSize: 13,
   },
   tabs: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   tab: {
     flex: 1,
@@ -272,49 +338,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: LAB.glassDim,
     borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.2)',
+    borderColor: 'rgba(126, 227, 214, 0.18)',
   },
   tabActive: {
     backgroundColor: LAB.reagent,
     borderColor: 'rgba(255, 230, 150, 0.4)',
   },
   tabText: {
-    color: COLORS.text,
+    color: COLORS.textMuted,
     fontWeight: '700',
+    fontSize: 13,
   },
   tabTextActive: {
     color: '#1A1200',
+    fontWeight: '800',
   },
   toast: {
-    textAlign: 'center',
     color: LAB.reagent,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontWeight: '700',
     fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   list: {
-    paddingBottom: 16,
     gap: 10,
+    paddingBottom: 16,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     backgroundColor: LAB.benchMid,
+    borderWidth: 1.5,
+    borderColor: 'rgba(126, 227, 214, 0.22)',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
     padding: 12,
   },
   swatch: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   cardBody: {
     flex: 1,
+    gap: 4,
   },
   itemName: {
     color: COLORS.text,
@@ -324,20 +393,31 @@ const styles = StyleSheet.create({
   itemBlurb: {
     color: COLORS.textMuted,
     fontSize: 12,
-    marginTop: 2,
+    lineHeight: 16,
   },
   itemPrice: {
     color: LAB.label,
     fontWeight: '700',
     fontSize: 12,
-    marginTop: 4,
+  },
+  palettePreview: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 2,
+  },
+  paletteDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   cardActions: {
     minWidth: 84,
     alignItems: 'flex-end',
   },
   buyBtn: {
-    backgroundColor: LAB.glassBright,
+    backgroundColor: LAB.reagent,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -346,45 +426,46 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   buyText: {
-    color: '#062018',
+    color: '#1A1200',
     fontWeight: '800',
+    fontSize: 13,
   },
   equipBtn: {
-    backgroundColor: LAB.reagent,
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
   },
   equipText: {
-    color: '#1A1200',
+    color: COLORS.text,
     fontWeight: '800',
+    fontSize: 13,
   },
   equippedPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(126, 227, 214, 0.18)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.4)',
-    backgroundColor: LAB.glassDim,
   },
   equippedText: {
     color: LAB.glassBright,
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 12,
   },
   backBtn: {
-    marginBottom: 20,
     marginTop: 8,
-    alignSelf: 'center',
     backgroundColor: LAB.glassDim,
     borderWidth: 1,
     borderColor: 'rgba(126, 227, 214, 0.28)',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
     borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   backText: {
     color: COLORS.text,
     fontWeight: '800',
+    fontSize: 15,
   },
 });

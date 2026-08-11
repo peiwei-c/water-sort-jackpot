@@ -16,12 +16,14 @@ import { HomeScreen } from './src/components/HomeScreen';
 import { LoadingScreen } from './src/components/LoadingScreen';
 import { MIN_BOOT_MS, shouldShowBoot } from './src/components/bootGate';
 import { StoreScreen } from './src/components/StoreScreen';
+import { MissionsScreen } from './src/components/MissionsScreen';
 import { SlotMachineModal } from './src/components/SlotMachineModal';
 import {
   LevelCompleteModal,
   ExtraTubeAdModal,
   UndoAdModal,
   OutOfMovesModal,
+  OutOfLivesModal,
   CampaignCompleteModal,
 } from './src/components/Modals';
 import { AdBanner } from './src/components/AdBanner';
@@ -42,12 +44,15 @@ function AppShell() {
   const selectedTube = useGameStore((s) => s.selectedTube);
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
   const equippedVialId = useGameStore((s) => s.equippedVialId);
+  const equippedPaletteId = useGameStore((s) => s.equippedPaletteId);
   const lastMessage = useGameStore((s) => s.lastMessage);
   const modal = useGameStore((s) => s.modal);
   const selectTube = useGameStore((s) => s.selectTube);
   const dismissMessage = useGameStore((s) => s.dismissMessage);
   const hydrate = useGameStore((s) => s.hydrate);
   const flushSession = useGameStore((s) => s.flushSession);
+  const refreshLives = useGameStore((s) => s.refreshLives);
+  const refreshMissions = useGameStore((s) => s.refreshMissions);
   const markAdsReady = useGameStore((s) => s.markAdsReady);
   const [splashElapsed, setSplashElapsed] = useState(false);
   const [ageOk, setAgeOk] = useState(false);
@@ -63,6 +68,7 @@ function AppShell() {
   const showUndoAd = modal === 'ad_undo';
   const showOutOfMoves =
     modal === 'out_of_moves' || modal === 'ad_extra_moves';
+  const showOutOfLives = modal === 'out_of_lives';
 
   const onAgeResolved = useCallback((accepted: boolean) => {
     setAgeOk(accepted);
@@ -107,12 +113,14 @@ function AppShell() {
         flushSession();
         void getAudioManager().handleAppBackground();
       } else if (next === 'active') {
+        refreshLives();
+        refreshMissions();
         void getAudioManager().handleAppForeground();
       }
     };
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
-  }, [flushSession]);
+  }, [flushSession, refreshLives, refreshMissions]);
 
   useEffect(() => {
     if (!lastMessage) return;
@@ -136,6 +144,8 @@ function AppShell() {
           <HomeScreen />
         ) : screen === 'store' ? (
           <StoreScreen />
+        ) : screen === 'missions' ? (
+          <MissionsScreen />
         ) : (
           <View style={styles.playRoot}>
             <View pointerEvents="none" style={styles.labGrid}>
@@ -167,6 +177,7 @@ function AppShell() {
                   capacity={capacity}
                   selectedTube={selectedTube}
                   vialSkinId={equippedVialId}
+                  paletteId={equippedPaletteId}
                   rareSkin={rareSkinUnlocked}
                   onSelect={selectTube}
                 />
@@ -187,6 +198,7 @@ function AppShell() {
         {showExtraTube ? <ExtraTubeAdModal /> : null}
         {showUndoAd ? <UndoAdModal /> : null}
         {showOutOfMoves ? <OutOfMovesModal /> : null}
+        {showOutOfLives ? <OutOfLivesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
         {ageOk ? <AdBanner /> : null}
         <AgeGateModal onResolved={onAgeResolved} />

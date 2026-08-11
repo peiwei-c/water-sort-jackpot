@@ -9,6 +9,29 @@ import {
   type HintMove,
 } from '../engines/WaterSortEngine';
 import {
+  MAX_LIVES,
+  createFullLives,
+  syncLives,
+  spendLife,
+  grantLife,
+  msUntilNextLife,
+  formatRegenCountdown,
+  type LivesState,
+} from '../engines/LivesEngine';
+import {
+  createMissionBoard,
+  refreshMissionBoard,
+  recordMissionEvent,
+  claimMission,
+  countClaimableMissions,
+  listMissionViews,
+  formatRewardLabel,
+  COINS_PER_OVERFLOW_LIFE,
+  type MissionBoardState,
+  type MissionReward,
+  type MissionView,
+} from '../engines/MissionEngine';
+import {
   JackpotEngine,
   SPIN_COST,
   LEVEL_COIN_REWARD,
@@ -35,6 +58,7 @@ import {
 } from '../services/AdService';
 import {
   purchaseRemoveAds as iapPurchaseRemoveAds,
+  restorePurchases as iapRestorePurchases,
 } from '../services/IapService';
 import {
   loadPersistedGame,
@@ -46,6 +70,7 @@ import {
   PATH_DEFAULT,
   VIAL_DEFAULT,
   VIAL_CROWN,
+  PALETTE_DEFAULT,
   DEFAULT_OWNED,
   getStoreItem,
   ensureOwnedDefaults,
@@ -76,6 +101,7 @@ export type ModalKind =
   | 'level_complete'
   | 'campaign_complete'
   | 'out_of_moves'
+  | 'out_of_lives'
   | 'slot_machine'
   | 'ad_extra_tube'
   | 'ad_undo'
@@ -85,7 +111,7 @@ export type ModalKind =
   | 'spin_result';
 
 type GameStore = {
-  screen: 'home' | 'play' | 'store';
+  screen: 'home' | 'play' | 'store' | 'missions';
   level: number;
   /** Highest level the player may open (1…MAX_LEVEL). */
   unlockedLevel: number;
@@ -100,6 +126,7 @@ type GameStore = {
   ownedItemIds: string[];
   equippedPathId: string;
   equippedVialId: string;
+  equippedPaletteId: string;
   tubes: Tube[];
   capacity: number;
   moveLimit: number;
@@ -131,6 +158,12 @@ type GameStore = {
   consecutiveFailCount: number;
   /** Highlighted pour from a rewarded hint. */
   hintHighlight: HintMove | null;
+  /** Candy Crush–style lives (capped at MAX_LIVES). */
+  lives: number;
+  /** Epoch ms when the next life regenerates; null when full. */
+  nextLifeAt: number | null;
+  /** Daily / weekly mission board. */
+  missionBoard: MissionBoardState;
 
   _puzzle: WaterSortEngine;
   _jackpot: JackpotEngine;
@@ -138,6 +171,10 @@ type GameStore = {
   hydrate: () => Promise<void>;
   /** Persist mid-puzzle without leaving the play screen. */
   flushSession: () => void;
+  /** Apply matured regenerating lives (call on tick / foreground). */
+  refreshLives: () => void;
+  /** Roll daily/weekly mission windows if the calendar advanced. */
+  refreshMissions: () => void;
   markLabManualSeen: () => void;
   selectTube: (index: number) => void;
   clearSelection: () => void;
@@ -150,9 +187,12 @@ type GameStore = {
   startLevel: (level: number) => void;
   goHome: () => void;
   openStore: () => void;
+  openMissions: () => void;
+  claimMissionReward: (missionId: string) => boolean;
   buyItem: (id: string) => boolean;
   equipItem: (id: string) => boolean;
   purchaseRemoveAds: () => Promise<boolean>;
+  restorePurchases: () => Promise<boolean>;
   nextLevel: (opts?: {
     openJackpot?: boolean;
     goHome?: boolean;
@@ -248,11 +288,69 @@ function buildPersistPayload(state: GameStore): PersistedGame {
     ownedItemIds: state.ownedItemIds,
     equippedPathId: state.equippedPathId,
     equippedVialId: state.equippedVialId,
+    equippedPaletteId: state.equippedPaletteId,
     isNoAdsPurchased: state.isNoAdsPurchased,
     levelsCompletedSinceAd: state.levelsCompletedSinceAd,
     pendingPayout: state.pendingPayout,
     hasSeenLabManual: state.hasSeenLabManual,
+    lives: state.lives,
+    nextLifeAt: state.nextLifeAt,
+    missionBoard: state.missionBoard,
   };
+}
+
+function livesSnapshot(state: LivesState): Pick<GameStore, 'lives' | 'nextLifeAt'> {
+  return { lives: state.lives, nextLifeAt: state.nextLifeAt };
+}
+
+function applyMissionReward(
+  state: GameStore,
+  reward: MissionReward,
+): Partial<GameStore> & { lastMessage: string } {
+  let coins = state.coins + (reward.coins ?? 0);
+  let undoItems = state.undoItems + (reward.undoItems ?? 0);
+  let extraTubeItems = state.extraTubeItems + (reward.extraTubeItems ?? 0);
+  let freeSpins = state.freeSpins + (reward.freeSpins ?? 0);
+  let livesState: LivesState = {
+    lives: state.lives,
+    nextLifeAt: state.nextLifeAt,
+  };
+  const wantLives = reward.lives ?? 0;
+  let overflowCoins = 0;
+  if (wantLives > 0) {
+    const before = livesState.lives;
+    livesState = grantLife(livesState, wantLives);
+    const gained = Math.max(0, livesState.lives - before);
+    overflowCoins = Math.max(0, wantLives - gained) * COINS_PER_OVERFLOW_LIFE;
+    coins += overflowCoins;
+  }
+  const base = formatRewardLabel(reward);
+  return {
+    coins,
+    undoItems,
+    extraTubeItems,
+    freeSpins,
+    ...livesSnapshot(livesState),
+    lastMessage:
+      overflowCoins > 0
+        ? `Mission complete! ${base} (${overflowCoins} coins — lives were full)`
+        : `Mission complete! ${base}`,
+  };
+}
+
+function trackMission(
+  get: () => GameStore,
+  set: (
+    partial:
+      | Partial<GameStore>
+      | ((state: GameStore) => Partial<GameStore>),
+  ) => void,
+  metric: Parameters<typeof recordMissionEvent>[1],
+  amount: number = 1,
+): void {
+  const next = recordMissionEvent(get().missionBoard, metric, amount);
+  if (next === get().missionBoard) return;
+  set({ missionBoard: next });
 }
 
 function grantCosmeticFromPayout(
@@ -310,6 +408,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   const jackpot = new JackpotEngine();
   const budget = moveBudget(1, PATH_DEFAULT);
   const startDiff = getLevelDifficulty(1);
+  const fullLives = createFullLives();
 
   return {
     screen: 'home',
@@ -324,6 +423,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     ownedItemIds: [...DEFAULT_OWNED],
     equippedPathId: PATH_DEFAULT,
     equippedVialId: VIAL_DEFAULT,
+    equippedPaletteId: PALETTE_DEFAULT,
     ...syncFromPuzzle(puzzle),
     ...budget,
     tierLabel: startDiff.tierLabel,
@@ -346,6 +446,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     hasSeenLabManual: false,
     consecutiveFailCount: 0,
     hintHighlight: null,
+    lives: fullLives.lives,
+    nextLifeAt: fullLives.nextLifeAt,
+    missionBoard: createMissionBoard(),
     _puzzle: puzzle,
     _jackpot: jackpot,
 
@@ -356,6 +459,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({ hydrated: true });
         return;
       }
+      const synced = syncLives({
+        lives: data.lives,
+        nextLifeAt: data.nextLifeAt,
+      });
+      const missionBoard = refreshMissionBoard(data.missionBoard);
       const updates: Partial<GameStore> = {
         hydrated: true,
         unlockedLevel: data.unlockedLevel,
@@ -368,6 +476,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         ownedItemIds: data.ownedItemIds,
         equippedPathId: data.equippedPathId,
         equippedVialId: data.equippedVialId,
+        equippedPaletteId: data.equippedPaletteId,
         betPerLine: clampBet(data.betPerLine),
         activeLines: clampLines(data.activeLines),
         session: data.session,
@@ -375,12 +484,45 @@ export const useGameStore = create<GameStore>((set, get) => {
         levelsCompletedSinceAd: data.levelsCompletedSinceAd,
         pendingPayout: data.pendingPayout,
         hasSeenLabManual: data.hasSeenLabManual,
+        ...livesSnapshot(synced),
+        missionBoard,
         screen: 'home',
       };
       set(updates as GameStore);
+      if (
+        synced.lives !== data.lives ||
+        synced.nextLifeAt !== data.nextLifeAt ||
+        missionBoard !== data.missionBoard
+      ) {
+        persistSoon();
+      }
     },
 
     markAdsReady: () => set({ adsReady: true }),
+
+    refreshLives: () => {
+      const before = {
+        lives: get().lives,
+        nextLifeAt: get().nextLifeAt,
+      };
+      const synced = syncLives(before);
+      if (
+        synced.lives === before.lives &&
+        synced.nextLifeAt === before.nextLifeAt
+      ) {
+        return;
+      }
+      set(livesSnapshot(synced));
+      persistSoon();
+    },
+
+    refreshMissions: () => {
+      const before = get().missionBoard;
+      const next = refreshMissionBoard(before);
+      if (next === before) return;
+      set({ missionBoard: next });
+      persistSoon();
+    },
 
     markLabManualSeen: () => {
       if (get().hasSeenLabManual) return;
@@ -522,6 +664,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         pourAnim.pendingModal === 'level_complete' ||
         pourAnim.pendingModal === 'campaign_complete'
       ) {
+        const firstClear = get().level > get().highestCompleted;
         Object.assign(
           updates,
           progressAfterClear(
@@ -531,11 +674,17 @@ export const useGameStore = create<GameStore>((set, get) => {
           ),
           { consecutiveFailCount: 0, hintHighlight: null },
         );
+        set(updates as GameStore);
+        trackMission(get, set, 'station_clear', 1);
+        if (firstClear) {
+          trackMission(get, set, 'first_clear', 1);
+        }
       } else if (pourAnim.pendingModal === 'out_of_moves') {
         updates.consecutiveFailCount = get().consecutiveFailCount + 1;
+        set(updates as GameStore);
+      } else {
+        set(updates as GameStore);
       }
-
-      set(updates as GameStore);
 
       if (
         pourAnim.pendingModal === 'level_complete' ||
@@ -676,6 +825,18 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
+      const spent = spendLife({
+        lives: get().lives,
+        nextLifeAt: get().nextLifeAt,
+      });
+      if (!spent) {
+        set({
+          modal: 'out_of_lives',
+          lastMessage: 'Out of lives',
+        });
+        return;
+      }
+
       const next = createPuzzle(safe);
       set({
         screen: 'play',
@@ -691,6 +852,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         consecutiveFailCount: 0,
         lastMessage: null,
         session: null,
+        ...livesSnapshot(spent),
       });
       persistSoon();
     },
@@ -726,6 +888,44 @@ export const useGameStore = create<GameStore>((set, get) => {
       persistSoon();
     },
 
+    openMissions: () => {
+      if (get().pourAnim) return;
+      const missionBoard = refreshMissionBoard(get().missionBoard);
+      if (get().screen === 'play') {
+        const session = captureSession(get());
+        set({
+          screen: 'missions',
+          session,
+          selectedTube: null,
+          modal: 'none',
+          missionBoard,
+        });
+      } else {
+        set({
+          screen: 'missions',
+          modal: 'none',
+          pendingPayout: null,
+          missionBoard,
+        });
+      }
+      persistSoon();
+    },
+
+    claimMissionReward: (missionId) => {
+      const result = claimMission(get().missionBoard, missionId);
+      if (!result) {
+        set({ lastMessage: 'Mission not ready to claim' });
+        return false;
+      }
+      const rewardPatch = applyMissionReward(get(), result.reward);
+      set({
+        missionBoard: result.board,
+        ...rewardPatch,
+      } as GameStore);
+      persistSoon();
+      return true;
+    },
+
     buyItem: (id) => {
       const item = getStoreItem(id);
       if (!item) {
@@ -755,6 +955,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       };
       if (item.kind === 'path') patch.equippedPathId = id;
       if (item.kind === 'vial') patch.equippedVialId = id;
+      if (item.kind === 'palette') patch.equippedPaletteId = id;
       set(patch as GameStore);
       persistSoon();
       return true;
@@ -778,6 +979,11 @@ export const useGameStore = create<GameStore>((set, get) => {
               ? `Equipped ${item.name} · harder move budget on next station`
               : `Equipped ${item.name}`,
         });
+      } else if (item.kind === 'palette') {
+        set({
+          equippedPaletteId: id,
+          lastMessage: `Equipped ${item.name} color theme`,
+        });
       } else {
         set({ equippedVialId: id, lastMessage: `Equipped ${item.name}` });
       }
@@ -786,6 +992,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restartLevel: () => {
+      const spent = spendLife({
+        lives: get().lives,
+        nextLifeAt: get().nextLifeAt,
+      });
+      if (!spent) {
+        set({
+          modal: 'out_of_lives',
+          lastMessage: 'Out of lives — watch an ad or wait',
+        });
+        return;
+      }
+
       const level = get().level;
       const next = createPuzzle(level);
       const diff = getLevelDifficulty(level);
@@ -800,6 +1018,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintHighlight: null,
         lastMessage: 'Level restarted',
         session: null,
+        ...livesSnapshot(spent),
       });
       persistSoon();
     },
@@ -849,6 +1068,26 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
+      const spent = spendLife({
+        lives: get().lives,
+        nextLifeAt: get().nextLifeAt,
+      });
+      if (!spent) {
+        set({
+          screen: 'home',
+          modal: 'out_of_lives',
+          selectedTube: null,
+          pourAnim: null,
+          pendingPayout: null,
+          session: null,
+          consecutiveFailCount: 0,
+          hintHighlight: null,
+          lastMessage: 'Station cleared — need a life for the next one',
+        });
+        persistSoon();
+        return;
+      }
+
       const next = createPuzzle(level);
       const diff = getLevelDifficulty(level);
       set({
@@ -867,6 +1106,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           ? `Level ${level} ready · spin the Centrifuge`
           : `Level ${level} · ${diff.tierLabel}`,
         session: null,
+        ...livesSnapshot(spent),
       });
       persistSoon();
     },
@@ -880,13 +1120,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       try {
         const result = await iapPurchaseRemoveAds();
         if (!result.success) {
-          set({ isAdLoading: false, lastMessage: result.message });
+          set({
+            isAdLoading: false,
+            lastMessage: result.cancelled ? null : result.message,
+          });
           return false;
         }
         set({
           isNoAdsPurchased: true,
           isAdLoading: false,
-          lastMessage: 'Ads removed — rewarded ads still available',
+          lastMessage: result.message,
         });
         await getAdService().hideBanner();
         persistSoon();
@@ -895,6 +1138,31 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({
           isAdLoading: false,
           lastMessage: e instanceof Error ? e.message : 'Purchase failed',
+        });
+        return false;
+      }
+    },
+
+    restorePurchases: async () => {
+      set({ isAdLoading: true });
+      try {
+        const result = await iapRestorePurchases();
+        if (result.isNoAdsPurchased) {
+          set({
+            isNoAdsPurchased: true,
+            isAdLoading: false,
+            lastMessage: result.message,
+          });
+          await getAdService().hideBanner();
+          persistSoon();
+          return true;
+        }
+        set({ isAdLoading: false, lastMessage: result.message });
+        return false;
+      } catch (e) {
+        set({
+          isAdLoading: false,
+          lastMessage: e instanceof Error ? e.message : 'Restore failed',
         });
         return false;
       }
@@ -959,6 +1227,7 @@ export const useGameStore = create<GameStore>((set, get) => {
                 ? `No win · ${remaining} free spin${remaining === 1 ? '' : 's'} left`
                 : `${payout.label} · auto collected · ${remaining} free left`,
           });
+          trackMission(get, set, 'centrifuge_spin', 1);
           persistSoon();
           return;
         }
@@ -971,6 +1240,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
           lastMessage: payout.label,
         });
+        trackMission(get, set, 'centrifuge_spin', 1);
         persistSoon();
         return;
       }
@@ -1007,6 +1277,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
         lastMessage: result.payout.label,
       });
+      trackMission(get, set, 'centrifuge_spin', 1);
       persistSoon();
       } finally {
         set({ spinInFlight: false });
@@ -1134,9 +1405,23 @@ export const useGameStore = create<GameStore>((set, get) => {
         } else if (placement === 'rewarded_2x_payout') {
           set({ isAdLoading: false });
           settlePendingPayout(get, set, 2);
+        } else if (placement === 'rewarded_life') {
+          const granted = grantLife({
+            lives: get().lives,
+            nextLifeAt: get().nextLifeAt,
+          });
+          set({
+            isAdLoading: false,
+            ...livesSnapshot(granted),
+            modal: 'none',
+            lastMessage: `+1 life · ${granted.lives}/${MAX_LIVES}`,
+          });
+          persistSoon();
         } else {
           set({ isAdLoading: false });
         }
+        trackMission(get, set, 'rewarded_ad', 1);
+        persistSoon();
         return true;
       } catch (e) {
         set({
@@ -1176,5 +1461,20 @@ flushPersistNow = () => {
   writePersistPayload();
 };
 
-export type { Tube, SpinResult, SlotSymbol, Payout, BetOption };
-export { SPIN_COST, LEVEL_COIN_REWARD, REPLAY_COIN_REWARD, coinRewardForClear, MAX_LEVEL, BET_OPTIONS, spinCost, isFreeSpinBet };
+export type { Tube, SpinResult, SlotSymbol, Payout, BetOption, MissionView };
+export {
+  SPIN_COST,
+  LEVEL_COIN_REWARD,
+  REPLAY_COIN_REWARD,
+  coinRewardForClear,
+  MAX_LEVEL,
+  MAX_LIVES,
+  BET_OPTIONS,
+  spinCost,
+  isFreeSpinBet,
+  msUntilNextLife,
+  formatRegenCountdown,
+  countClaimableMissions,
+  listMissionViews,
+  formatRewardLabel,
+};

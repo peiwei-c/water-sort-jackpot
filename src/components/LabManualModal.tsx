@@ -55,6 +55,20 @@ export function LabManualModal({ visible, onClose }: Props) {
               to retry or watch an ad for more.
             </Text>
 
+            <Text style={styles.helpHeading}>Lives</Text>
+            <Text style={styles.helpBody}>
+              You start with 5 lives. Starting or retrying a station costs 1 life.
+              Continuing a saved mid-puzzle run does not. Lives refill one every
+              30 minutes, or watch an ad for +1 life when you’re out.
+            </Text>
+
+            <Text style={styles.helpHeading}>Missions</Text>
+            <Text style={styles.helpBody}>
+              Open Missions from the path for daily and weekly tasks. Clear
+              stations, spin the Centrifuge, or watch a rewarded ad to fill the
+              bars — then claim coins, lives, undos, vials, and free spins.
+            </Text>
+
             <Text style={styles.helpHeading}>Saving</Text>
             <Text style={styles.helpBody}>
               Mid-puzzle progress is saved when you leave for Path or when the
@@ -71,15 +85,17 @@ export function LabManualModal({ visible, onClose }: Props) {
               +🧪 — add an empty vial from your inventory. If you’re out, watch
               an ad or win tubes from the Centrifuge.{'\n'}
               Centrifuge — spend coins on the lab spinner.{'\n'}
-              Reset — restart the current station (clears saved progress).
+              Reset — restart the current station (costs 1 life; clears saved
+              progress).
             </Text>
 
             <Text style={styles.helpHeading}>Coins</Text>
             <Text style={styles.helpBody}>
               Clear a station to earn coins. Coins power the Centrifuge — bet
-              them on paylines to win more coins and items. The Store sells vial
-              cosmetics (looks only) and exclusive harder paths (fewer moves).
-              You can always play the free Standard Lab path.
+              them on paylines to win more coins and items. The Store sells
+              liquid color themes, vial cosmetics, and exclusive harder paths
+              (fewer moves). You can always play the free Standard Lab path and
+              Classic Reagents theme.
             </Text>
 
             <Pressable style={styles.helpClose} onPress={onClose} hitSlop={8}>

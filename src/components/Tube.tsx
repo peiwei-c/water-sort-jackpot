@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
-import { WATER_PALETTE } from '../theme/colors';
-import { getVialTheme, VIAL_DEFAULT } from '../engines/StoreCatalog';
+import {
+  getVialTheme,
+  VIAL_DEFAULT,
+  PALETTE_DEFAULT,
+  waterColor,
+} from '../engines/StoreCatalog';
 
 export const SEGMENT_H = 30;
 export const TUBE_W = 54;
@@ -14,6 +18,7 @@ type Props = {
   selected: boolean;
   hinted?: boolean;
   vialSkinId?: string;
+  paletteId?: string;
   rareSkin?: boolean;
   /** Tilt direction while pouring: -1 left, 1 right, 0 none */
   tiltDir?: -1 | 0 | 1;
@@ -43,6 +48,7 @@ export function Tube({
   selected,
   hinted,
   vialSkinId = VIAL_DEFAULT,
+  paletteId = PALETTE_DEFAULT,
   rareSkin,
   tiltDir = 0,
   hideTopSegments = 0,
@@ -164,7 +170,7 @@ export function Tube({
             ))}
             {[...visibleTube].reverse().map((colorId, i) => {
               const isTop = i === 0;
-              const base = WATER_PALETTE[colorId] ?? '#888';
+              const base = waterColor(paletteId, colorId);
               return (
                 <View
                   key={`c-${visibleTube.length - 1 - i}-${colorId}`}

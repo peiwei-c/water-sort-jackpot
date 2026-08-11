@@ -219,10 +219,10 @@ describe('WaterSortEngine', () => {
       expect(d1.moveLimit).toBeGreaterThan(15);
     });
 
-    it('gets harder across the 300-level campaign', () => {
+    it('gets harder across the 3650-level campaign', () => {
       const early = getLevelDifficulty(1);
-      const mid = getLevelDifficulty(100);
-      const late = getLevelDifficulty(300);
+      const mid = getLevelDifficulty(1500);
+      const late = getLevelDifficulty(3650);
 
       expect(mid.colorCount).toBeGreaterThan(early.colorCount);
       expect(late.colorCount).toBeGreaterThan(mid.colorCount);

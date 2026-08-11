@@ -27,19 +27,22 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": []
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "com.google.android.gms.permission.AD_ID"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "eas": {
-        "projectId": "REPLACE_AFTER_EAS_INIT"
-      },
       "legal": {
         "privacyUrl": "https://peiwei-c.github.io/water-sort-jackpot/privacy.html",
         "termsUrl": "https://peiwei-c.github.io/water-sort-jackpot/terms.html",
         "supportEmail": "support@aquasort.lab"
+      },
+      "eas": {
+        "projectId": "7a3cbff1-d05e-47f3-ba38-01dab8cd8d82"
       }
     },
     "plugins": [
@@ -82,7 +85,9 @@
           "delayAppMeasurementInit": true,
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
-      ]
-    ]
+      ],
+      "expo-iap"
+    ],
+    "owner": "peiwei_c"
   }
 }

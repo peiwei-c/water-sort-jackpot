@@ -13,6 +13,7 @@ export type AdPlacement =
   | 'rewarded_extra_moves'
   | 'rewarded_free_spins'
   | 'rewarded_2x_payout'
+  | 'rewarded_life'
   | 'banner_home';
 
 export type AdType = 'banner' | 'interstitial' | 'rewarded';

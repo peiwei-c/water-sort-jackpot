@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Tube, SEGMENT_H, TUBE_GLASS_PAD } from './Tube';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
-import { WATER_PALETTE } from '../theme/colors';
+import { waterColor, PALETTE_DEFAULT } from '../engines/StoreCatalog';
 import { useGameStore, POUR_ANIM_MS } from '../store/gameStore';
 
 type Layout = { x: number; y: number; width: number; height: number };
@@ -12,6 +12,7 @@ type Props = {
   capacity: number;
   selectedTube: number | null;
   vialSkinId?: string;
+  paletteId?: string;
   rareSkin?: boolean;
   onSelect: (index: number) => void;
 };
@@ -32,6 +33,7 @@ export function TubeBoard({
   capacity,
   selectedTube,
   vialSkinId,
+  paletteId = PALETTE_DEFAULT,
   rareSkin,
   onSelect,
 }: Props) {
@@ -91,7 +93,7 @@ export function TubeBoard({
         midY: (a.y + b.y) / 2,
         length,
         angle,
-        color: WATER_PALETTE[pourAnim.color] ?? '#4ECADC',
+        color: waterColor(paletteId, pourAnim.color),
         dx,
         dy,
         startX: a.x,
@@ -163,6 +165,7 @@ export function TubeBoard({
           }
           rareSkin={rareSkin}
           vialSkinId={vialSkinId}
+          paletteId={paletteId}
           tiltDir={tiltFor(index)}
           disabled={!!pourAnim}
           onPress={() => onSelect(index)}

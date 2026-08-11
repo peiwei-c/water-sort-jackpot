@@ -1,9 +1,11 @@
 /**
- * Lab store catalog — path themes and vial cosmetics.
+ * Lab store catalog — path themes, vial cosmetics, and liquid color palettes.
  * Pure data; no UI / ads.
  */
 
-export type StoreKind = 'path' | 'vial';
+import { WATER_PALETTE } from '../theme/colors';
+
+export type StoreKind = 'path' | 'vial' | 'palette';
 
 export type PathThemeTokens = {
   glassBright: string;
@@ -25,6 +27,9 @@ export type VialThemeTokens = {
   base: string;
 };
 
+/** Liquid color IDs 1…12 for the sorting bench. */
+export type WaterPaletteTokens = Record<number, string>;
+
 export type StoreItem = {
   id: string;
   kind: StoreKind;
@@ -39,11 +44,15 @@ export type StoreItem = {
   moveScale?: number;
   pathTheme?: PathThemeTokens;
   vialTheme?: VialThemeTokens;
+  waterPalette?: WaterPaletteTokens;
 };
 
 export const PATH_DEFAULT = 'path_default';
 export const VIAL_DEFAULT = 'vial_default';
 export const VIAL_CROWN = 'vial_crown';
+export const PALETTE_DEFAULT = 'palette_default';
+
+const CLASSIC_PALETTE: WaterPaletteTokens = { ...WATER_PALETTE };
 
 export const STORE_ITEMS: StoreItem[] = [
   {
@@ -178,9 +187,164 @@ export const STORE_ITEMS: StoreItem[] = [
       base: 'rgba(255, 200, 80, 0.35)',
     },
   },
+  {
+    id: PALETTE_DEFAULT,
+    kind: 'palette',
+    name: 'Classic Reagents',
+    blurb: 'Default liquid colors · tuned so every hue is easy to tell apart.',
+    price: 0,
+    waterPalette: CLASSIC_PALETTE,
+  },
+  {
+    id: 'palette_neon',
+    kind: 'palette',
+    name: 'Neon Lab',
+    blurb: 'Electric liquids · high-contrast color theme.',
+    price: 75,
+    waterPalette: {
+      1: '#E03C06',
+      2: '#FBD051',
+      3: '#BDEE2B',
+      4: '#1FF91F',
+      5: '#5AF2A6',
+      6: '#5ACCF2',
+      7: '#1F56F9',
+      8: '#5A80F2',
+      9: '#8C1FF9',
+      10: '#FB51FB',
+      11: '#FB51A6',
+      12: '#F91F56',
+    },
+  },
+  {
+    id: 'palette_pastel',
+    kind: 'palette',
+    name: 'Soft Pastel',
+    blurb: 'Soft liquids kept clearly separable · color theme.',
+    price: 70,
+    waterPalette: {
+      1: '#DB6943',
+      2: '#DBDB43',
+      3: '#8FC559',
+      4: '#43DB43',
+      5: '#43DBB5',
+      6: '#43B5DB',
+      7: '#6584E2',
+      8: '#DB43DB',
+      9: '#DA95C9',
+      10: '#DB438F',
+      11: '#DAA695',
+      12: '#DADA95',
+    },
+  },
+  {
+    id: 'palette_sunset',
+    kind: 'palette',
+    name: 'Sunset Spectrum',
+    blurb: 'Dusk palette with cool accents · high contrast.',
+    price: 95,
+    waterPalette: {
+      1: '#EF0606',
+      2: '#FB7F56',
+      3: '#F2F25F',
+      4: '#7AEF06',
+      5: '#669E2E',
+      6: '#9E822E',
+      7: '#56D1FB',
+      8: '#3759BE',
+      9: '#5A24F9',
+      10: '#FB56FB',
+      11: '#FC7EBD',
+      12: '#AD1F42',
+    },
+  },
+  {
+    id: 'palette_ocean',
+    kind: 'palette',
+    name: 'Deep Ocean',
+    blurb: 'Sea + reef accents · easy-to-tell hues.',
+    price: 90,
+    waterPalette: {
+      1: '#EF4006',
+      2: '#EE8F2F',
+      3: '#EBBD8E',
+      4: '#06EF40',
+      5: '#2E9E66',
+      6: '#98E1CF',
+      7: '#2FBEEE',
+      8: '#1F66AD',
+      9: '#2F5FEE',
+      10: '#7A06EF',
+      11: '#C079D8',
+      12: '#9E4A2E',
+    },
+  },
+  {
+    id: 'palette_candy',
+    kind: 'palette',
+    name: 'Candy Pop',
+    blurb: 'Bright candy liquids · high-contrast theme.',
+    price: 110,
+    waterPalette: {
+      1: '#DA3F0B',
+      2: '#ED825E',
+      3: '#F6CE55',
+      4: '#BAE830',
+      5: '#25F425',
+      6: '#5EEDA6',
+      7: '#55CEF6',
+      8: '#557EF6',
+      9: '#8C25F4',
+      10: '#F655F6',
+      11: '#F655A6',
+      12: '#F42559',
+    },
+  },
+  {
+    id: 'palette_forest',
+    kind: 'palette',
+    name: 'Forest Canopy',
+    blurb: 'Woodland mix (bark, berry, sky) · high contrast.',
+    price: 85,
+    waterPalette: {
+      1: '#EF4006',
+      2: '#AD661F',
+      3: '#F5D984',
+      4: '#66AD1F',
+      5: '#24F924',
+      6: '#06EFB5',
+      7: '#56D1FB',
+      8: '#1F66AD',
+      9: '#7A06EF',
+      10: '#C079D8',
+      11: '#BE3759',
+      12: '#E19898',
+    },
+  },
+  {
+    id: 'palette_aurora',
+    kind: 'palette',
+    name: 'Aurora Borealis',
+    blurb: 'Northern-light dyes · spaced for readability.',
+    price: 130,
+    waterPalette: {
+      1: '#EF4006',
+      2: '#BD910F',
+      3: '#F9F924',
+      4: '#0FBD66',
+      5: '#7EFCDC',
+      6: '#56D1FB',
+      7: '#1F66AD',
+      8: '#5A24F9',
+      9: '#C079D8',
+      10: '#F924F9',
+      11: '#F9245A',
+      12: '#E1AA98',
+    },
+  },
 ];
 
-export const DEFAULT_OWNED = [PATH_DEFAULT, VIAL_DEFAULT];
+export const DEFAULT_OWNED = [PATH_DEFAULT, VIAL_DEFAULT, PALETTE_DEFAULT];
 
 export function getStoreItem(id: string): StoreItem | undefined {
   return STORE_ITEMS.find((i) => i.id === id);
@@ -213,6 +377,19 @@ export function getVialTheme(id: string): VialThemeTokens {
     getStoreItem(id)?.vialTheme ??
     getStoreItem(VIAL_DEFAULT)!.vialTheme!
   );
+}
+
+export function getWaterPalette(id: string): WaterPaletteTokens {
+  return (
+    getStoreItem(id)?.waterPalette ??
+    getStoreItem(PALETTE_DEFAULT)!.waterPalette!
+  );
+}
+
+/** Hex for a color id under the equipped palette. */
+export function waterColor(paletteId: string, colorId: number): string {
+  const palette = getWaterPalette(paletteId);
+  return palette[colorId] ?? WATER_PALETTE[colorId] ?? '#888888';
 }
 
 export function ensureOwnedDefaults(
