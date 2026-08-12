@@ -74,5 +74,4 @@ Mid-puzzle progress is written to AsyncStorage on every pour (debounced) and
 - Release defaults to **admob** (also forced in `eas.json`)
 - Mock rewards / mock IAP only when `__DEV__` / Jest / `EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION=true`
 - Missing native SDK → fail closed (no free rewards / no free Remove Ads)
-- First launch requires **17+** age acknowledgment
 - Wire StoreKit / Play Billing before shipping paid entitlement

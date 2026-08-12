@@ -30,7 +30,6 @@ describe('gameStore orchestration', () => {
     resetAdService();
     resetAdManager();
     useGameStore.setState({
-      ageVerified: true,
       pendingPayout: null,
       modal: 'none',
       coins: 100,
@@ -118,16 +117,8 @@ describe('gameStore orchestration', () => {
     expect(s.modal).toBe('none');
   });
 
-  it('blocks Centrifuge when age not verified', () => {
-    useGameStore.setState({ ageVerified: false, modal: 'none' });
-    useGameStore.getState().openSlotMachine();
-    const s = useGameStore.getState();
-    expect(s.modal).toBe('none');
-    expect(s.lastMessage).toMatch(/age confirmation/i);
-  });
-
-  it('opens Centrifuge when age verified', () => {
-    useGameStore.setState({ ageVerified: true, modal: 'none', pendingPayout: null });
+  it('opens Centrifuge from openSlotMachine', () => {
+    useGameStore.setState({ modal: 'none', pendingPayout: null });
     useGameStore.getState().openSlotMachine();
     expect(useGameStore.getState().modal).toBe('slot_machine');
   });

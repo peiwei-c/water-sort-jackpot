@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -25,7 +25,6 @@ import {
   CampaignCompleteModal,
 } from './src/components/Modals';
 import { AdBanner } from './src/components/AdBanner';
-import { AgeGateModal } from './src/components/AgeGateModal';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useGameStore } from './src/store/gameStore';
 import { bootstrapAds } from './src/services/adsBootstrap';
@@ -46,9 +45,7 @@ function AppShell() {
   const refreshLives = useGameStore((s) => s.refreshLives);
   const refreshMissions = useGameStore((s) => s.refreshMissions);
   const markAdsReady = useGameStore((s) => s.markAdsReady);
-  const setAgeVerified = useGameStore((s) => s.setAgeVerified);
   const [splashElapsed, setSplashElapsed] = useState(false);
-  const [ageOk, setAgeOk] = useState(false);
 
   const showSlots =
     modal === 'slot_machine' ||
@@ -62,11 +59,6 @@ function AppShell() {
   const showOutOfMoves =
     modal === 'out_of_moves' || modal === 'ad_extra_moves';
   const showOutOfLives = modal === 'out_of_lives';
-
-  const onAgeResolved = useCallback((accepted: boolean) => {
-    setAgeOk(accepted);
-    setAgeVerified(accepted);
-  }, [setAgeVerified]);
 
   useEffect(() => {
     void hydrate();
@@ -85,14 +77,13 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    if (!ageOk) return;
     void bootstrapAds().then((result) => {
       console.log('[App] Ads bootstrap', result);
       if (result.adsReady) {
         markAdsReady();
       }
     });
-  }, [ageOk, markAdsReady]);
+  }, [markAdsReady]);
 
   // BGM: home/store share menu bed; play uses bench bed (crossfades).
   useEffect(() => {
@@ -156,8 +147,7 @@ function AppShell() {
         {showOutOfMoves ? <OutOfMovesModal /> : null}
         {showOutOfLives ? <OutOfLivesModal /> : null}
         {showSlots ? <SlotMachineModal /> : null}
-        {ageOk ? <AdBanner /> : null}
-        <AgeGateModal onResolved={onAgeResolved} />
+        <AdBanner />
       </SafeAreaView>
     </LinearGradientFallback>
   );

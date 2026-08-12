@@ -668,8 +668,6 @@ export function HomeScreen() {
         >
           <Text style={styles.legalLink}>Terms</Text>
         </Pressable>
-        <Text style={styles.legalDot}>·</Text>
-        <Text style={styles.legalMeta}>{LEGAL.minimumAge}+</Text>
       </View>
 
       <LabManualModal visible={manualOpen} onClose={closeManual} />
@@ -1112,10 +1110,5 @@ const styles = StyleSheet.create({
   legalDot: {
     color: COLORS.textMuted,
     fontSize: 12,
-  },
-  legalMeta: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

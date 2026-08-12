@@ -68,7 +68,7 @@ Capture at least:
 - [ ] Paid Apps Agreement + banking/tax (required before IAP sells)
 - [ ] Put real Apple ID into `eas.json` → `submit.production.ios.ascAppId`
 - [ ] Export compliance: No (matches `ITSAppUsesNonExemptEncryption: false`)
-- [ ] Review notes: no account; 17+ age gate; Centrifuge is fictional/virtual currency only; how to open Supply Store + Restore Purchases
+- [ ] Review notes: no account; Centrifuge is fictional/virtual currency only; how to open Supply Store + Restore Purchases
 - [ ] Demo account: N/A (no login)
 - [ ] Smoke-test Remove Ads + Restore on TestFlight / sandbox before “Submit for Review”
 
@@ -106,7 +106,6 @@ Capture at least:
 - [x] AdMob Android + iOS App IDs and unit IDs
 - [x] UMP consent + iOS ATT
 - [x] Delay AdMob measurement until after consent
-- [x] Age gate (17+) on first launch; Centrifuge blocked if declined
 - [x] Privacy Policy + Terms HTML under `docs/`
 - [x] In-app Privacy / Terms links
 - [x] Error boundary
@@ -125,5 +124,5 @@ Capture at least:
 4. Create Remove Ads IAP on both stores  
 5. `eas build --platform all --profile production`  
 6. Screenshots from that build  
-7. Internal / TestFlight smoke test (IAP + ads + age gate)  
+7. Internal / TestFlight smoke test (IAP + ads)  
 8. Submit Apple review + promote Play track  

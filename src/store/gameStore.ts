@@ -77,8 +77,6 @@ import {
   ensureOwnedDefaults,
   scaledMoveLimit,
 } from '../engines/StoreCatalog';
-import { LEGAL } from '../constants/legal';
-
 export const EXTRA_MOVES_FROM_AD = 5;
 export const POUR_ANIM_MS = 520;
 /** Failures on the same station before Skip Level is offered. */
@@ -170,9 +168,6 @@ type GameStore = {
   _puzzle: WaterSortEngine;
   _jackpot: JackpotEngine;
 
-  /** First-run age gate accepted (17+). Declined → no ads / Centrifuge. */
-  ageVerified: boolean;
-
   hydrate: () => Promise<void>;
   /** Persist mid-puzzle. settleJackpot collects pending Centrifuge wins at 1×. */
   flushSession: (opts?: { settleJackpot?: boolean }) => void;
@@ -180,7 +175,6 @@ type GameStore = {
   refreshLives: () => void;
   /** Roll daily/weekly mission windows if the calendar advanced. */
   refreshMissions: () => void;
-  setAgeVerified: (accepted: boolean) => void;
   markLabManualSeen: () => void;
   selectTube: (index: number) => void;
   clearSelection: () => void;
@@ -486,7 +480,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     lastClearCoinReward: LEVEL_COIN_REWARD,
     session: null,
     hydrated: false,
-    ageVerified: false,
     isNoAdsPurchased: false,
     hasSeenLabManual: false,
     consecutiveFailCount: 0,
@@ -544,10 +537,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     markAdsReady: () => set({ adsReady: true }),
-
-    setAgeVerified: (accepted) => {
-      set({ ageVerified: accepted });
-    },
 
     refreshLives: () => {
       const before = {
@@ -1108,15 +1097,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
 
       if (isCampaignComplete(current)) {
-        const openJackpot = !!opts?.openJackpot && get().ageVerified;
+        const openJackpot = !!opts?.openJackpot;
         set({
           screen: openJackpot ? 'play' : 'home',
           modal: openJackpot ? 'slot_machine' : 'campaign_complete',
-          lastMessage: openJackpot
-            ? `You finished all ${MAX_LEVEL} levels!`
-            : opts?.openJackpot && !get().ageVerified
-              ? `Campaign complete · Centrifuge requires ${LEGAL.minimumAge}+`
-              : `You finished all ${MAX_LEVEL} levels!`,
+          lastMessage: `You finished all ${MAX_LEVEL} levels!`,
           session: null,
           consecutiveFailCount: 0,
           hintHighlight: null,
@@ -1161,7 +1146,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
       const next = createPuzzle(level);
       const diff = getLevelDifficulty(level);
-      const openJackpot = !!opts?.openJackpot && get().ageVerified;
+      const openJackpot = !!opts?.openJackpot;
       set({
         screen: 'play',
         level,
@@ -1176,9 +1161,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintHighlight: null,
         lastMessage: openJackpot
           ? `Level ${level} ready · spin the Centrifuge`
-          : opts?.openJackpot && !get().ageVerified
-            ? `Level ${level} · Centrifuge requires ${LEGAL.minimumAge}+`
-            : `Level ${level} · ${diff.tierLabel}`,
+          : `Level ${level} · ${diff.tierLabel}`,
         session: null,
         ...livesSnapshot(spent),
       });
@@ -1243,12 +1226,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     openSlotMachine: () => {
-      if (!get().ageVerified) {
-        set({
-          lastMessage: `Centrifuge requires ${LEGAL.minimumAge}+ age confirmation`,
-        });
-        return;
-      }
       const pending = get().pendingPayout;
       set({
         modal: pending ? 'ad_2x_payout' : 'slot_machine',
