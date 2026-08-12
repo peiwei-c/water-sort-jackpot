@@ -562,54 +562,64 @@ export function HomeScreen() {
 
         <View style={styles.heroActions}>
           <Pressable
-            style={styles.audioBtn}
+            style={styles.actionBtn}
             onPress={() => {
               getAudioManager().playSfx('tap');
               setManualOpen(true);
             }}
             accessibilityLabel="Lab manual"
           >
-            <Text style={styles.audioBtnText}>Help</Text>
+            <Text style={styles.actionBtnText} numberOfLines={1}>
+              Help
+            </Text>
           </Pressable>
           <Pressable
-            style={styles.audioBtn}
+            style={styles.actionBtn}
             onPress={() => {
               getAudioManager().playSfx('tap');
               setAudioOpen(true);
             }}
             accessibilityLabel="Audio settings"
           >
-            <Text style={styles.audioBtnText}>Audio</Text>
+            <Text style={styles.actionBtnText} numberOfLines={1}>
+              Audio
+            </Text>
           </Pressable>
           <Pressable
-            style={styles.missionsBtn}
+            style={styles.actionBtn}
             onPress={() => {
               getAudioManager().playSfx('tap');
               openMissions();
             }}
             accessibilityLabel="Lab missions"
           >
-            <Text style={styles.missionsBtnText}>
-              Missions{claimableMissions > 0 ? ` · ${claimableMissions}` : ''}
+            <Text style={styles.actionBtnText} numberOfLines={1}>
+              Mission{claimableMissions > 0 ? ` · ${claimableMissions}` : ''}
             </Text>
           </Pressable>
           <Pressable
-            style={styles.storeBtn}
+            style={styles.actionBtn}
             onPress={() => {
               getAudioManager().playSfx('tap');
               openStore();
             }}
+            accessibilityLabel="Supply store"
           >
-            <Text style={styles.storeBtnText}>Store</Text>
+            <Text style={styles.actionBtnText} numberOfLines={1}>
+              Store
+            </Text>
           </Pressable>
           <Pressable
-            style={styles.jackpotBtn}
+            style={[styles.actionBtn, styles.jackpotBtn]}
             onPress={() => {
               getAudioManager().playSfx('tap');
               openSlotMachine();
             }}
+            accessibilityLabel="Centrifuge"
           >
-            <Text style={styles.jackpotText}>Centrifuge</Text>
+            <Text style={styles.jackpotText} numberOfLines={1}>
+              Centrifuge
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -800,63 +810,41 @@ const styles = StyleSheet.create({
   },
   heroActions: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    alignSelf: 'stretch',
+    gap: 6,
     marginTop: 14,
-    flexWrap: 'wrap',
+    paddingHorizontal: 2,
+  },
+  actionBtn: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: LAB.glassDim,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.35)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  audioBtn: {
-    backgroundColor: LAB.glassDim,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.35)',
-  },
-  audioBtnText: {
+  actionBtnText: {
     color: LAB.glassBright,
     fontWeight: '800',
-    fontSize: 14,
-  },
-  storeBtn: {
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.35)',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  storeBtnText: {
-    color: COLORS.text,
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  missionsBtn: {
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.45)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  missionsBtnText: {
-    color: LAB.glassBright,
-    fontWeight: '800',
-    fontSize: 14,
+    fontSize: 11,
+    textAlign: 'center',
   },
   jackpotBtn: {
     backgroundColor: LAB.reagent,
-    paddingHorizontal: 26,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
     borderColor: 'rgba(255, 230, 150, 0.45)',
   },
   jackpotText: {
     color: '#1A1200',
     fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 0.3,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
   pathHeader: {
     paddingHorizontal: 20,
