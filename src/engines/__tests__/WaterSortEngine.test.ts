@@ -286,24 +286,23 @@ describe('WaterSortEngine', () => {
   });
 
   describe('getLevelDifficulty', () => {
-    it('starts easy with 3 colors, 1 empty, and a move budget', () => {
+    it('starts with 4 colors, 1 empty (5 tubes), and a move budget', () => {
       const d1 = getLevelDifficulty(1);
-      expect(d1.colorCount).toBe(3);
+      expect(d1.colorCount).toBe(4);
       expect(d1.emptyTubes).toBe(1);
+      expect(d1.colorCount + d1.emptyTubes).toBe(5);
       expect(d1.moveLimit).toBeGreaterThan(15);
     });
 
-    it('gets harder across the 3650-level campaign', () => {
+    it('gets harder by adding fluid tubes every 5 levels', () => {
       const early = getLevelDifficulty(1);
-      const mid = getLevelDifficulty(1500);
+      const mid = getLevelDifficulty(20);
       const late = getLevelDifficulty(3650);
 
       expect(mid.colorCount).toBeGreaterThan(early.colorCount);
-      expect(late.colorCount).toBeGreaterThan(mid.colorCount);
+      expect(late.colorCount).toBeGreaterThanOrEqual(mid.colorCount);
       expect(late.colorCount).toBe(12);
-      expect(late.moveLimit / late.colorCount).toBeLessThan(
-        early.moveLimit / early.colorCount,
-      );
+      expect(mid.colorCount + mid.emptyTubes).toBe(8);
     });
 
     it('createDefaultLevel uses the difficulty curve', () => {

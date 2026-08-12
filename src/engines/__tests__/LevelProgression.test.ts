@@ -1,6 +1,9 @@
 import {
   getLevelDifficulty,
   MAX_LEVEL,
+  MAX_COLOR_COUNT,
+  START_TOTAL_TUBES,
+  LEVELS_PER_TUBE_STEP,
   isCampaignComplete,
   sampleDifficultyCurve,
 } from '../LevelProgression';
@@ -16,21 +19,43 @@ describe('LevelProgression (3650-level campaign)', () => {
     expect(getLevelDifficulty(9999).level).toBe(3650);
   });
 
-  it('starts as beginner with 3 colors and 1 empty tube', () => {
+  it('starts as beginner with 5 tubes (4 colors + 1 empty)', () => {
     const d = getLevelDifficulty(1);
-    expect(d.colorCount).toBe(3);
+    expect(d.colorCount).toBe(START_TOTAL_TUBES - 1);
     expect(d.emptyTubes).toBe(1);
+    expect(d.colorCount + d.emptyTubes).toBe(5);
     expect(d.tier).toBe('beginner');
     expect(d.tierLabel).toBe('Beginner');
     expect(d.moveLimit).toBeGreaterThan(20);
   });
 
-  it('ramps color count up to 12 by the end', () => {
-    expect(getLevelDifficulty(1).colorCount).toBe(3);
-    expect(getLevelDifficulty(500).colorCount).toBe(4);
-    expect(getLevelDifficulty(1200).colorCount).toBe(5);
-    expect(getLevelDifficulty(2000).colorCount).toBe(7);
-    expect(getLevelDifficulty(3650).colorCount).toBe(12);
+  it('adds one fluid tube (and color) every 5 levels', () => {
+    // 1–5: 5 tubes / 4 colors
+    expect(getLevelDifficulty(1).colorCount).toBe(4);
+    expect(getLevelDifficulty(5).colorCount).toBe(4);
+    expect(getLevelDifficulty(5).colorCount + getLevelDifficulty(5).emptyTubes).toBe(5);
+
+    // 6–10: 6 tubes / 5 colors
+    expect(getLevelDifficulty(6).colorCount).toBe(5);
+    expect(getLevelDifficulty(10).colorCount + getLevelDifficulty(10).emptyTubes).toBe(6);
+
+    // 11–15: 7 tubes / 6 colors
+    expect(getLevelDifficulty(11).colorCount).toBe(6);
+    expect(getLevelDifficulty(15).colorCount + getLevelDifficulty(15).emptyTubes).toBe(7);
+
+    // 16–20: 8 tubes / 7 colors
+    expect(getLevelDifficulty(16).colorCount).toBe(7);
+    expect(getLevelDifficulty(20).colorCount + getLevelDifficulty(20).emptyTubes).toBe(8);
+  });
+
+  it('caps colors at the palette max', () => {
+    const late = getLevelDifficulty(3650);
+    expect(late.colorCount).toBe(MAX_COLOR_COUNT);
+    expect(late.colorCount + late.emptyTubes).toBe(MAX_COLOR_COUNT + 1);
+    // First level that should already be capped: after (12-4)=8 steps of 5
+    const firstCapped =
+      1 + (MAX_COLOR_COUNT - (START_TOTAL_TUBES - 1)) * LEVELS_PER_TUBE_STEP;
+    expect(getLevelDifficulty(firstCapped).colorCount).toBe(MAX_COLOR_COUNT);
   });
 
   it('starts every level with exactly 1 empty tube', () => {
@@ -39,12 +64,11 @@ describe('LevelProgression (3650-level campaign)', () => {
     expect(getLevelDifficulty(3650).emptyTubes).toBe(1);
   });
 
-  it('tightens moves-per-color across the campaign', () => {
-    const early = getLevelDifficulty(1);
-    const late = getLevelDifficulty(3650);
-    const earlyRatio = early.moveLimit / early.colorCount;
-    const lateRatio = late.moveLimit / late.colorCount;
-    expect(lateRatio).toBeLessThan(earlyRatio);
+  it('scales move budget with puzzle size rather than crushing early levels', () => {
+    const small = getLevelDifficulty(1);
+    const bigger = getLevelDifficulty(20);
+    expect(bigger.moveLimit).toBeGreaterThan(small.moveLimit);
+    expect(bigger.colorCount).toBeGreaterThan(small.colorCount);
   });
 
   it('increases scramble strictness from 0 → 1', () => {
@@ -78,7 +102,7 @@ describe('LevelProgression (3650-level campaign)', () => {
   });
 
   it('can generate boards for milestone levels', () => {
-    for (const level of [1, 500, 1500, 3000, 3650]) {
+    for (const level of [1, 5, 20, 40, 3650]) {
       const engine = WaterSortEngine.createDefaultLevel(level);
       const diff = getLevelDifficulty(level);
       expect(engine.getTubes()).toHaveLength(diff.colorCount + diff.emptyTubes);
