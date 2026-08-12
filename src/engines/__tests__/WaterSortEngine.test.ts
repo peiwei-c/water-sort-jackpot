@@ -232,12 +232,9 @@ describe('WaterSortEngine', () => {
     it('generateLevel creates colorCount + emptyTubes tubes', () => {
       const state = generateLevel({ colorCount: 3, emptyTubes: 2, seed: 1 });
       expect(state.tubes).toHaveLength(5);
-      // Scramble may partially fill empties; total liquid volume stays fixed.
+      expect(state.tubes.filter((t) => t.length === 0)).toHaveLength(2);
       const flat = state.tubes.flat();
       expect(flat).toHaveLength(3 * DEFAULT_CAPACITY);
-      expect(
-        state.tubes.reduce((slots, t) => slots + (DEFAULT_CAPACITY - t.length), 0),
-      ).toBe(2 * DEFAULT_CAPACITY);
     });
 
     it('generateLevel boards that are not won have at least one pour', () => {
@@ -253,7 +250,7 @@ describe('WaterSortEngine', () => {
       }
     });
 
-    it('generateLevel hard boards open with a pour (scramble guarantee)', () => {
+    it('generateLevel hard boards are BFS-solvable', () => {
       for (let seed = 0; seed < 12; seed++) {
         const state = generateLevel({
           colorCount: 4,
@@ -262,7 +259,7 @@ describe('WaterSortEngine', () => {
           scrambleStrictness: 0.5,
         });
         expect(isWon(state.tubes, state.capacity)).toBe(false);
-        expect(findHint(state.tubes, state.capacity)).not.toBeNull();
+        expect(isSolvable(state.tubes, state.capacity)).toBe(true);
       }
     });
 
@@ -276,11 +273,13 @@ describe('WaterSortEngine', () => {
     });
 
     it('isSolvable rejects a stuck board with no moves', () => {
-      // Free-pour still cannot move when every tube is full.
+      // Space-only pours: stuck when every tube is full. Keep colors mixed so
+      // the board is not already won (isSolvable treats won boards as solvable).
       const tubes: Tube[] = [
         [1, 2, 1, 2],
         [2, 1, 2, 1],
       ];
+      expect(isWon(tubes, 4)).toBe(false);
       expect(findHint(tubes, 4)).toBeNull();
       expect(isSolvable(tubes, 4)).toBe(false);
     });
