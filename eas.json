@@ -20,6 +20,9 @@
       "env": {
         "EXPO_PUBLIC_AD_PROVIDER": "admob",
         "EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION": "false"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
