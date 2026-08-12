@@ -12,15 +12,15 @@ export type SfxId = 'tap' | 'pour' | 'success' | 'fail';
  * swap the WAV/MP3 files (keep the same filenames) for production audio.
  */
 export const BGM_SOURCES: Record<BgmId, AudioSource> = {
-  home: require('../../assets/audio/bgm_home.wav'),
-  play: require('../../assets/audio/bgm_play.wav'),
+  home: require('../../../assets/audio/bgm_home.wav'),
+  play: require('../../../assets/audio/bgm_play.wav'),
 };
 
 export const SFX_SOURCES: Record<SfxId, AudioSource> = {
-  tap: require('../../assets/audio/sfx_tap.wav'),
-  pour: require('../../assets/audio/sfx_pour.wav'),
-  success: require('../../assets/audio/sfx_success.wav'),
-  fail: require('../../assets/audio/sfx_fail.wav'),
+  tap: require('../../../assets/audio/sfx_tap.wav'),
+  pour: require('../../../assets/audio/sfx_pour.wav'),
+  success: require('../../../assets/audio/sfx_success.wav'),
+  fail: require('../../../assets/audio/sfx_fail.wav'),
 };
 
 export const SFX_POOL_SIZE = 6;
