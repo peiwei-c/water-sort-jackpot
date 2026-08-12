@@ -39,7 +39,7 @@ EXPO_PUBLIC_AD_PROVIDER=admob npx expo run:ios
 ```
 
 Production EAS profiles already set `EXPO_PUBLIC_AD_PROVIDER=admob`.
-Unit IDs: `src/services/admobUnitIds.ts`. In `__DEV__`, Google `TestIds` are used.
+Unit IDs: `src/services/admobUnitIds.ts`. Google `TestIds` are used in `__DEV__` and when `EXPO_PUBLIC_ADMOB_USE_TEST_IDS=true` (preview APK).
 
 ## Store release
 

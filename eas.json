@@ -19,7 +19,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_AD_PROVIDER": "admob",
-        "EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION": "false"
+        "EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION": "false",
+        "EXPO_PUBLIC_ADMOB_USE_TEST_IDS": "true"
       },
       "android": {
         "buildType": "apk"

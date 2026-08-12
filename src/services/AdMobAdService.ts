@@ -10,7 +10,7 @@ import type {
   AdType,
   IAdService,
 } from './AdService';
-import { getAdMobUnitId, type AdMobUnitKind } from './admobUnitIds';
+import { getAdMobUnitId, shouldUseAdMobTestIds, type AdMobUnitKind } from './admobUnitIds';
 
 type BannerListener = (visible: boolean) => void;
 
@@ -56,7 +56,7 @@ function loadSdk(): AdsSdk {
 
 function unitId(kind: AdMobUnitKind): string {
   const sdk = loadSdk();
-  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+  if (shouldUseAdMobTestIds()) {
     if (kind === 'banner') return sdk.TestIds.BANNER;
     if (kind === 'interstitial') return sdk.TestIds.INTERSTITIAL;
     return sdk.TestIds.REWARDED;
@@ -97,7 +97,10 @@ export class AdMobAdService implements IAdService {
       await mobileAds().initialize();
       this.ready = true;
       this.unavailable = false;
-      console.log('[AdService:admob] SDK initialized');
+      console.log(
+        '[AdService:admob] SDK initialized',
+        shouldUseAdMobTestIds() ? '(test unit ids)' : '(live unit ids)',
+      );
     } catch (e) {
       this.ready = true;
       this.unavailable = true;
@@ -199,10 +202,14 @@ export class AdMobAdService implements IAdService {
         const unsubLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
           finish(true);
         });
-        const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+          console.warn('[AdService:admob] Interstitial load failed', error);
           finish(false);
         });
-        const timer = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+        const timer = setTimeout(() => {
+          console.warn('[AdService:admob] Interstitial load timed out');
+          finish(false);
+        }, LOAD_TIMEOUT_MS);
         ad.load();
       } catch {
         this.interstitialLoading = null;
@@ -246,10 +253,14 @@ export class AdMobAdService implements IAdService {
           RewardedAdEventType.LOADED,
           () => finish(true),
         );
-        const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+          console.warn('[AdService:admob] Rewarded load failed', error);
           finish(false);
         });
-        const timer = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+        const timer = setTimeout(() => {
+          console.warn('[AdService:admob] Rewarded load timed out');
+          finish(false);
+        }, LOAD_TIMEOUT_MS);
         ad.load();
       } catch {
         this.rewardedLoading = null;

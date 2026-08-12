@@ -1,6 +1,7 @@
 /**
  * AdMob App / ad unit IDs for AquaSort Lab.
- * In __DEV__, AdMobAdService uses Google TestIds instead of these.
+ * AdMobAdService uses Google TestIds in __DEV__ or when
+ * EXPO_PUBLIC_ADMOB_USE_TEST_IDS=true (preview APKs).
  *
  * Bundle / package: com.aquasort.lab
  */
@@ -46,6 +47,13 @@ export function getAdMobUnitId(
 ): string | null {
   const id = platform === 'ios' ? IOS_UNITS[kind] : ANDROID_UNITS[kind];
   return id || null;
+}
+
+/** Preview/QA builds can force Google sample ads even when __DEV__ is false. */
+export function shouldUseAdMobTestIds(): boolean {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) return true;
+  const flag = process.env.EXPO_PUBLIC_ADMOB_USE_TEST_IDS;
+  return flag === '1' || flag === 'true';
 }
 
 /** @deprecated Prefer getAdMobUnitId(kind, platform). Android-only map. */

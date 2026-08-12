@@ -1361,7 +1361,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       try {
         const result = await getAdService().showRewarded(placement);
         if (!result.success || !result.rewarded) {
-          set({ isAdLoading: false, lastMessage: 'Ad not completed' });
+          set({
+            isAdLoading: false,
+            lastMessage: result.message || 'Ad not completed',
+          });
           return false;
         }
 
