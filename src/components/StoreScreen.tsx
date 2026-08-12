@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,6 @@ import {
   type StoreKind,
   type StoreItem,
 } from '../engines/StoreCatalog';
-import {
-  REMOVE_ADS_PRICE_LABEL,
-  getRemoveAdsPriceLabel,
-} from '../services/IapService';
 import { COLORS, LAB } from '../theme/colors';
 
 export function StoreScreen() {
@@ -25,28 +21,13 @@ export function StoreScreen() {
   const equippedVialId = useGameStore((s) => s.equippedVialId);
   const equippedPaletteId = useGameStore((s) => s.equippedPaletteId);
   const lastMessage = useGameStore((s) => s.lastMessage);
-  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
-  const isAdLoading = useGameStore((s) => s.isAdLoading);
   const buyItem = useGameStore((s) => s.buyItem);
   const equipItem = useGameStore((s) => s.equipItem);
-  const purchaseRemoveAds = useGameStore((s) => s.purchaseRemoveAds);
-  const restorePurchases = useGameStore((s) => s.restorePurchases);
   const goHome = useGameStore((s) => s.goHome);
   const [tab, setTab] = useState<StoreKind>('palette');
-  const [priceLabel, setPriceLabel] = useState(REMOVE_ADS_PRICE_LABEL);
 
   const items = useMemo(() => itemsOfKind(tab), [tab]);
   const owned = useMemo(() => new Set(ownedItemIds), [ownedItemIds]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getRemoveAdsPriceLabel().then((label) => {
-      if (!cancelled) setPriceLabel(label);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const isEquipped = (item: StoreItem) => {
     if (item.kind === 'path') return equippedPathId === item.id;
@@ -71,47 +52,6 @@ export function StoreScreen() {
             🪙 {coins}
           </Text>
         </View>
-      </View>
-
-      <View style={styles.removeAdsCard}>
-        <Text style={styles.removeAdsTitle}>Remove Ads</Text>
-        <Text style={styles.removeAdsSub}>
-          Hide banner & forced interstitials. Rewarded ads for hints/tubes stay
-          available. {priceLabel}
-        </Text>
-        <Pressable
-          style={[
-            styles.removeAdsBtn,
-            (isNoAdsPurchased || isAdLoading) && styles.removeAdsBtnDisabled,
-          ]}
-          disabled={isNoAdsPurchased || isAdLoading}
-          onPress={() => void purchaseRemoveAds()}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isNoAdsPurchased
-              ? 'Remove Ads owned'
-              : `Buy Remove Ads for ${priceLabel}`
-          }
-        >
-          <Text style={styles.removeAdsBtnText}>
-            {isNoAdsPurchased
-              ? 'Owned'
-              : isAdLoading
-                ? 'Processing…'
-                : `Buy · ${priceLabel}`}
-          </Text>
-        </Pressable>
-        {!isNoAdsPurchased ? (
-          <Pressable
-            style={styles.restoreBtn}
-            disabled={isAdLoading}
-            onPress={() => void restorePurchases()}
-            accessibilityRole="button"
-            accessibilityLabel="Restore purchases"
-          >
-            <Text style={styles.restoreBtnText}>Restore Purchases</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <View style={styles.tabs} accessibilityRole="tablist">
@@ -316,48 +256,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: '800',
     fontSize: 14,
-  },
-  removeAdsCard: {
-    backgroundColor: LAB.benchMid,
-    borderWidth: 1.5,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    gap: 8,
-  },
-  removeAdsTitle: {
-    color: COLORS.text,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  removeAdsSub: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  removeAdsBtn: {
-    backgroundColor: LAB.reagent,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  removeAdsBtnDisabled: {
-    opacity: 0.5,
-  },
-  removeAdsBtnText: {
-    color: '#1A1200',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  restoreBtn: {
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  restoreBtnText: {
-    color: LAB.glassBright,
-    fontWeight: '700',
-    fontSize: 13,
   },
   tabs: {
     flexDirection: 'row',
