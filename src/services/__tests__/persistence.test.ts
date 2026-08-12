@@ -3,6 +3,7 @@ import {
   sanitizeSession,
 } from '../persistence';
 import { PATH_DEFAULT, VIAL_DEFAULT } from '../../engines/StoreCatalog';
+import { localDayKey, localWeekKey } from '../../engines/MissionEngine';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
@@ -34,7 +35,7 @@ describe('persistence sanitization', () => {
       },
     });
     expect(data).not.toBeNull();
-    expect(data!.unlockedLevel).toBe(300);
+    expect(data!.unlockedLevel).toBe(3650);
     expect(data!.highestCompleted).toBe(0);
     expect(data!.coins).toBe(1_000_000);
     expect(data!.undoItems).toBe(0);
@@ -47,6 +48,49 @@ describe('persistence sanitization', () => {
     expect(data!.levelsCompletedSinceAd).toBe(99);
     expect(data!.hasSeenLabManual).toBe(true);
     expect(data!.rareSkinUnlocked).toBe(true);
+    expect(data!.lives).toBe(5);
+    expect(data!.nextLifeAt).toBeNull();
+    expect(data!.missionBoard.progress.daily_clear_3).toEqual({
+      progress: 0,
+      claimed: false,
+    });
+  });
+
+  it('keeps regenerating lives below max and clamps overfill', () => {
+    const regenerating = sanitizePersistedGame({
+      unlockedLevel: 10,
+      lives: 2,
+      nextLifeAt: 1_700_000_000_000,
+    });
+    expect(regenerating!.lives).toBe(2);
+    expect(regenerating!.nextLifeAt).toBe(1_700_000_000_000);
+
+    const over = sanitizePersistedGame({
+      unlockedLevel: 10,
+      lives: 99,
+      nextLifeAt: 1_700_000_000_000,
+    });
+    expect(over!.lives).toBe(5);
+    expect(over!.nextLifeAt).toBeNull();
+  });
+
+  it('restores mission progress and drops unknown mission ids', () => {
+    const now = Date.now();
+    const data = sanitizePersistedGame({
+      unlockedLevel: 4,
+      missionBoard: {
+        dailyKey: localDayKey(now),
+        weeklyKey: localWeekKey(now),
+        progress: {
+          daily_clear_3: { progress: 2, claimed: false },
+          not_a_mission: { progress: 9, claimed: true },
+        },
+      },
+    });
+    expect(data!.missionBoard.progress.daily_clear_3.progress).toBe(2);
+    expect(
+      (data!.missionBoard.progress as Record<string, unknown>).not_a_mission,
+    ).toBeUndefined();
   });
 
   it('rejects corrupt sessions', () => {

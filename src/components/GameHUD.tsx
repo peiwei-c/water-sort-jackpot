@@ -1,19 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
-import { useGameStore } from '../store/gameStore';
+import {
+  useGameStore,
+  MAX_LIVES,
+  msUntilNextLife,
+  formatRegenCountdown,
+} from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
 import { LabManualModal } from './LabManualModal';
 
 export function GameHUD() {
   const level = useGameStore((s) => s.level);
   const coins = useGameStore((s) => s.coins);
+  const lives = useGameStore((s) => s.lives);
+  const nextLifeAt = useGameStore((s) => s.nextLifeAt);
   const undoItems = useGameStore((s) => s.undoItems);
   const extraTubeItems = useGameStore((s) => s.extraTubeItems);
   const freeSpins = useGameStore((s) => s.freeSpins);
   const rareSkinUnlocked = useGameStore((s) => s.rareSkinUnlocked);
   const tierLabel = useGameStore((s) => s.tierLabel);
   const goHome = useGameStore((s) => s.goHome);
+  const refreshLives = useGameStore((s) => s.refreshLives);
   const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    if (lives >= MAX_LIVES) return;
+    const id = setInterval(() => refreshLives(), 1000);
+    return () => clearInterval(id);
+  }, [lives, refreshLives]);
+
+  const regenMs =
+    lives < MAX_LIVES ? msUntilNextLife({ lives, nextLifeAt }) : null;
+  const livesLabel =
+    regenMs != null
+      ? `${lives}/${MAX_LIVES} · ${formatRegenCountdown(regenMs)}`
+      : `${lives}/${MAX_LIVES}`;
 
   return (
     <>
@@ -46,6 +67,7 @@ export function GameHUD() {
             <Text style={styles.pathBtnText}>Path</Text>
           </Pressable>
           <View style={styles.stats}>
+            <Stat label="♥" value={livesLabel} warn={lives <= 0} />
             <Stat label="🪙" value={coins} />
             <Stat label="↺" value={undoItems} />
             <Stat label="🧪" value={extraTubeItems} />
@@ -152,7 +174,7 @@ export function GameControls() {
           <View style={styles.confirmCard}>
             <Text style={styles.confirmTitle}>Restart station?</Text>
             <Text style={styles.confirmBody}>
-              Mid-puzzle progress for this station will be cleared.
+              This costs 1 life and clears mid-puzzle progress for this station.
             </Text>
             <View style={styles.confirmRow}>
               <Pressable

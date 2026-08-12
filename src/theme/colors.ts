@@ -30,20 +30,38 @@ export const LAB = {
   label: '#9FD8CF',
 } as const;
 
-/** Palette for water color IDs (1-indexed). Supports up to 12 colors for late campaign. */
+/** Palette for water color IDs (1-indexed). Supports up to 12 colors for late campaign.
+ * Chosen for high perceptual separation (CIE76 ΔE) on the dark lab bench.
+ */
 export const WATER_PALETTE: Record<number, string> = {
-  1: '#E63946',
-  2: '#457B9D',
-  3: '#2A9D8F',
-  4: '#E9C46A',
-  5: '#9B5DE5',
-  6: '#F4A261',
-  7: '#00BBF9',
-  8: '#F15BB5',
-  9: '#06D6A0',
-  10: '#EF476F',
-  11: '#118AB2',
-  12: '#FFD166',
+  1: '#F2460D', // vivid orange-red
+  2: '#F2F20D', // bright yellow
+  3: '#4BAB2B', // leaf green
+  4: '#0DF20D', // neon green
+  5: '#0DF2B9', // aqua
+  6: '#64D2F7', // sky
+  7: '#446CE4', // royal blue
+  8: '#800DF2', // violet
+  9: '#F764F7', // magenta
+  10: '#EB70AD', // pink
+  11: '#AB6B2B', // brown
+  12: '#DEDE7C', // pale gold
+};
+
+/** Spoken labels for water color IDs (a11y). */
+export const WATER_COLOR_LABELS: Record<number, string> = {
+  1: 'orange-red',
+  2: 'yellow',
+  3: 'green',
+  4: 'neon green',
+  5: 'aqua',
+  6: 'sky blue',
+  7: 'royal blue',
+  8: 'violet',
+  9: 'magenta',
+  10: 'pink',
+  11: 'brown',
+  12: 'pale gold',
 };
 
 export const SYMBOL_EMOJI = {

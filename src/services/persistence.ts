@@ -12,10 +12,16 @@ import {
   type SlotSymbol,
 } from '../engines/JackpotEngine';
 import { MAX_LEVEL } from '../engines/LevelProgression';
+import { MAX_LIVES, LIFE_REGEN_MS } from '../engines/LivesEngine';
+import {
+  sanitizeMissionBoard,
+  type MissionBoardState,
+} from '../engines/MissionEngine';
 import {
   PATH_DEFAULT,
   VIAL_DEFAULT,
   VIAL_CROWN,
+  PALETTE_DEFAULT,
   sanitizeOwnedItemIds,
 } from '../engines/StoreCatalog';
 
@@ -51,12 +57,20 @@ export type PersistedGame = {
   ownedItemIds: string[];
   equippedPathId: string;
   equippedVialId: string;
+  /** Equipped liquid color theme (store palette). */
+  equippedPaletteId: string;
   /** Remove Ads IAP — suppresses banner + interstitial only. */
   isNoAdsPurchased: boolean;
   levelsCompletedSinceAd: number;
   /** Unclaimed Centrifuge payout (survives brief background; flush may auto-collect). */
   pendingPayout: Payout | null;
   hasSeenLabManual: boolean;
+  /** Candy Crush–style lives (0…MAX_LIVES). */
+  lives: number;
+  /** Epoch ms for next regenerating life; null when full. */
+  nextLifeAt: number | null;
+  /** Daily / weekly mission board. */
+  missionBoard: MissionBoardState;
 };
 
 function clampInt(
@@ -208,6 +222,11 @@ export function sanitizePersistedGame(
     typeof data.equippedVialId === 'string' && owned.includes(data.equippedVialId)
       ? data.equippedVialId
       : VIAL_DEFAULT;
+  const equippedPaletteId =
+    typeof data.equippedPaletteId === 'string' &&
+    owned.includes(data.equippedPaletteId)
+      ? data.equippedPaletteId
+      : PALETTE_DEFAULT;
 
   const betRaw = data.betPerLine;
   const betPerLine =
@@ -215,6 +234,20 @@ export function sanitizePersistedGame(
     (BET_OPTIONS as readonly number[]).includes(betRaw)
       ? (betRaw as BetOption)
       : clampBet(typeof betRaw === 'number' ? betRaw : 5);
+
+  const lives = clampInt(data.lives, MAX_LIVES, 0, MAX_LIVES);
+  let nextLifeAt: number | null = null;
+  if (lives < MAX_LIVES) {
+    if (
+      typeof data.nextLifeAt === 'number' &&
+      Number.isFinite(data.nextLifeAt) &&
+      data.nextLifeAt > 0
+    ) {
+      nextLifeAt = Math.floor(data.nextLifeAt);
+    } else {
+      nextLifeAt = Date.now() + LIFE_REGEN_MS;
+    }
+  }
 
   return {
     unlockedLevel,
@@ -230,10 +263,14 @@ export function sanitizePersistedGame(
     ownedItemIds: owned,
     equippedPathId,
     equippedVialId,
+    equippedPaletteId,
     isNoAdsPurchased: data.isNoAdsPurchased === true,
     levelsCompletedSinceAd: clampInt(data.levelsCompletedSinceAd, 0, 0, 100),
     pendingPayout: sanitizePendingPayout(data.pendingPayout),
     hasSeenLabManual: data.hasSeenLabManual === true,
+    lives,
+    nextLifeAt,
+    missionBoard: sanitizeMissionBoard(data.missionBoard),
   };
 }
 

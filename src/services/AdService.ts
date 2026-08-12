@@ -13,6 +13,7 @@ export type AdPlacement =
   | 'rewarded_extra_moves'
   | 'rewarded_free_spins'
   | 'rewarded_2x_payout'
+  | 'rewarded_life'
   | 'banner_home';
 
 export type AdType = 'banner' | 'interstitial' | 'rewarded';
@@ -34,6 +35,8 @@ export interface IAdService {
   hideBanner(): Promise<void>;
   showInterstitial(placement?: AdPlacement): Promise<AdResult>;
   showRewarded(placement: AdPlacement): Promise<AdResult>;
+  /** Optional: warm interstitial / rewarded inventory after bootstrap. */
+  preload?(types?: AdType[]): Promise<void>;
   isBannerVisible?: () => boolean;
   subscribeBannerVisibility?: (listener: BannerVisibilityListener) => () => void;
 }
@@ -129,6 +132,10 @@ export class MockAdService implements IAdService {
       message: `Mock reward granted: ${placement}`,
     };
   }
+
+  async preload(_types?: AdType[]): Promise<void> {
+    if (!this.ready) await this.initialize();
+  }
 }
 
 /**
@@ -137,7 +144,6 @@ export class MockAdService implements IAdService {
  */
 export class FailClosedAdService implements IAdService {
   readonly provider: AdResult['provider'];
-  private ready = false;
 
   constructor(provider: AdResult['provider'] = 'mock') {
     this.provider = provider;
@@ -147,12 +153,11 @@ export class FailClosedAdService implements IAdService {
     console.warn(
       `[AdService:${this.provider}] Ads unavailable — rewards disabled until SDK is wired`,
     );
-    this.ready = true;
   }
 
   isReady(_type?: AdType): boolean {
     void _type;
-    return this.ready;
+    return false;
   }
 
   async showBanner(placement: AdPlacement = 'banner_home'): Promise<AdResult> {

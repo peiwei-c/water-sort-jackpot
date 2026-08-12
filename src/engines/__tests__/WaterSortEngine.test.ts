@@ -5,11 +5,13 @@ import {
   adUndoCount,
   pour,
   isWon,
+  isSolvable,
   getTopColor,
   getTopContiguousCount,
   generateLevel,
   getLevelDifficulty,
   DEFAULT_CAPACITY,
+  MAX_UNDO_HISTORY,
   type Tube,
 } from '../WaterSortEngine';
 
@@ -202,12 +204,68 @@ describe('WaterSortEngine', () => {
       expect(engine.getTubes()).toEqual([[1], [2], [3], [], [], []]);
     });
 
+    it('caps undo history at MAX_UNDO_HISTORY', () => {
+      const engine = new WaterSortEngine({
+        tubes: [[1], []],
+        capacity: 4,
+      });
+      for (let i = 0; i < MAX_UNDO_HISTORY + 40; i++) {
+        if (i % 2 === 0) engine.pour(0, 1);
+        else engine.pour(1, 0);
+      }
+      expect(engine.undoDepth()).toBe(MAX_UNDO_HISTORY);
+    });
+
     it('generateLevel creates colorCount + emptyTubes tubes', () => {
       const state = generateLevel({ colorCount: 3, emptyTubes: 2, seed: 1 });
       expect(state.tubes).toHaveLength(5);
       expect(state.tubes.filter((t) => t.length === 0)).toHaveLength(2);
       const flat = state.tubes.flat();
       expect(flat).toHaveLength(3 * DEFAULT_CAPACITY);
+    });
+
+    it('generateLevel boards that are not won have at least one pour', () => {
+      for (let seed = 0; seed < 20; seed++) {
+        const state = generateLevel({
+          colorCount: 5,
+          emptyTubes: 1,
+          seed: seed * 97 + 3,
+          scrambleStrictness: 0.6,
+        });
+        expect(isWon(state.tubes, state.capacity)).toBe(false);
+        expect(findHint(state.tubes, state.capacity)).not.toBeNull();
+      }
+    });
+
+    it('generateLevel hard boards are BFS-solvable', () => {
+      for (let seed = 0; seed < 12; seed++) {
+        const state = generateLevel({
+          colorCount: 4,
+          emptyTubes: 2,
+          seed: seed * 41 + 11,
+          scrambleStrictness: 0.5,
+        });
+        expect(isWon(state.tubes, state.capacity)).toBe(false);
+        expect(isSolvable(state.tubes, state.capacity)).toBe(true);
+      }
+    });
+
+    it('isSolvable detects a trivial solvable board', () => {
+      const tubes: Tube[] = [
+        [1, 1, 1],
+        [1],
+        [],
+      ];
+      expect(isSolvable(tubes, 4)).toBe(true);
+    });
+
+    it('isSolvable rejects a stuck board with no moves', () => {
+      const tubes: Tube[] = [
+        [1, 2],
+        [2, 1],
+      ];
+      expect(findHint(tubes, 4)).toBeNull();
+      expect(isSolvable(tubes, 4)).toBe(false);
     });
   });
 
@@ -219,10 +277,10 @@ describe('WaterSortEngine', () => {
       expect(d1.moveLimit).toBeGreaterThan(15);
     });
 
-    it('gets harder across the 300-level campaign', () => {
+    it('gets harder across the 3650-level campaign', () => {
       const early = getLevelDifficulty(1);
-      const mid = getLevelDifficulty(100);
-      const late = getLevelDifficulty(300);
+      const mid = getLevelDifficulty(1500);
+      const late = getLevelDifficulty(3650);
 
       expect(mid.colorCount).toBeGreaterThan(early.colorCount);
       expect(late.colorCount).toBeGreaterThan(mid.colorCount);

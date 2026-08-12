@@ -58,10 +58,14 @@ export async function bootstrapAds(): Promise<AdsBootstrapResult> {
         const info = await AdsConsent.getConsentInfo();
         consentOk = info.canRequestAds !== false;
       } catch (e) {
-        // UMP can fail offline / before Privacy & messaging is configured —
-        // still attempt ads with prior-session consent defaults.
-        console.warn('[adsBootstrap] Consent gather failed; continuing', e);
-        consentOk = true;
+        // UMP failure: try last-known consent info; otherwise fail closed.
+        console.warn('[adsBootstrap] Consent gather failed', e);
+        try {
+          const info = await AdsConsent.getConsentInfo();
+          consentOk = info.canRequestAds === true;
+        } catch {
+          consentOk = false;
+        }
       }
 
       try {
@@ -87,17 +91,31 @@ export async function bootstrapAds(): Promise<AdsBootstrapResult> {
   try {
     // Lazy import keeps Jest from loading native ad code until needed.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { getAdService } = require('./AdService') as typeof import('./AdService');
-    const ads = getAdService();
-    await ads.initialize();
-    if (consentOk) {
-      await ads.showBanner('banner_home');
+    const { getAdManager } = require('./AdManager') as typeof import('./AdManager');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useGameStore } = require('../store/gameStore') as typeof import('../store/gameStore');
+    const manager = getAdManager();
+    manager.markSessionStart();
+    await manager.initialize();
+    const adsReady = manager.isReady('banner');
+    const isNoAdsPurchased = useGameStore.getState().isNoAdsPurchased;
+    if (consentOk && adsReady) {
+      await manager.showBanner(isNoAdsPurchased, 'banner_home');
+      // Warm interstitial + rewarded inventory when the provider supports it.
+      const ads = (
+        require('./AdService') as typeof import('./AdService')
+      ).getAdService();
+      if (typeof ads.preload === 'function') {
+        void ads.preload(['interstitial', 'rewarded']);
+      }
     }
     return {
       consentOk,
       trackingStatus,
-      adsReady: ads.isReady('banner'),
-      message: 'Ads bootstrap complete',
+      adsReady: consentOk && adsReady,
+      message: consentOk
+        ? 'Ads bootstrap complete'
+        : 'Ads bootstrap complete (consent not granted — ads withheld)',
     };
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Ads bootstrap failed';

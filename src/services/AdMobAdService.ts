@@ -1,6 +1,7 @@
 /**
  * Real AdMob provider via react-native-google-mobile-ads.
  * SDK is required lazily so Jest (node) can still import AdService.
+ * Keeps one preloaded interstitial + rewarded instance when possible.
  */
 
 import type {
@@ -14,6 +15,8 @@ import { getAdMobUnitId, type AdMobUnitKind } from './admobUnitIds';
 type BannerListener = (visible: boolean) => void;
 
 type AdsSdk = typeof import('react-native-google-mobile-ads');
+type InterstitialAd = ReturnType<AdsSdk['InterstitialAd']['createForAdRequest']>;
+type RewardedAd = ReturnType<AdsSdk['RewardedAd']['createForAdRequest']>;
 
 const LOAD_TIMEOUT_MS = 30_000;
 
@@ -75,6 +78,14 @@ export class AdMobAdService implements IAdService {
   private unavailable = false;
   private bannerVisible = false;
   private bannerListeners = new Set<BannerListener>();
+
+  private interstitial: InterstitialAd | null = null;
+  private interstitialLoaded = false;
+  private interstitialLoading: Promise<boolean> | null = null;
+
+  private rewarded: RewardedAd | null = null;
+  private rewardedLoaded = false;
+  private rewardedLoading: Promise<boolean> | null = null;
 
   async initialize(): Promise<void> {
     if (this.ready) return;
@@ -145,6 +156,112 @@ export class AdMobAdService implements IAdService {
     }
   }
 
+  async preload(types: AdType[] = ['interstitial', 'rewarded']): Promise<void> {
+    if (!this.ready) await this.initialize();
+    if (this.unavailable) return;
+    const jobs: Promise<unknown>[] = [];
+    if (types.includes('interstitial')) {
+      jobs.push(this.ensureInterstitialLoaded());
+    }
+    if (types.includes('rewarded')) {
+      jobs.push(this.ensureRewardedLoaded());
+    }
+    await Promise.all(jobs);
+  }
+
+  private ensureInterstitialLoaded(): Promise<boolean> {
+    if (this.unavailable) return Promise.resolve(false);
+    if (this.interstitialLoaded && this.interstitial) {
+      return Promise.resolve(true);
+    }
+    if (this.interstitialLoading) return this.interstitialLoading;
+
+    this.interstitialLoading = new Promise<boolean>((resolve) => {
+      try {
+        const { InterstitialAd, AdEventType } = loadSdk();
+        const ad = InterstitialAd.createForAdRequest(unitId('interstitial'));
+        this.interstitial = ad;
+        this.interstitialLoaded = false;
+
+        let settled = false;
+        const finish = (ok: boolean) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          unsubLoaded();
+          unsubError();
+          this.interstitialLoading = null;
+          this.interstitialLoaded = ok;
+          if (!ok) this.interstitial = null;
+          resolve(ok);
+        };
+
+        const unsubLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
+          finish(true);
+        });
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+          finish(false);
+        });
+        const timer = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+        ad.load();
+      } catch {
+        this.interstitialLoading = null;
+        this.interstitial = null;
+        this.interstitialLoaded = false;
+        resolve(false);
+      }
+    });
+
+    return this.interstitialLoading;
+  }
+
+  private ensureRewardedLoaded(): Promise<boolean> {
+    if (this.unavailable) return Promise.resolve(false);
+    if (this.rewardedLoaded && this.rewarded) {
+      return Promise.resolve(true);
+    }
+    if (this.rewardedLoading) return this.rewardedLoading;
+
+    this.rewardedLoading = new Promise<boolean>((resolve) => {
+      try {
+        const { RewardedAd, RewardedAdEventType, AdEventType } = loadSdk();
+        const ad = RewardedAd.createForAdRequest(unitId('rewarded'));
+        this.rewarded = ad;
+        this.rewardedLoaded = false;
+
+        let settled = false;
+        const finish = (ok: boolean) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          unsubLoaded();
+          unsubError();
+          this.rewardedLoading = null;
+          this.rewardedLoaded = ok;
+          if (!ok) this.rewarded = null;
+          resolve(ok);
+        };
+
+        const unsubLoaded = ad.addAdEventListener(
+          RewardedAdEventType.LOADED,
+          () => finish(true),
+        );
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, () => {
+          finish(false);
+        });
+        const timer = setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+        ad.load();
+      } catch {
+        this.rewardedLoading = null;
+        this.rewarded = null;
+        this.rewardedLoaded = false;
+        resolve(false);
+      }
+    });
+
+    return this.rewardedLoading;
+  }
+
   async showInterstitial(
     placement: AdPlacement = 'interstitial_level',
   ): Promise<AdResult> {
@@ -152,8 +269,16 @@ export class AdMobAdService implements IAdService {
     if (this.unavailable) return denied(placement, 'Ads unavailable');
 
     try {
-      const { InterstitialAd, AdEventType } = loadSdk();
-      const interstitial = InterstitialAd.createForAdRequest(unitId('interstitial'));
+      const { AdEventType } = loadSdk();
+      const loaded = await this.ensureInterstitialLoaded();
+      const ad = this.interstitial;
+      if (!loaded || !ad) {
+        return denied(placement, 'Interstitial failed to load');
+      }
+
+      // Consume preloaded instance; refresh in background after close.
+      this.interstitialLoaded = false;
+      this.interstitial = null;
 
       return await new Promise<AdResult>((resolve) => {
         let settled = false;
@@ -161,47 +286,31 @@ export class AdMobAdService implements IAdService {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
-          unsubLoaded();
           unsubClosed();
           unsubError();
+          void this.ensureInterstitialLoaded();
           resolve(result);
         };
 
-        const unsubLoaded = interstitial.addAdEventListener(
-          AdEventType.LOADED,
-          () => {
-            void interstitial.show();
-          },
-        );
-        const unsubClosed = interstitial.addAdEventListener(
-          AdEventType.CLOSED,
-          () => {
-            finish({
-              success: true,
-              rewarded: false,
-              placement,
-              provider: 'admob',
-              message: 'Interstitial completed',
-            });
-          },
-        );
-        const unsubError = interstitial.addAdEventListener(
-          AdEventType.ERROR,
-          (error) => {
-            finish(
-              denied(
-                placement,
-                error?.message ?? 'Interstitial failed to load',
-              ),
-            );
-          },
-        );
-
+        const unsubClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
+          finish({
+            success: true,
+            rewarded: false,
+            placement,
+            provider: 'admob',
+            message: 'Interstitial completed',
+          });
+        });
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+          finish(
+            denied(placement, error?.message ?? 'Interstitial failed to show'),
+          );
+        });
         const timer = setTimeout(() => {
-          finish(denied(placement, 'Interstitial load timed out'));
+          finish(denied(placement, 'Interstitial show timed out'));
         }, LOAD_TIMEOUT_MS);
 
-        interstitial.load();
+        void ad.show();
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Interstitial error';
@@ -214,8 +323,15 @@ export class AdMobAdService implements IAdService {
     if (this.unavailable) return denied(placement, 'Ads unavailable');
 
     try {
-      const { RewardedAd, RewardedAdEventType, AdEventType } = loadSdk();
-      const rewardedAd = RewardedAd.createForAdRequest(unitId('rewarded'));
+      const { RewardedAdEventType, AdEventType } = loadSdk();
+      const loaded = await this.ensureRewardedLoaded();
+      const ad = this.rewarded;
+      if (!loaded || !ad) {
+        return denied(placement, 'Rewarded ad failed to load');
+      }
+
+      this.rewardedLoaded = false;
+      this.rewarded = null;
 
       return await new Promise<AdResult>((resolve) => {
         let settled = false;
@@ -225,53 +341,40 @@ export class AdMobAdService implements IAdService {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
-          unsubLoaded();
           unsubEarned();
           unsubClosed();
           unsubError();
+          void this.ensureRewardedLoaded();
           resolve(result);
         };
 
-        const unsubLoaded = rewardedAd.addAdEventListener(
-          RewardedAdEventType.LOADED,
-          () => {
-            void rewardedAd.show();
-          },
-        );
-        const unsubEarned = rewardedAd.addAdEventListener(
+        const unsubEarned = ad.addAdEventListener(
           RewardedAdEventType.EARNED_REWARD,
           () => {
             earned = true;
           },
         );
-        const unsubClosed = rewardedAd.addAdEventListener(
-          AdEventType.CLOSED,
-          () => {
-            finish({
-              success: earned,
-              rewarded: earned,
-              placement,
-              provider: 'admob',
-              message: earned
-                ? `Reward granted: ${placement}`
-                : 'Rewarded ad closed without reward',
-            });
-          },
-        );
-        const unsubError = rewardedAd.addAdEventListener(
-          AdEventType.ERROR,
-          (error) => {
-            finish(
-              denied(placement, error?.message ?? 'Rewarded ad failed to load'),
-            );
-          },
-        );
-
+        const unsubClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
+          finish({
+            success: earned,
+            rewarded: earned,
+            placement,
+            provider: 'admob',
+            message: earned
+              ? `Reward granted: ${placement}`
+              : 'Rewarded ad closed without reward',
+          });
+        });
+        const unsubError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+          finish(
+            denied(placement, error?.message ?? 'Rewarded ad failed to show'),
+          );
+        });
         const timer = setTimeout(() => {
-          finish(denied(placement, 'Rewarded ad load timed out'));
+          finish(denied(placement, 'Rewarded ad show timed out'));
         }, LOAD_TIMEOUT_MS);
 
-        rewardedAd.load();
+        void ad.show();
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Rewarded ad error';

@@ -30,6 +30,8 @@ export type PourResult = {
 };
 
 export const DEFAULT_CAPACITY = 4;
+/** Cap undo history (matches persistence MAX_HISTORY). */
+export const MAX_UNDO_HISTORY = 200;
 
 function cloneTubes(tubes: Tube[]): Tube[] {
   return tubes.map((t) => [...t]);
@@ -194,58 +196,187 @@ function shuffleInPlace<T>(arr: T[], rng: () => number): void {
 }
 
 /**
- * Generates a solvable-looking shuffled level.
- * Creates `colorCount` full monochrome tubes, shuffles segments into
- * `colorCount` tubes, then appends `emptyTubes` empty tubes.
- * Re-shuffles if the board is already won or too pre-sorted for the
- * requested scrambleStrictness.
+ * Generates a solvable shuffled level.
+ * Prefers scrambled boards that pass opening filters + BFS solvability;
+ * falls back to reverse-scrambling from a solved board (always solvable).
  */
 export function generateLevel(config: LevelConfig): WaterSortState {
   const capacity = config.capacity ?? DEFAULT_CAPACITY;
   const strictness = config.scrambleStrictness ?? 0;
   const rng = mulberry32(config.seed ?? Date.now());
+  const colorCount = config.colorCount;
+  const emptyTubes = config.emptyTubes;
 
   const segments: ColorId[] = [];
-  for (let c = 1; c <= config.colorCount; c++) {
+  for (let c = 1; c <= colorCount; c++) {
     for (let i = 0; i < capacity; i++) {
       segments.push(c);
     }
   }
 
-  // Allow fewer pre-solved tubes as strictness rises (floor at 0)
   const maxSolvedAllowed = Math.max(
     0,
-    Math.floor(config.colorCount * (0.34 - strictness * 0.3)),
+    Math.floor(colorCount * (0.34 - strictness * 0.3)),
   );
   const attempts = 12 + Math.floor(strictness * 28);
+  // Harder boards: require full BFS solvability (still cheap at low color counts).
+  const requireSolvable = strictness >= 0.25 || colorCount >= 5;
 
   let tubes: Tube[] = [];
+  let accepted = false;
   for (let attempt = 0; attempt < attempts; attempt++) {
     shuffleInPlace(segments, rng);
-    // Extra pass on hard levels: break up long same-color runs
     if (strictness > 0.35) {
       breakLongRuns(segments, capacity, rng);
     }
 
     tubes = [];
     let cursor = 0;
-    for (let t = 0; t < config.colorCount; t++) {
+    for (let t = 0; t < colorCount; t++) {
       tubes.push(segments.slice(cursor, cursor + capacity));
       cursor += capacity;
     }
-    for (let e = 0; e < config.emptyTubes; e++) {
+    for (let e = 0; e < emptyTubes; e++) {
       tubes.push([]);
     }
 
     const solvedFilled = tubes.filter(
       (t) => t.length === capacity && isTubeSolved(t, capacity),
     ).length;
-    if (!isWon(tubes, capacity) && solvedFilled <= maxSolvedAllowed) {
-      break;
+    if (
+      isWon(tubes, capacity) ||
+      solvedFilled > maxSolvedAllowed ||
+      findHint(tubes, capacity) === null
+    ) {
+      continue;
+    }
+    if (requireSolvable && !isSolvable(tubes, capacity)) {
+      continue;
+    }
+    accepted = true;
+    break;
+  }
+
+  if (!accepted) {
+    tubes = scrambleFromSolved(colorCount, emptyTubes, capacity, rng, {
+      moves: 8 + colorCount * 4 + Math.floor(strictness * 20),
+    });
+  }
+
+  // Final safety: never ship an already-won or stuck opening.
+  if (isWon(tubes, capacity) || findHint(tubes, capacity) === null) {
+    tubes = scrambleFromSolved(colorCount, emptyTubes, capacity, rng, {
+      moves: Math.max(12, colorCount * 6),
+    });
+  }
+  if (isWon(tubes, capacity)) {
+    // Guaranteed unsolved: move one unit from tube 0 onto the first empty.
+    const emptyIdx = tubes.findIndex((t) => t.length === 0);
+    if (emptyIdx >= 0 && tubes[0]?.length) {
+      const color = tubes[0].pop()!;
+      tubes[emptyIdx].push(color);
     }
   }
 
   return { tubes, capacity };
+}
+
+/** Serialize board for visited-set (order-sensitive per tube). */
+function boardKey(tubes: Tube[]): string {
+  return tubes.map((t) => t.join(',')).join('|');
+}
+
+/**
+ * BFS solvability check. Returns false if unsolvable or search budget exhausted
+ * without a win (treat exhausted as unsolvable for generation filters).
+ */
+export function isSolvable(
+  tubes: Tube[],
+  capacity: number = DEFAULT_CAPACITY,
+  maxNodes: number = 60_000,
+): boolean {
+  if (isWon(tubes, capacity)) return true;
+  if (findHint(tubes, capacity) === null) return false;
+
+  const start = cloneTubes(tubes);
+  const queue: Tube[][] = [start];
+  const visited = new Set<string>([boardKey(start)]);
+  let nodes = 0;
+
+  while (queue.length > 0 && nodes < maxNodes) {
+    const cur = queue.shift()!;
+    nodes++;
+    if (isWon(cur, capacity)) return true;
+
+    const n = cur.length;
+    for (let from = 0; from < n; from++) {
+      for (let to = 0; to < n; to++) {
+        if (!canPour(cur, from, to, capacity)) continue;
+        const { tubes: next, result } = pour(cur, from, to, capacity);
+        if (!result.success) continue;
+        const key = boardKey(next);
+        if (visited.has(key)) continue;
+        visited.add(key);
+        if (isWon(next, capacity)) return true;
+        queue.push(next);
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Always-solvable generator: start from solved monochrome tubes, apply random
+ * valid pours to scramble. Guarantees a legal opening move when possible.
+ */
+function scrambleFromSolved(
+  colorCount: number,
+  emptyTubes: number,
+  capacity: number,
+  rng: () => number,
+  opts: { moves: number },
+): Tube[] {
+  const tubes: Tube[] = [];
+  for (let c = 1; c <= colorCount; c++) {
+    tubes.push(Array.from({ length: capacity }, () => c));
+  }
+  for (let e = 0; e < emptyTubes; e++) {
+    tubes.push([]);
+  }
+
+  for (let i = 0; i < opts.moves; i++) {
+    const moves: Array<[number, number]> = [];
+    const n = tubes.length;
+    for (let from = 0; from < n; from++) {
+      for (let to = 0; to < n; to++) {
+        if (canPour(tubes, from, to, capacity)) moves.push([from, to]);
+      }
+    }
+    if (moves.length === 0) break;
+    const [from, to] = moves[Math.floor(rng() * moves.length)];
+    const { tubes: next } = pour(tubes, from, to, capacity);
+    for (let t = 0; t < n; t++) {
+      tubes[t] = next[t];
+    }
+  }
+
+  // Prefer not already-won; if we somehow are, pour once more if possible.
+  if (isWon(tubes, capacity)) {
+    const moves: Array<[number, number]> = [];
+    const n = tubes.length;
+    for (let from = 0; from < n; from++) {
+      for (let to = 0; to < n; to++) {
+        if (canPour(tubes, from, to, capacity)) moves.push([from, to]);
+      }
+    }
+    if (moves.length > 0) {
+      const [from, to] = moves[Math.floor(rng() * moves.length)];
+      const { tubes: next } = pour(tubes, from, to, capacity);
+      for (let t = 0; t < n; t++) tubes[t] = next[t];
+    }
+  }
+
+  return tubes.map((t) => [...t]);
 }
 
 /** Swap neighbors to reduce contiguous same-color streaks. */
@@ -283,6 +414,13 @@ export class WaterSortEngine {
   constructor(initial: WaterSortState) {
     this.tubes = cloneTubes(initial.tubes);
     this.capacity = initial.capacity;
+  }
+
+  private pushHistory(snapshot: Tube[]): void {
+    this.history.push(snapshot);
+    if (this.history.length > MAX_UNDO_HISTORY) {
+      this.history.splice(0, this.history.length - MAX_UNDO_HISTORY);
+    }
   }
 
   static createDefaultLevel(level: number = 1): WaterSortEngine {
@@ -339,7 +477,7 @@ export class WaterSortEngine {
     if (!this.canPour(fromIndex, toIndex)) {
       return { success: false, amount: 0, color: null };
     }
-    this.history.push(cloneTubes(this.tubes));
+    this.pushHistory(cloneTubes(this.tubes));
     const { tubes, result } = pour(this.tubes, fromIndex, toIndex, this.capacity);
     this.tubes = tubes;
     return result;
@@ -379,7 +517,7 @@ export class WaterSortEngine {
 
   /** Insert an extra empty tube (consumable / ad reward). */
   addEmptyTube(): void {
-    this.history.push(cloneTubes(this.tubes));
+    this.pushHistory(cloneTubes(this.tubes));
     this.tubes.push([]);
   }
 

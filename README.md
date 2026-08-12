@@ -10,7 +10,7 @@ Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with AdMob mo
 | `src/engines/JackpotEngine.ts` | Pure RNG, spin costs, payout table |
 | `src/services/AdService.ts` | Banner / interstitial / rewarded abstraction + mock |
 | `src/services/AdManager.ts` | Monetization policy (cooldown, first-ad delay, no-ads) |
-| `src/services/IapService.ts` | Mock Remove Ads purchase |
+| `src/services/IapService.ts` | Remove Ads IAP (`expo-iap` / StoreKit + Play Billing) |
 | `src/services/AdMobAdService.ts` | Real AdMob provider |
 | `src/services/adsBootstrap.ts` | UMP consent + ATT before ads |
 | `src/store/gameStore.ts` | Zustand bridge between engines, economy, ads |
@@ -59,7 +59,7 @@ Legal pages live in `docs/` for GitHub Pages:
 
 - Level clear → **+10** coins
 - Spin → bet × lines coins (or free spins from rewarded ads)
-- Remove Ads → **$1.99** (mock IAP in `__DEV__` only; hides banner + interstitial only)
+- Remove Ads → store price for `com.aquasort.lab.remove_ads` (hides banner + interstitial only; mock only in `__DEV__` / Jest)
 - Interstitial every **3** levels
 - Rewarded: extra tube · 3 free spins · 2× payout
 

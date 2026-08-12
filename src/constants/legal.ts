@@ -11,7 +11,7 @@ export const LEGAL = {
     process.env.EXPO_PUBLIC_TERMS_URL ??
     'https://peiwei-c.github.io/water-sort-jackpot/terms.html',
   supportEmail:
-    process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@aquasort.lab',
+    process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'jobygapps@gmail.com',
   /** Minimum age acknowledgment for store questionnaires (simulated gambling + ads). */
   minimumAge: 17,
 } as const;

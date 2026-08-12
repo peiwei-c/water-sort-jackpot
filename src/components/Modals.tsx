@@ -12,7 +12,10 @@ import {
   LEVEL_COIN_REWARD,
   EXTRA_MOVES_FROM_AD,
   MAX_LEVEL,
+  MAX_LIVES,
   SKIP_AFTER_FAILS,
+  msUntilNextLife,
+  formatRegenCountdown,
 } from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
 
@@ -33,7 +36,12 @@ export function LevelCompleteModal() {
       : `+${lastClearCoinReward} coins earned`;
 
   return (
-    <Modal visible={modal === 'level_complete'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'level_complete'}
+      transparent
+      animationType="fade"
+      onRequestClose={() => void nextLevel({ goHome: true })}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>STATION {level}</Text>
@@ -100,6 +108,7 @@ export function CampaignCompleteModal() {
       visible={modal === 'campaign_complete'}
       transparent
       animationType="fade"
+      onRequestClose={goHome}
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
@@ -139,6 +148,91 @@ export function CampaignCompleteModal() {
   );
 }
 
+export function OutOfLivesModal() {
+  const modal = useGameStore((s) => s.modal);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const lives = useGameStore((s) => s.lives);
+  const nextLifeAt = useGameStore((s) => s.nextLifeAt);
+  const closeModal = useGameStore((s) => s.closeModal);
+  const watchAd = useGameStore((s) => s.watchAd);
+  const refreshLives = useGameStore((s) => s.refreshLives);
+  const goHome = useGameStore((s) => s.goHome);
+
+  const regenMs =
+    lives < MAX_LIVES ? msUntilNextLife({ lives, nextLifeAt }) : null;
+  const regenLabel =
+    regenMs != null ? formatRegenCountdown(regenMs) : null;
+
+  React.useEffect(() => {
+    if (modal !== 'out_of_lives' || lives >= MAX_LIVES) return;
+    const id = setInterval(() => refreshLives(), 1000);
+    return () => clearInterval(id);
+  }, [modal, lives, refreshLives]);
+
+  React.useEffect(() => {
+    if (modal === 'out_of_lives' && lives > 0) {
+      closeModal();
+    }
+  }, [modal, lives, closeModal]);
+
+  return (
+    <Modal
+      visible={modal === 'out_of_lives'}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        closeModal();
+        goHome();
+      }}
+    >
+      <View style={styles.backdrop}>
+        <View style={styles.card}>
+          <Text style={styles.eyebrow}>NO LIVES LEFT</Text>
+          <Text style={styles.title}>Lab sealed!</Text>
+          <Text style={styles.sub}>
+            You need a life to start or retry a station.
+            {regenLabel
+              ? ` Next life in ${regenLabel}.`
+              : ' Watch a short ad for +1 life.'}
+          </Text>
+          {isAdLoading ? (
+            <ActivityIndicator
+              color={LAB.glassBright}
+              style={{ marginVertical: 16 }}
+            />
+          ) : (
+            <View style={styles.col}>
+              <Pressable
+                style={[
+                  styles.btn,
+                  styles.btnMain,
+                  !adsReady && styles.btnDisabled,
+                ]}
+                disabled={!adsReady}
+                onPress={() => void watchAd('rewarded_life')}
+              >
+                <Text style={styles.btnMainText}>
+                  {adsReady ? 'Watch Ad · +1 Life' : 'Ad Unavailable'}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.btn, styles.btnGhost]}
+                onPress={() => {
+                  closeModal();
+                  goHome();
+                }}
+              >
+                <Text style={styles.btnGhostText}>Back to Path</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export function ExtraTubeAdModal() {
   const modal = useGameStore((s) => s.modal);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
@@ -147,7 +241,12 @@ export function ExtraTubeAdModal() {
   const watchAd = useGameStore((s) => s.watchAd);
 
   return (
-    <Modal visible={modal === 'ad_extra_tube'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'ad_extra_tube'}
+      transparent
+      animationType="fade"
+      onRequestClose={closeModal}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Need a vial?</Text>
@@ -198,7 +297,12 @@ export function UndoAdModal() {
   const watchAd = useGameStore((s) => s.watchAd);
 
   return (
-    <Modal visible={modal === 'ad_undo'} transparent animationType="fade">
+    <Modal
+      visible={modal === 'ad_undo'}
+      transparent
+      animationType="fade"
+      onRequestClose={closeModal}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Undo pours?</Text>
@@ -254,7 +358,12 @@ export function OutOfMovesModal() {
   const canSkip = consecutiveFailCount >= SKIP_AFTER_FAILS;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={goHome}
+    >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>NO MOVES LEFT</Text>

@@ -1,10 +1,14 @@
 /**
- * 300-level campaign difficulty curve.
+ * Year-long campaign difficulty curve (~10 stations/day × 365 days).
  * Pure data + math — no UI or ad code.
  */
 
-export const MAX_LEVEL = 300;
+/** ~10 first clears per day for a full year of daily play. */
+export const MAX_LEVEL = 3650;
 export const LEVEL_CAPACITY = 4;
+
+/** Levels spent at each color count while ramping 3 → 12. */
+const LEVELS_PER_COLOR_STEP = Math.floor((MAX_LEVEL - 1) / 9); // 405
 
 export type DifficultyTier =
   | 'beginner'
@@ -32,12 +36,12 @@ function clamp(n: number, min: number, max: number): number {
 }
 
 function tierFor(level: number): { tier: DifficultyTier; tierLabel: string } {
-  if (level <= 10) return { tier: 'beginner', tierLabel: 'Beginner' };
-  if (level <= 40) return { tier: 'easy', tierLabel: 'Easy' };
-  if (level <= 90) return { tier: 'normal', tierLabel: 'Normal' };
-  if (level <= 150) return { tier: 'hard', tierLabel: 'Hard' };
-  if (level <= 210) return { tier: 'expert', tierLabel: 'Expert' };
-  if (level <= 270) return { tier: 'master', tierLabel: 'Master' };
+  if (level <= 100) return { tier: 'beginner', tierLabel: 'Beginner' };
+  if (level <= 400) return { tier: 'easy', tierLabel: 'Easy' };
+  if (level <= 900) return { tier: 'normal', tierLabel: 'Normal' };
+  if (level <= 1500) return { tier: 'hard', tierLabel: 'Hard' };
+  if (level <= 2200) return { tier: 'expert', tierLabel: 'Expert' };
+  if (level <= 3000) return { tier: 'master', tierLabel: 'Master' };
   return { tier: 'legend', tierLabel: 'Legend' };
 }
 
@@ -46,8 +50,11 @@ function tierFor(level: number): { tier: DifficultyTier; tierLabel: string } {
  * Holds each count for a stretch so players adapt before the next bump.
  */
 function colorCountFor(level: number): number {
-  // ~25 levels per color step from 3 up to 12
-  return clamp(3 + Math.floor((level - 1) / 25), 3, 12);
+  return clamp(
+    3 + Math.floor((level - 1) / LEVELS_PER_COLOR_STEP),
+    3,
+    12,
+  );
 }
 
 /**
@@ -72,7 +79,7 @@ function moveLimitFor(
   const base = colorCount * capacity + emptyTubes * 3;
   // Buffer drops from ~14 → ~2 across the campaign
   const buffer = Math.round(14 - progress * 12);
-  // Overall squeeze: 1.12x early → 0.92x at level 300
+  // Overall squeeze: 1.12x early → 0.92x at the finale
   const squeeze = 1.12 - progress * 0.2;
   return Math.max(colorCount * 3 + 2, Math.round((base + buffer) * squeeze));
 }
@@ -115,7 +122,7 @@ export function isCampaignComplete(completedLevel: number): boolean {
  * Sample milestones for docs / tests — verifies the curve climbs.
  */
 export function sampleDifficultyCurve(
-  steps: number[] = [1, 25, 50, 100, 150, 200, 250, 300],
+  steps: number[] = [1, 400, 900, 1500, 2200, 3000, 3650],
 ): LevelDifficulty[] {
   return steps.map(getLevelDifficulty);
 }

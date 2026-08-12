@@ -11,7 +11,7 @@ import {
   Linking,
   type ListRenderItemInfo,
 } from 'react-native';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore, MAX_LIVES, msUntilNextLife, formatRegenCountdown, countClaimableMissions } from '../store/gameStore';
 import { getLevelDifficulty, MAX_LEVEL } from '../engines/LevelProgression';
 import { getPathTheme } from '../engines/StoreCatalog';
 import { LEGAL } from '../constants/legal';
@@ -367,6 +367,8 @@ function FlaskNode({
 
 export function HomeScreen() {
   const coins = useGameStore((s) => s.coins);
+  const lives = useGameStore((s) => s.lives);
+  const nextLifeAt = useGameStore((s) => s.nextLifeAt);
   const undoItems = useGameStore((s) => s.undoItems);
   const extraTubeItems = useGameStore((s) => s.extraTubeItems);
   const freeSpins = useGameStore((s) => s.freeSpins);
@@ -379,7 +381,10 @@ export function HomeScreen() {
   const startLevel = useGameStore((s) => s.startLevel);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const openStore = useGameStore((s) => s.openStore);
+  const openMissions = useGameStore((s) => s.openMissions);
   const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
+  const refreshLives = useGameStore((s) => s.refreshLives);
+  const missionBoard = useGameStore((s) => s.missionBoard);
   const listRef = useRef<FlatList<PathRow>>(null);
   const [audioOpen, setAudioOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -405,9 +410,23 @@ export function HomeScreen() {
   }, [focusIndex]);
 
   useEffect(() => {
+    if (lives >= MAX_LIVES) return;
+    const id = setInterval(() => refreshLives(), 1000);
+    return () => clearInterval(id);
+  }, [lives, refreshLives]);
+
+  useEffect(() => {
     if (!hydrated || hasSeenLabManual) return;
     setManualOpen(true);
   }, [hydrated, hasSeenLabManual]);
+
+  const regenMs =
+    lives < MAX_LIVES ? msUntilNextLife({ lives, nextLifeAt }) : null;
+  const livesChip =
+    regenMs != null
+      ? `♥ ${lives}/${MAX_LIVES} · ${formatRegenCountdown(regenMs)}`
+      : `♥ ${lives}/${MAX_LIVES}`;
+  const claimableMissions = countClaimableMissions(missionBoard);
 
   const closeManual = () => {
     setManualOpen(false);
@@ -522,6 +541,9 @@ export function HomeScreen() {
         </Text>
 
         <View style={styles.wallet}>
+          <View style={[styles.chip, lives <= 0 && styles.chipWarn]}>
+            <Text style={styles.chipText}>{livesChip}</Text>
+          </View>
           <View style={styles.chip}>
             <Text style={styles.chipText}>🪙 {coins}</Text>
           </View>
@@ -558,6 +580,18 @@ export function HomeScreen() {
             accessibilityLabel="Audio settings"
           >
             <Text style={styles.audioBtnText}>Audio</Text>
+          </Pressable>
+          <Pressable
+            style={styles.missionsBtn}
+            onPress={() => {
+              getAudioManager().playSfx('tap');
+              openMissions();
+            }}
+            accessibilityLabel="Lab missions"
+          >
+            <Text style={styles.missionsBtnText}>
+              Missions{claimableMissions > 0 ? ` · ${claimableMissions}` : ''}
+            </Text>
           </Pressable>
           <Pressable
             style={styles.storeBtn}
@@ -757,6 +791,10 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
   },
+  chipWarn: {
+    backgroundColor: 'rgba(232, 93, 76, 0.22)',
+    borderColor: LAB.hazard,
+  },
   chipText: {
     color: COLORS.text,
     fontWeight: '700',
@@ -792,6 +830,19 @@ const styles = StyleSheet.create({
   },
   storeBtnText: {
     color: COLORS.text,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  missionsBtn: {
+    backgroundColor: LAB.glassDim,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 227, 214, 0.45)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  missionsBtnText: {
+    color: LAB.glassBright,
     fontWeight: '800',
     fontSize: 14,
   },

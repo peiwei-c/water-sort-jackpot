@@ -1,8 +1,13 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, memo } from 'react';
 import { View, StyleSheet, Pressable, Animated, Easing } from 'react-native';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
-import { WATER_PALETTE } from '../theme/colors';
-import { getVialTheme, VIAL_DEFAULT } from '../engines/StoreCatalog';
+import {
+  getVialTheme,
+  VIAL_DEFAULT,
+  PALETTE_DEFAULT,
+  waterColor,
+} from '../engines/StoreCatalog';
+import { WATER_COLOR_LABELS } from '../theme/colors';
 
 export const SEGMENT_H = 30;
 export const TUBE_W = 54;
@@ -11,17 +16,22 @@ export const TUBE_GLASS_PAD = 14;
 type Props = {
   tube: TubeData;
   capacity: number;
+  index?: number;
   selected: boolean;
   hinted?: boolean;
   vialSkinId?: string;
+  paletteId?: string;
   rareSkin?: boolean;
   /** Tilt direction while pouring: -1 left, 1 right, 0 none */
   tiltDir?: -1 | 0 | 1;
   /** Hide top N segments during pour (already streamed out) */
   hideTopSegments?: number;
   disabled?: boolean;
-  onPress: () => void;
-  onLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
+  onSelect: (index: number) => void;
+  onLayoutTube?: (
+    index: number,
+    layout: { x: number; y: number; width: number; height: number },
+  ) => void;
 };
 
 function shade(hex: string, amount: number): string {
@@ -37,18 +47,36 @@ function shade(hex: string, amount: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-export function Tube({
+function tubeAccessibilityLabel(
+  index: number | undefined,
+  tube: TubeData,
+  selected: boolean,
+  hinted: boolean | undefined,
+): string {
+  const vial = index != null ? `Vial ${index + 1}` : 'Vial';
+  if (tube.length === 0) {
+    return `${vial}, empty${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
+  }
+  const top = tube[tube.length - 1];
+  const topName = WATER_COLOR_LABELS[top] ?? `color ${top}`;
+  const layers = `${tube.length} layer${tube.length === 1 ? '' : 's'}`;
+  return `${vial}, ${layers}, top ${topName}${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
+}
+
+function TubeComponent({
   tube,
   capacity,
+  index = 0,
   selected,
   hinted,
   vialSkinId = VIAL_DEFAULT,
+  paletteId = PALETTE_DEFAULT,
   rareSkin,
   tiltDir = 0,
   hideTopSegments = 0,
   disabled,
-  onPress,
-  onLayout,
+  onSelect,
+  onLayoutTube,
 }: Props) {
   const lift = useRef(new Animated.Value(0)).current;
   const tilt = useRef(new Animated.Value(0)).current;
@@ -95,15 +123,18 @@ export function Tube({
 
   const emptySlots = capacity - visibleTube.length;
   const glassH = capacity * SEGMENT_H + TUBE_GLASS_PAD;
+  const a11yLabel = tubeAccessibilityLabel(index, tube, selected, hinted);
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onSelect(index)}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ selected: !!selected, disabled: !!disabled }}
       onLayout={(e) => {
         const { x, y, width, height } = e.nativeEvent.layout;
-        onLayout?.({ x, y, width, height });
+        onLayoutTube?.(index, { x, y, width, height });
       }}
     >
       <Animated.View
@@ -164,7 +195,7 @@ export function Tube({
             ))}
             {[...visibleTube].reverse().map((colorId, i) => {
               const isTop = i === 0;
-              const base = WATER_PALETTE[colorId] ?? '#888';
+              const base = waterColor(paletteId, colorId);
               return (
                 <View
                   key={`c-${visibleTube.length - 1 - i}-${colorId}`}
@@ -219,6 +250,30 @@ export function Tube({
     </Pressable>
   );
 }
+
+export const Tube = memo(TubeComponent, (prev, next) => {
+  if (
+    prev.capacity !== next.capacity ||
+    prev.index !== next.index ||
+    prev.selected !== next.selected ||
+    prev.hinted !== next.hinted ||
+    prev.vialSkinId !== next.vialSkinId ||
+    prev.paletteId !== next.paletteId ||
+    prev.rareSkin !== next.rareSkin ||
+    prev.tiltDir !== next.tiltDir ||
+    prev.hideTopSegments !== next.hideTopSegments ||
+    prev.disabled !== next.disabled ||
+    prev.onSelect !== next.onSelect ||
+    prev.onLayoutTube !== next.onLayoutTube
+  ) {
+    return false;
+  }
+  if (prev.tube.length !== next.tube.length) return false;
+  for (let i = 0; i < prev.tube.length; i++) {
+    if (prev.tube[i] !== next.tube[i]) return false;
+  }
+  return true;
+});
 
 const styles = StyleSheet.create({
   wrap: {
