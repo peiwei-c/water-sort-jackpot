@@ -236,7 +236,7 @@ export function evaluateLine(
           undoItems: Math.max(1, Math.floor(bet / 5) + 1),
           extraTubeItems: 0,
           unlockRareSkin: false,
-          label: `${line.name}: ↺↺↺ +undos`,
+          label: `${line.name}: 🔄🔄🔄 +undos`,
         };
       case SlotSymbol.Coin:
         return {

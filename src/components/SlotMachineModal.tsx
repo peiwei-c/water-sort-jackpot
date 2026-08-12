@@ -382,7 +382,7 @@ export function SlotMachineModal() {
               <Text style={styles.paytableRow}>👑👑👑  →  50×</Text>
               <Text style={styles.paytableRow}>🪙🪙🪙  →  8×</Text>
               <Text style={styles.paytableRow}>
-                ↺↺↺  →  3× + Undo items
+                🔄🔄🔄  →  3× + Undo items
               </Text>
               <Text style={styles.paytableRow}>
                 🧪🧪🧪  →  3× + Extra Tube

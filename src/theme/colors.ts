@@ -67,7 +67,7 @@ export const WATER_COLOR_LABELS: Record<number, string> = {
 export const SYMBOL_EMOJI = {
   drop: '💧',
   coin: '🪙',
-  undo: '↺',
+  undo: '🔄',
   extra_tube: '🧪',
   crown: '👑',
 } as const;
