@@ -44,9 +44,9 @@ export function LabManualModal({ visible, onClose }: Props) {
             <Text style={styles.helpBody}>
               1. Tap a vial to pick it up.{'\n'}
               2. Tap another vial to pour.{'\n'}
-              You can pour only if the target is empty, or its top color matches
-              the color you’re pouring. Contiguous top segments pour together
-              until the target is full.
+              You can pour into any vial that still has space. Matching colors
+              aren’t required. Contiguous top segments of the same color pour
+              together until the target is full.
             </Text>
 
             <Text style={styles.helpHeading}>Moves</Text>

@@ -31,6 +31,7 @@ import { useGameStore } from './src/store/gameStore';
 import { bootstrapAds } from './src/services/adsBootstrap';
 import { getAudioManager } from './src/services/audio/AudioManager';
 import { LAB } from './src/theme/colors';
+import { ANDROID_TOP_INSET } from './src/theme/androidTopInset';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -176,5 +177,6 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+    paddingTop: ANDROID_TOP_INSET,
   },
 });

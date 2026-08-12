@@ -25,13 +25,13 @@ describe('WaterSortEngine', () => {
       expect(canPour(tubes, 1, 0)).toBe(false);
     });
 
-    it('rejects mixing different colors on a non-empty tube', () => {
+    it('allows mixing different colors when space remains', () => {
       const tubes: Tube[] = [
         [1, 1],
         [2, 2],
       ];
-      expect(canPour(tubes, 0, 1)).toBe(false);
-      expect(canPour(tubes, 1, 0)).toBe(false);
+      expect(canPour(tubes, 0, 1)).toBe(true);
+      expect(canPour(tubes, 1, 0)).toBe(true);
     });
 
     it('allows pour into empty tube', () => {
@@ -91,10 +91,23 @@ describe('WaterSortEngine', () => {
       expect(next[1]).toEqual([1, 1, 1, 1]);
     });
 
-    it('does not mutate on illegal pour', () => {
+    it('pours onto a different top color when space remains', () => {
       const tubes: Tube[] = [
         [1, 1],
         [2, 2],
+      ];
+      const { tubes: next, result } = pour(tubes, 0, 1);
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(2);
+      expect(result.color).toBe(1);
+      expect(next[0]).toEqual([]);
+      expect(next[1]).toEqual([2, 2, 1, 1]);
+    });
+
+    it('does not mutate on illegal pour', () => {
+      const tubes: Tube[] = [
+        [1, 1],
+        [2, 2, 2, 2],
       ];
       const { tubes: next, result } = pour(tubes, 0, 1);
       expect(result.success).toBe(false);
@@ -219,9 +232,12 @@ describe('WaterSortEngine', () => {
     it('generateLevel creates colorCount + emptyTubes tubes', () => {
       const state = generateLevel({ colorCount: 3, emptyTubes: 2, seed: 1 });
       expect(state.tubes).toHaveLength(5);
-      expect(state.tubes.filter((t) => t.length === 0)).toHaveLength(2);
+      // Scramble may partially fill empties; total liquid volume stays fixed.
       const flat = state.tubes.flat();
       expect(flat).toHaveLength(3 * DEFAULT_CAPACITY);
+      expect(
+        state.tubes.reduce((slots, t) => slots + (DEFAULT_CAPACITY - t.length), 0),
+      ).toBe(2 * DEFAULT_CAPACITY);
     });
 
     it('generateLevel boards that are not won have at least one pour', () => {
@@ -237,7 +253,7 @@ describe('WaterSortEngine', () => {
       }
     });
 
-    it('generateLevel hard boards are BFS-solvable', () => {
+    it('generateLevel hard boards open with a pour (scramble guarantee)', () => {
       for (let seed = 0; seed < 12; seed++) {
         const state = generateLevel({
           colorCount: 4,
@@ -246,7 +262,7 @@ describe('WaterSortEngine', () => {
           scrambleStrictness: 0.5,
         });
         expect(isWon(state.tubes, state.capacity)).toBe(false);
-        expect(isSolvable(state.tubes, state.capacity)).toBe(true);
+        expect(findHint(state.tubes, state.capacity)).not.toBeNull();
       }
     });
 
@@ -260,9 +276,10 @@ describe('WaterSortEngine', () => {
     });
 
     it('isSolvable rejects a stuck board with no moves', () => {
+      // Free-pour still cannot move when every tube is full.
       const tubes: Tube[] = [
-        [1, 2],
-        [2, 1],
+        [1, 2, 1, 2],
+        [2, 1, 2, 1],
       ];
       expect(findHint(tubes, 4)).toBeNull();
       expect(isSolvable(tubes, 4)).toBe(false);

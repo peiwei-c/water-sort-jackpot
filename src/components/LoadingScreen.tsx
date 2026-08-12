@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradientFallback } from './LinearGradientFallback';
 import { LAB, COLORS } from '../theme/colors';
+import { ANDROID_TOP_INSET } from '../theme/androidTopInset';
 
 /**
  * Branded boot screen (prototype Variant A — Liquid Path).
@@ -211,6 +212,7 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+    paddingTop: ANDROID_TOP_INSET,
   },
   stage: {
     flex: 1,
