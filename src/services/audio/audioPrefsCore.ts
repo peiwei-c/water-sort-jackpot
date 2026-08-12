@@ -1,4 +1,4 @@
-export const DEFAULT_BGM_VOLUME = 0.55;
+export const DEFAULT_BGM_VOLUME = 0.62;
 export const DEFAULT_SFX_VOLUME = 0.85;
 
 export type AudioPrefs = {

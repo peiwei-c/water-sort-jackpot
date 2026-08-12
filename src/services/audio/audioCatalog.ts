@@ -8,8 +8,8 @@ export type BgmId = 'home' | 'play';
 export type SfxId = 'tap' | 'pour' | 'success' | 'fail';
 
 /**
- * Local asset map. Placeholder tones live in `assets/audio/` —
- * swap the WAV/MP3 files (keep the same filenames) for production audio.
+ * Local asset map (`assets/audio/`).
+ * BGM: looping stereo beds. SFX: short one-shots — swap files to upgrade.
  */
 export const BGM_SOURCES: Record<BgmId, AudioSource> = {
   home: require('../../../assets/audio/bgm_home.wav'),
