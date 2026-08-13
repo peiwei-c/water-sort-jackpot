@@ -3,7 +3,8 @@ import {
   MAX_LEVEL,
   MAX_COLOR_COUNT,
   START_TOTAL_TUBES,
-  LEVELS_PER_TUBE_STEP,
+  FAST_RAMP_END,
+  SLOW_LEVELS_PER_COLOR,
   isCampaignComplete,
   sampleDifficultyCurve,
 } from '../LevelProgression';
@@ -29,7 +30,7 @@ describe('LevelProgression (3650-level campaign)', () => {
     expect(d.moveLimit).toBeGreaterThan(20);
   });
 
-  it('adds one fluid tube (and color) every 5 levels', () => {
+  it('adds one fluid tube (and color) every 5 levels through the tutorial', () => {
     // 1–5: 5 tubes / 4 colors
     expect(getLevelDifficulty(1).colorCount).toBe(4);
     expect(getLevelDifficulty(5).colorCount).toBe(4);
@@ -41,21 +42,25 @@ describe('LevelProgression (3650-level campaign)', () => {
 
     // 11–15: 7 tubes / 6 colors
     expect(getLevelDifficulty(11).colorCount).toBe(6);
+    expect(getLevelDifficulty(FAST_RAMP_END).colorCount).toBe(6);
     expect(getLevelDifficulty(15).colorCount + getLevelDifficulty(15).emptyTubes).toBe(7);
 
-    // 16–20: 8 tubes / 7 colors
+    // Slow campaign band starts at 7 colors
     expect(getLevelDifficulty(16).colorCount).toBe(7);
-    expect(getLevelDifficulty(20).colorCount + getLevelDifficulty(20).emptyTubes).toBe(8);
+    expect(getLevelDifficulty(20).colorCount).toBe(7);
   });
 
-  it('caps colors at the palette max', () => {
+  it('keeps adding colors through the campaign instead of capping by level 50', () => {
+    const l50 = getLevelDifficulty(50);
+    const l1500 = getLevelDifficulty(1500);
     const late = getLevelDifficulty(3650);
+    expect(l50.colorCount).toBeLessThan(l1500.colorCount);
+    expect(l1500.colorCount).toBeLessThan(late.colorCount);
     expect(late.colorCount).toBe(MAX_COLOR_COUNT);
     expect(late.colorCount + late.emptyTubes).toBe(MAX_COLOR_COUNT + 1);
-    // First level that should already be capped: after (12-4)=8 steps of 5
-    const firstCapped =
-      1 + (MAX_COLOR_COUNT - (START_TOTAL_TUBES - 1)) * LEVELS_PER_TUBE_STEP;
+    const firstCapped = FAST_RAMP_END + 1 + 5 * SLOW_LEVELS_PER_COLOR;
     expect(getLevelDifficulty(firstCapped).colorCount).toBe(MAX_COLOR_COUNT);
+    expect(firstCapped).toBeGreaterThan(1500);
   });
 
   it('starts every level with exactly 1 empty tube', () => {
@@ -71,10 +76,15 @@ describe('LevelProgression (3650-level campaign)', () => {
     expect(bigger.colorCount).toBeGreaterThan(small.colorCount);
   });
 
-  it('increases scramble strictness from 0 → 1', () => {
-    expect(getLevelDifficulty(1).scrambleStrictness).toBe(0);
-    expect(getLevelDifficulty(3650).scrambleStrictness).toBe(1);
-    expect(getLevelDifficulty(1825).scrambleStrictness).toBeGreaterThan(0.4);
+  it('ramps scramble strictness with tube stages (not only campaign end)', () => {
+    const l1 = getLevelDifficulty(1).scrambleStrictness;
+    const l6 = getLevelDifficulty(6).scrambleStrictness;
+    const l20 = getLevelDifficulty(20).scrambleStrictness;
+    const late = getLevelDifficulty(3650).scrambleStrictness;
+    expect(l1).toBeGreaterThanOrEqual(0);
+    expect(l6).toBeGreaterThan(l1);
+    expect(l20).toBeGreaterThan(l6);
+    expect(late).toBe(1);
   });
 
   it('assigns rising tiers', () => {

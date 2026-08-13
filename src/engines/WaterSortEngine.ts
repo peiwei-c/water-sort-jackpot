@@ -195,11 +195,69 @@ function shuffleInPlace<T>(arr: T[], rng: () => number): void {
   }
 }
 
+/** Count full monochrome tubes (already sorted). */
+function countSolvedFilled(tubes: Tube[], capacity: number): number {
+  return tubes.filter(
+    (t) => t.length === capacity && isTubeSolved(t, capacity),
+  ).length;
+}
+
+/** True if any single legal pour reaches a won board. */
+function isOneMoveFromWin(tubes: Tube[], capacity: number): boolean {
+  for (let from = 0; from < tubes.length; from++) {
+    for (let to = 0; to < tubes.length; to++) {
+      if (!canPour(tubes, from, to, capacity)) continue;
+      const { tubes: next, result } = pour(tubes, from, to, capacity);
+      if (result.success && isWon(next, capacity)) return true;
+    }
+  }
+  return false;
+}
+
+/** Count tubes that contain a same-color run of at least `minRun`. */
+function countLongMonoTubes(tubes: Tube[], minRun: number = 3): number {
+  let n = 0;
+  for (const tube of tubes) {
+    let run = 1;
+    for (let i = 1; i < tube.length; i++) {
+      if (tube[i] === tube[i - 1]) {
+        run++;
+        if (run >= minRun) {
+          n++;
+          break;
+        }
+      } else {
+        run = 1;
+      }
+    }
+  }
+  return n;
+}
+
+type OpeningLimits = {
+  maxSolvedAllowed: number;
+  maxLongMonoTubes: number;
+};
+
+/** Opening filters shared by shuffle + reverse-scramble paths. */
+function isAcceptableOpening(
+  tubes: Tube[],
+  capacity: number,
+  limits: OpeningLimits,
+): boolean {
+  if (isWon(tubes, capacity)) return false;
+  if (findHint(tubes, capacity) === null) return false;
+  if (countSolvedFilled(tubes, capacity) > limits.maxSolvedAllowed) return false;
+  if (countLongMonoTubes(tubes, 3) > limits.maxLongMonoTubes) return false;
+  if (isOneMoveFromWin(tubes, capacity)) return false;
+  return true;
+}
+
 /**
  * Generates a solvable shuffled level.
- * Free-pour branching makes full BFS filters too expensive, so hard boards
- * prefer reverse-scrambling from a solved state (always solvable by undo).
- * Easy boards still try a few shuffle openings with a cheap solvability budget.
+ * Prefers segment shuffles with disorder filters; falls back to reverse
+ * scramble that pours single units (full free-pour stacks don't mix colors).
+ * Scramble depth and max pre-sorted tubes follow scrambleStrictness.
  */
 export function generateLevel(config: LevelConfig): WaterSortState {
   const capacity = config.capacity ?? DEFAULT_CAPACITY;
@@ -215,22 +273,28 @@ export function generateLevel(config: LevelConfig): WaterSortState {
     }
   }
 
+  // Early: allow at most one sorted tube; late: allow none.
   const maxSolvedAllowed = Math.max(
     0,
-    Math.floor(colorCount * (0.34 - strictness * 0.3)),
+    Math.floor(colorCount * (0.22 - strictness * 0.22)),
   );
-  // Free-pour state space explodes; only cheap-check small/easy shuffles.
-  const useShuffle = strictness < 0.25 && colorCount <= 4;
-  const attempts = useShuffle ? 12 + Math.floor(strictness * 28) : 0;
-  const cheapSolveBudget = 4_000;
+  // 3-high mono stacks are near-solved; never ship them.
+  const maxLongMonoTubes = 0;
+  const limits: OpeningLimits = { maxSolvedAllowed, maxLongMonoTubes };
+  const scrambleMoves =
+    colorCount * capacity * 2 +
+    8 +
+    Math.floor(strictness * colorCount * capacity) +
+    Math.floor(strictness * 16);
+  // Always shuffle — reverse-scramble from solved leaves 3-stacks once
+  // colorCount > 10 if we skip this path.
+  const attempts = 32 + Math.floor(strictness * 48);
 
   let tubes: Tube[] = [];
   let accepted = false;
   for (let attempt = 0; attempt < attempts; attempt++) {
     shuffleInPlace(segments, rng);
-    if (strictness > 0.35) {
-      breakLongRuns(segments, capacity, rng);
-    }
+    breakLongRuns(segments, capacity, rng);
 
     tubes = [];
     let cursor = 0;
@@ -242,17 +306,7 @@ export function generateLevel(config: LevelConfig): WaterSortState {
       tubes.push([]);
     }
 
-    const solvedFilled = tubes.filter(
-      (t) => t.length === capacity && isTubeSolved(t, capacity),
-    ).length;
-    if (
-      isWon(tubes, capacity) ||
-      solvedFilled > maxSolvedAllowed ||
-      findHint(tubes, capacity) === null
-    ) {
-      continue;
-    }
-    if (!isSolvable(tubes, capacity, cheapSolveBudget)) {
+    if (!isAcceptableOpening(tubes, capacity, limits)) {
       continue;
     }
     accepted = true;
@@ -261,17 +315,18 @@ export function generateLevel(config: LevelConfig): WaterSortState {
 
   if (!accepted) {
     tubes = scrambleFromSolved(colorCount, emptyTubes, capacity, rng, {
-      moves: 8 + colorCount * 4 + Math.floor(strictness * 20),
+      moves: scrambleMoves,
+      limits,
     });
   }
 
-  // Final safety: never ship an already-won or stuck opening.
-  if (isWon(tubes, capacity) || findHint(tubes, capacity) === null) {
+  // Final safety: never ship a won, stuck, one-pour, or near-sorted opening.
+  if (!isAcceptableOpening(tubes, capacity, limits)) {
     tubes = scrambleFromSolved(colorCount, emptyTubes, capacity, rng, {
-      moves: Math.max(12, colorCount * 6),
+      moves: Math.max(scrambleMoves, colorCount * capacity * 2 + 24),
+      limits,
     });
   }
-  breakWonOpening(tubes, capacity);
 
   return { tubes, capacity };
 }
@@ -322,19 +377,32 @@ export function isSolvable(
   return false;
 }
 
+/** Move one liquid unit (scramble-only — gameplay still pours contiguous tops). */
+function pourOneUnit(
+  tubes: Tube[],
+  fromIndex: number,
+  toIndex: number,
+  capacity: number,
+): boolean {
+  const from = tubes[fromIndex];
+  const to = tubes[toIndex];
+  if (fromIndex === toIndex) return false;
+  if (from.length === 0 || to.length >= capacity) return false;
+  to.push(from.pop()!);
+  return true;
+}
+
 /**
- * Always-solvable generator: start from solved monochrome tubes, apply random
- * valid pours to scramble. Guarantees a legal opening move when possible.
- *
- * Free-pour can relocate whole monochrome tubes into empties and stay "won",
- * so we always force a one-unit break at the end.
+ * Always-solvable generator: start from solved monochrome tubes, then move
+ * single units with a bias toward mixing colors. Full free-pour stacks would
+ * only relocate solved tubes and leave a one-move puzzle.
  */
 function scrambleFromSolved(
   colorCount: number,
   emptyTubes: number,
   capacity: number,
   rng: () => number,
-  opts: { moves: number },
+  opts: { moves: number; limits: OpeningLimits },
 ): Tube[] {
   const tubes: Tube[] = [];
   for (let c = 1; c <= colorCount; c++) {
@@ -344,33 +412,121 @@ function scrambleFromSolved(
     tubes.push([]);
   }
 
-  for (let i = 0; i < opts.moves; i++) {
+  const n = tubes.length;
+  const targetMoves = opts.moves;
+  // Extra budget if early moves are rejected as no-ops.
+  for (let i = 0, guard = 0; i < targetMoves && guard < targetMoves * 4; guard++) {
+    type Cand = { from: number; to: number; weight: number };
+    const cands: Cand[] = [];
+    for (let from = 0; from < n; from++) {
+      if (tubes[from].length === 0) continue;
+      for (let to = 0; to < n; to++) {
+        if (from === to) continue;
+        if (tubes[to].length >= capacity) continue;
+        const fromTop = getTopColor(tubes[from])!;
+        const toTop = getTopColor(tubes[to]);
+        // Relocating a whole mono stack into an empty doesn't mix anything.
+        const relocatingMono =
+          toTop === null &&
+          tubes[from].length === capacity &&
+          tubes[from].every((c) => c === fromTop);
+        if (relocatingMono) continue;
+
+        let weight = 1;
+        if (toTop !== null && toTop !== fromTop) weight += 6; // mix colors
+        if (toTop === null) weight += 2; // open a buffer split
+        if (tubes[from].every((c) => c === fromTop)) weight += 3; // break mono
+        cands.push({ from, to, weight });
+      }
+    }
+    if (cands.length === 0) break;
+    const total = cands.reduce((s, c) => s + c.weight, 0);
+    let pick = rng() * total;
+    let chosen = cands[0];
+    for (const c of cands) {
+      pick -= c.weight;
+      if (pick <= 0) {
+        chosen = c;
+        break;
+      }
+    }
+    if (pourOneUnit(tubes, chosen.from, chosen.to, capacity)) i++;
+  }
+
+  // Keep mixing until the opening isn't trivial.
+  for (
+    let extra = 0;
+    extra < targetMoves * 3 &&
+    !isAcceptableOpening(tubes, capacity, opts.limits);
+    extra++
+  ) {
     const moves: Array<[number, number]> = [];
-    const n = tubes.length;
     for (let from = 0; from < n; from++) {
       for (let to = 0; to < n; to++) {
-        if (canPour(tubes, from, to, capacity)) moves.push([from, to]);
+        if (from === to) continue;
+        if (tubes[from].length === 0) continue;
+        if (tubes[to].length >= capacity) continue;
+        const fromTop = getTopColor(tubes[from])!;
+        const toTop = getTopColor(tubes[to]);
+        if (toTop === null || toTop !== fromTop) moves.push([from, to]);
       }
     }
     if (moves.length === 0) break;
     const [from, to] = moves[Math.floor(rng() * moves.length)];
-    const { tubes: next } = pour(tubes, from, to, capacity);
-    for (let t = 0; t < n; t++) {
-      tubes[t] = next[t];
-    }
+    pourOneUnit(tubes, from, to, capacity);
   }
 
-  breakWonOpening(tubes, capacity);
+  // Last resort: peel units off sorted tubes into empties / mixed tubes.
+  if (!isAcceptableOpening(tubes, capacity, opts.limits)) {
+    forceMixOpening(tubes, capacity, opts.limits, rng);
+  }
+
   return tubes.map((t) => [...t]);
 }
 
-/** Peel one unit off a full tube into an empty so the board is not already won. */
-function breakWonOpening(tubes: Tube[], capacity: number): void {
-  if (!isWon(tubes, capacity)) return;
-  const emptyIdx = tubes.findIndex((t) => t.length === 0);
-  const fromIdx = tubes.findIndex((t) => t.length === capacity);
-  if (emptyIdx < 0 || fromIdx < 0) return;
-  tubes[emptyIdx].push(tubes[fromIdx].pop()!);
+/** Peel units off long mono runs until the opening is mixed enough. */
+function forceMixOpening(
+  tubes: Tube[],
+  capacity: number,
+  limits: OpeningLimits,
+  rng: () => number,
+): void {
+  const n = tubes.length;
+  for (let guard = 0; guard < n * capacity * 8; guard++) {
+    if (isAcceptableOpening(tubes, capacity, limits)) return;
+    const srcOpts: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = tubes[i];
+      if (t.length === 0) continue;
+      let run = 1;
+      let long = t.length >= 3 && t.every((c) => c === t[0]);
+      for (let k = 1; k < t.length; k++) {
+        if (t[k] === t[k - 1]) {
+          run++;
+          if (run >= 3) long = true;
+        } else {
+          run = 1;
+        }
+      }
+      if (long) srcOpts.push(i);
+    }
+    if (srcOpts.length === 0) break;
+    const src = srcOpts[Math.floor(rng() * srcOpts.length)];
+    const destOpts: number[] = [];
+    for (let to = 0; to < n; to++) {
+      if (to === src) continue;
+      if (tubes[to].length >= capacity) continue;
+      const top = getTopColor(tubes[to]);
+      if (top === null || top !== getTopColor(tubes[src])) destOpts.push(to);
+    }
+    if (destOpts.length === 0) break;
+    pourOneUnit(
+      tubes,
+      src,
+      destOpts[Math.floor(rng() * destOpts.length)],
+      capacity,
+    );
+  }
 }
 
 /** Swap neighbors to reduce contiguous same-color streaks. */

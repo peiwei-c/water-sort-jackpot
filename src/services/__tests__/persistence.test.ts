@@ -4,6 +4,7 @@ import {
 } from '../persistence';
 import { PATH_DEFAULT, VIAL_DEFAULT } from '../../engines/StoreCatalog';
 import { localDayKey, localWeekKey } from '../../engines/MissionEngine';
+import { MAX_LIVES } from '../../engines/LivesEngine';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
@@ -48,7 +49,7 @@ describe('persistence sanitization', () => {
     expect(data!.levelsCompletedSinceAd).toBe(99);
     expect(data!.hasSeenLabManual).toBe(true);
     expect(data!.rareSkinUnlocked).toBe(true);
-    expect(data!.lives).toBe(5);
+    expect(data!.lives).toBe(MAX_LIVES);
     expect(data!.nextLifeAt).toBeNull();
     expect(data!.missionBoard.progress.daily_clear_3).toEqual({
       progress: 0,
@@ -70,7 +71,7 @@ describe('persistence sanitization', () => {
       lives: 99,
       nextLifeAt: 1_700_000_000_000,
     });
-    expect(over!.lives).toBe(5);
+    expect(over!.lives).toBe(MAX_LIVES);
     expect(over!.nextLifeAt).toBeNull();
   });
 

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { COLORS, LAB } from '../theme/colors';
 import { DialogCloseX } from './DialogCloseX';
+import { MAX_LIVES } from '../engines/LivesEngine';
 
 type Props = {
   visible: boolean;
@@ -57,7 +58,7 @@ export function LabManualModal({ visible, onClose }: Props) {
 
             <Text style={styles.helpHeading}>Lives</Text>
             <Text style={styles.helpBody}>
-              You start with 5 lives. Starting or retrying a station costs 1 life.
+              You start with {MAX_LIVES} lives. Starting or retrying a station costs 1 life.
               Continuing a saved mid-puzzle run does not. Lives refill one every
               30 minutes, or watch an ad for +1 life when you’re out.
             </Text>

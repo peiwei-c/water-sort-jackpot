@@ -1,6 +1,7 @@
 /**
  * Year-long campaign difficulty curve (~10 stations/day × 365 days).
- * Primary hardness: +1 fluid tube (and color) every 5 levels.
+ * Tutorial: +1 fluid tube (and color) every 5 levels through FAST_RAMP_END.
+ * Then colors tick up slowly so level 1500 is larger than level 50.
  * Pure data + math — no UI or ad code.
  */
 
@@ -10,12 +11,21 @@ export const LEVEL_CAPACITY = 4;
 
 /** Board size at level 1 (fluid tubes + empties). */
 export const START_TOTAL_TUBES = 5;
-/** Levels spent at each tube count before adding another fluid tube. */
+/** Tutorial: levels spent at each tube count before adding another fluid tube. */
 export const LEVELS_PER_TUBE_STEP = 5;
+/** Last level of the fast +1/5-level tutorial (6 colors / 7 tubes). */
+export const FAST_RAMP_END = 15;
 /** Palette / engine cap for distinct liquids. */
 export const MAX_COLOR_COUNT = 12;
 /** Helper empties baked into every generated board. */
 export const BASE_EMPTY_TUBES = 1;
+/**
+ * After the tutorial, one extra color every this many levels.
+ * 6 remaining steps (7→12) across the rest of the campaign.
+ */
+export const SLOW_LEVELS_PER_COLOR = Math.floor(
+  (MAX_LEVEL - FAST_RAMP_END) / (MAX_COLOR_COUNT - 6),
+);
 
 export type DifficultyTier =
   | 'beginner'
@@ -53,23 +63,21 @@ function tierFor(level: number): { tier: DifficultyTier; tierLabel: string } {
 }
 
 /**
- * Total tubes on the board (fluid + empties).
- * Stages 1–5: 5, 6–10: 6, … capped once colors hit the palette max.
- */
-function totalTubesFor(level: number): number {
-  const maxTotal = MAX_COLOR_COUNT + BASE_EMPTY_TUBES;
-  return clamp(
-    START_TOTAL_TUBES + Math.floor((level - 1) / LEVELS_PER_TUBE_STEP),
-    START_TOTAL_TUBES,
-    maxTotal,
-  );
-}
-
-/**
- * Fluid tubes = colors. Rises with total tubes (always leaving BASE_EMPTY_TUBES empty).
+ * Fluid tubes = colors.
+ * 1–5: 4, 6–10: 5, 11–15: 6, then +1 every SLOW_LEVELS_PER_COLOR.
  */
 function colorCountFor(level: number): number {
-  return clamp(totalTubesFor(level) - BASE_EMPTY_TUBES, 1, MAX_COLOR_COUNT);
+  if (level <= FAST_RAMP_END) {
+    return clamp(
+      START_TOTAL_TUBES -
+        BASE_EMPTY_TUBES +
+        Math.floor((level - 1) / LEVELS_PER_TUBE_STEP),
+      1,
+      MAX_COLOR_COUNT,
+    );
+  }
+  const slowIndex = Math.floor((level - FAST_RAMP_END - 1) / SLOW_LEVELS_PER_COLOR);
+  return clamp(7 + slowIndex, 7, MAX_COLOR_COUNT);
 }
 
 /**
@@ -99,9 +107,17 @@ function moveLimitFor(
   return Math.max(colorCount * 4 + 4, Math.round((base + buffer) * squeeze));
 }
 
-/** How aggressively we reject semi-solved generated boards. */
+/**
+ * How aggressively we reject semi-solved generated boards.
+ * Board size (stage) plus campaign progress, so same-size bands still tighten.
+ */
 function scrambleStrictnessFor(level: number): number {
-  return clamp((level - 1) / (MAX_LEVEL - 1), 0, 1);
+  if (level >= MAX_LEVEL) return 1;
+  const colors = colorCountFor(level);
+  const colorSpan = Math.max(1, MAX_COLOR_COUNT - (START_TOTAL_TUBES - 1));
+  const stage = (colors - (START_TOTAL_TUBES - 1)) / colorSpan; // 0 → 1
+  const campaign = (level - 1) / (MAX_LEVEL - 1);
+  return clamp(stage * 0.4 + campaign * 0.6, 0, 1);
 }
 
 /**
@@ -137,7 +153,7 @@ export function isCampaignComplete(completedLevel: number): boolean {
  * Sample milestones for docs / tests — verifies the tube/color ramp.
  */
 export function sampleDifficultyCurve(
-  steps: number[] = [1, 5, 10, 20, 40, 80, 3650],
+  steps: number[] = [1, 5, 15, 50, 1500, 3041, 3650],
 ): LevelDifficulty[] {
   return steps.map(getLevelDifficulty);
 }

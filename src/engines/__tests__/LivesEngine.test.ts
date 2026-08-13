@@ -42,13 +42,13 @@ describe('LivesEngine (Candy Crush–style)', () => {
 
   it('catches up multiple lives after a long absence', () => {
     const state = { lives: 1, nextLifeAt: t0 };
-    const synced = syncLives(state, t0 + 3 * LIFE_REGEN_MS);
+    const synced = syncLives(state, t0 + (MAX_LIVES - 1) * LIFE_REGEN_MS);
     expect(synced.lives).toBe(MAX_LIVES);
     expect(synced.nextLifeAt).toBeNull();
   });
 
   it('fills to max and clears the timer', () => {
-    const state = { lives: 4, nextLifeAt: t0 };
+    const state = { lives: MAX_LIVES - 1, nextLifeAt: t0 };
     expect(syncLives(state, t0)).toEqual({
       lives: MAX_LIVES,
       nextLifeAt: null,
