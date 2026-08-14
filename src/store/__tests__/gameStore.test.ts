@@ -20,7 +20,12 @@ jest.mock('../../services/persistence', () => ({
 import { useGameStore } from '../gameStore';
 import { resetAdService } from '../../services/AdService';
 import { resetAdManager } from '../../services/AdManager';
-import type { Payout } from '../../engines/JackpotEngine';
+import {
+  emptyGrid,
+  SlotSymbol,
+  type Payout,
+  type SpinResult,
+} from '../../engines/JackpotEngine';
 
 describe('gameStore orchestration', () => {
   const prevProvider = process.env.EXPO_PUBLIC_AD_PROVIDER;
@@ -42,6 +47,7 @@ describe('gameStore orchestration', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     if (prevProvider === undefined) {
       delete process.env.EXPO_PUBLIC_AD_PROVIDER;
     } else {
@@ -121,5 +127,106 @@ describe('gameStore orchestration', () => {
     useGameStore.setState({ modal: 'none', pendingPayout: null });
     useGameStore.getState().openSlotMachine();
     expect(useGameStore.getState().modal).toBe('slot_machine');
+  });
+
+  function winSpin(payoutCoins: number, tokensSpent: number): SpinResult {
+    return {
+      reels: [SlotSymbol.Coin, SlotSymbol.Coin, SlotSymbol.Coin],
+      grid: emptyGrid(),
+      payout: {
+        kind: 'line_win',
+        coins: payoutCoins,
+        undoItems: 0,
+        extraTubeItems: 0,
+        unlockRareSkin: false,
+        label: `Win +${payoutCoins}`,
+        lineWins: [],
+        linesPlayed: 5,
+        betPerLine: 5,
+      },
+      tokensSpent,
+      betPerLine: 5,
+      linesPlayed: 5,
+    };
+  }
+
+  function stubCentrifuge(result: SpinResult) {
+    const engine = useGameStore.getState()._jackpot;
+    jest.spyOn(engine, 'spin').mockReturnValue(result);
+    jest.spyOn(engine, 'freeSpin').mockReturnValue({
+      ...result,
+      tokensSpent: 0,
+    });
+  }
+
+  it('auto-collects a winning spin when coins still cover the next run', async () => {
+    stubCentrifuge(winSpin(25, 25));
+    useGameStore.setState({
+      coins: 100,
+      betPerLine: 5,
+      activeLines: 5,
+      freeSpins: 0,
+      undoItems: 2,
+      extraTubeItems: 1,
+      spinInFlight: false,
+    });
+
+    await useGameStore.getState().spin();
+    const s = useGameStore.getState();
+    expect(s.coins).toBe(100);
+    expect(s.pendingPayout).toBeNull();
+    expect(s.modal).toBe('spin_result');
+  });
+
+  it('offers 2× ad after a win only when coins cannot cover the next run', async () => {
+    stubCentrifuge(winSpin(5, 25));
+    useGameStore.setState({
+      coins: 25,
+      betPerLine: 5,
+      activeLines: 5,
+      freeSpins: 0,
+      spinInFlight: false,
+    });
+
+    await useGameStore.getState().spin();
+    const s = useGameStore.getState();
+    expect(s.coins).toBe(0);
+    expect(s.pendingPayout?.coins).toBe(5);
+    expect(s.modal).toBe('ad_2x_payout');
+  });
+
+  it('asks to watch an ad for free runs only when the player cannot afford the bet', async () => {
+    useGameStore.setState({
+      coins: 10,
+      betPerLine: 5,
+      activeLines: 5,
+      freeSpins: 0,
+      spinInFlight: false,
+      lastSpin: null,
+    });
+
+    await useGameStore.getState().spin();
+    const s = useGameStore.getState();
+    expect(s.coins).toBe(10);
+    expect(s.lastSpin).toBeNull();
+    expect(s.modal).toBe('ad_free_spins');
+  });
+
+  it('auto-collects the last free-spin win when coins still cover a paid run', async () => {
+    stubCentrifuge(winSpin(25, 0));
+    useGameStore.setState({
+      coins: 40,
+      betPerLine: 5,
+      activeLines: 5,
+      freeSpins: 1,
+      spinInFlight: false,
+    });
+
+    await useGameStore.getState().spin();
+    const s = useGameStore.getState();
+    expect(s.freeSpins).toBe(0);
+    expect(s.coins).toBe(65);
+    expect(s.pendingPayout).toBeNull();
+    expect(s.modal).toBe('spin_result');
   });
 });

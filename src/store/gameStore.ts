@@ -409,6 +409,65 @@ function collectPendingQuietly(
   return true;
 }
 
+type StoreSet = (
+  partial:
+    | Partial<GameStore>
+    | ((state: GameStore) => Partial<GameStore>),
+) => void;
+
+/**
+ * After a centrifuge roll: auto-collect 1× when the player can still afford
+ * another run. Hold the payout for the 2× ad offer only when they are short.
+ */
+function settleSpinResult(
+  get: () => GameStore,
+  set: StoreSet,
+  result: SpinResult,
+  coinsAfterBet: number,
+  extra: Partial<GameStore> = {},
+): void {
+  const payout = result.payout;
+  const {
+    betPerLine,
+    activeLines,
+    _jackpot,
+    undoItems,
+    extraTubeItems,
+    ownedItemIds,
+  } = get();
+
+  if (payout.kind !== 'none') {
+    const coinsAfterCollect = coinsAfterBet + payout.coins;
+    if (_jackpot.canAffordSpin(coinsAfterCollect, betPerLine, activeLines)) {
+      const cosmetics = grantCosmeticFromPayout(
+        ownedItemIds,
+        payout.unlockRareSkin,
+      );
+      set({
+        ...extra,
+        coins: coinsAfterCollect,
+        undoItems: undoItems + payout.undoItems,
+        extraTubeItems: extraTubeItems + payout.extraTubeItems,
+        ...cosmetics,
+        lastSpin: result,
+        pendingPayout: null,
+        modal: 'spin_result',
+        lastMessage: payout.label,
+      });
+      return;
+    }
+  }
+
+  set({
+    ...extra,
+    coins: coinsAfterBet,
+    lastSpin: result,
+    pendingPayout: payout.kind === 'none' ? null : payout,
+    modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
+    lastMessage: payout.label,
+  });
+}
+
 function settlePendingPayout(
   get: () => GameStore,
   set: (
@@ -1300,14 +1359,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           return;
         }
 
-        // Last free spin — offer Collect / 2× like a paid win
-        set({
-          freeSpins: 0,
-          lastSpin: result,
-          pendingPayout: payout.kind === 'none' ? null : payout,
-          modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-          lastMessage: payout.label,
-        });
+        // Last free spin — auto-collect if funded; 2× ad only when broke
+        settleSpinResult(get, set, result, coins, { freeSpins: 0 });
         trackMission(get, set, 'centrifuge_spin', 1);
         persistSoon();
         return;
@@ -1338,13 +1391,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const result = _jackpot.spin(coins, betPerLine, activeLines);
       if (!result) return;
 
-      set({
-        coins: coins - result.tokensSpent,
-        lastSpin: result,
-        pendingPayout: result.payout.kind === 'none' ? null : result.payout,
-        modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-        lastMessage: result.payout.label,
-      });
+      settleSpinResult(get, set, result, coins - result.tokensSpent);
       trackMission(get, set, 'centrifuge_spin', 1);
       persistSoon();
       } finally {
