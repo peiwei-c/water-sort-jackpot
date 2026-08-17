@@ -3,14 +3,17 @@ import {
   MAX_LEVEL,
   MAX_COLOR_COUNT,
   START_TOTAL_TUBES,
-  FAST_RAMP_END,
-  SLOW_LEVELS_PER_COLOR,
+  LEVELS_PER_TUBE_STEP,
+  NORMAL_LEVELS_PER_COLOR,
+  HARD_LEVELS_PER_COLOR,
+  EXPERT_LEVELS_PER_COLOR,
+  COLOR_RAMP_END_LEVEL,
   isCampaignComplete,
   sampleDifficultyCurve,
 } from '../LevelProgression';
 import { WaterSortEngine } from '../WaterSortEngine';
 
-describe('LevelProgression (3650-level campaign)', () => {
+describe('LevelProgression (3650-level campaign, variable color dwell)', () => {
   it('exposes MAX_LEVEL = 3650', () => {
     expect(MAX_LEVEL).toBe(3650);
   });
@@ -30,37 +33,51 @@ describe('LevelProgression (3650-level campaign)', () => {
     expect(d.moveLimit).toBeGreaterThan(20);
   });
 
-  it('adds one fluid tube (and color) every 5 levels through the tutorial', () => {
-    // 1–5: 5 tubes / 4 colors
+  it('holds Normal 20, Hard 30, and Expert 40 levels per color', () => {
+    expect(LEVELS_PER_TUBE_STEP).toBe(10);
+    expect(NORMAL_LEVELS_PER_COLOR).toBe(20);
+    expect(HARD_LEVELS_PER_COLOR).toBe(30);
+    expect(EXPERT_LEVELS_PER_COLOR).toBe(40);
+    expect(COLOR_RAMP_END_LEVEL).toBe(201);
+
+    // Beginner 1–10: 4 colors
     expect(getLevelDifficulty(1).colorCount).toBe(4);
-    expect(getLevelDifficulty(5).colorCount).toBe(4);
-    expect(getLevelDifficulty(5).colorCount + getLevelDifficulty(5).emptyTubes).toBe(5);
+    expect(getLevelDifficulty(10).colorCount).toBe(4);
 
-    // 6–10: 6 tubes / 5 colors
-    expect(getLevelDifficulty(6).colorCount).toBe(5);
-    expect(getLevelDifficulty(10).colorCount + getLevelDifficulty(10).emptyTubes).toBe(6);
+    // Easy 11–20: 5 colors
+    expect(getLevelDifficulty(11).colorCount).toBe(5);
+    expect(getLevelDifficulty(20).colorCount).toBe(5);
 
-    // 11–15: 7 tubes / 6 colors
-    expect(getLevelDifficulty(11).colorCount).toBe(6);
-    expect(getLevelDifficulty(FAST_RAMP_END).colorCount).toBe(6);
-    expect(getLevelDifficulty(15).colorCount + getLevelDifficulty(15).emptyTubes).toBe(7);
+    // Normal 21–40: 6 colors (20 levels)
+    expect(getLevelDifficulty(21).colorCount).toBe(6);
+    expect(getLevelDifficulty(40).colorCount).toBe(6);
+    expect(getLevelDifficulty(21).tier).toBe('normal');
 
-    // Slow campaign band starts at 7 colors
-    expect(getLevelDifficulty(16).colorCount).toBe(7);
-    expect(getLevelDifficulty(20).colorCount).toBe(7);
-  });
+    // Normal 41–60: 7 colors (20 levels)
+    expect(getLevelDifficulty(41).colorCount).toBe(7);
+    expect(getLevelDifficulty(60).colorCount).toBe(7);
 
-  it('keeps adding colors through the campaign instead of capping by level 50', () => {
-    const l50 = getLevelDifficulty(50);
-    const l1500 = getLevelDifficulty(1500);
-    const late = getLevelDifficulty(3650);
-    expect(l50.colorCount).toBeLessThan(l1500.colorCount);
-    expect(l1500.colorCount).toBeLessThan(late.colorCount);
-    expect(late.colorCount).toBe(MAX_COLOR_COUNT);
-    expect(late.colorCount + late.emptyTubes).toBe(MAX_COLOR_COUNT + 1);
-    const firstCapped = FAST_RAMP_END + 1 + 5 * SLOW_LEVELS_PER_COLOR;
-    expect(getLevelDifficulty(firstCapped).colorCount).toBe(MAX_COLOR_COUNT);
-    expect(firstCapped).toBeGreaterThan(1500);
+    // Hard 61–90: 8 colors (30 levels)
+    expect(getLevelDifficulty(61).colorCount).toBe(8);
+    expect(getLevelDifficulty(90).colorCount).toBe(8);
+    expect(getLevelDifficulty(61).tier).toBe('hard');
+
+    // Hard 91–120: 9 colors (30 levels)
+    expect(getLevelDifficulty(91).colorCount).toBe(9);
+    expect(getLevelDifficulty(120).colorCount).toBe(9);
+
+    // Expert 121–160: 10 colors (40 levels)
+    expect(getLevelDifficulty(121).colorCount).toBe(10);
+    expect(getLevelDifficulty(160).colorCount).toBe(10);
+    expect(getLevelDifficulty(121).tier).toBe('expert');
+
+    // Expert 161–200: 11 colors (40 levels)
+    expect(getLevelDifficulty(161).colorCount).toBe(11);
+    expect(getLevelDifficulty(200).colorCount).toBe(11);
+
+    // 201+: 12-color cap
+    expect(getLevelDifficulty(201).colorCount).toBe(MAX_COLOR_COUNT);
+    expect(getLevelDifficulty(3650).colorCount).toBe(MAX_COLOR_COUNT);
   });
 
   it('starts every level with exactly 1 empty tube', () => {
@@ -71,29 +88,34 @@ describe('LevelProgression (3650-level campaign)', () => {
 
   it('scales move budget with puzzle size rather than crushing early levels', () => {
     const small = getLevelDifficulty(1);
-    const bigger = getLevelDifficulty(20);
+    const bigger = getLevelDifficulty(40);
     expect(bigger.moveLimit).toBeGreaterThan(small.moveLimit);
     expect(bigger.colorCount).toBeGreaterThan(small.colorCount);
   });
 
   it('ramps scramble strictness with tube stages (not only campaign end)', () => {
     const l1 = getLevelDifficulty(1).scrambleStrictness;
-    const l6 = getLevelDifficulty(6).scrambleStrictness;
-    const l20 = getLevelDifficulty(20).scrambleStrictness;
+    const l11 = getLevelDifficulty(11).scrambleStrictness;
+    const l41 = getLevelDifficulty(41).scrambleStrictness;
     const late = getLevelDifficulty(3650).scrambleStrictness;
     expect(l1).toBeGreaterThanOrEqual(0);
-    expect(l6).toBeGreaterThan(l1);
-    expect(l20).toBeGreaterThan(l6);
+    expect(l11).toBeGreaterThan(l1);
+    expect(l41).toBeGreaterThan(l11);
     expect(late).toBe(1);
   });
 
   it('assigns rising tiers', () => {
-    expect(getLevelDifficulty(50).tier).toBe('beginner');
-    expect(getLevelDifficulty(200).tier).toBe('easy');
-    expect(getLevelDifficulty(600).tier).toBe('normal');
-    expect(getLevelDifficulty(1200).tier).toBe('hard');
-    expect(getLevelDifficulty(1800).tier).toBe('expert');
-    expect(getLevelDifficulty(2500).tier).toBe('master');
+    expect(getLevelDifficulty(5).tier).toBe('beginner');
+    expect(getLevelDifficulty(15).tier).toBe('easy');
+    expect(getLevelDifficulty(30).tier).toBe('normal');
+    expect(getLevelDifficulty(50).tier).toBe('normal');
+    expect(getLevelDifficulty(70).tier).toBe('hard');
+    expect(getLevelDifficulty(100).tier).toBe('hard');
+    expect(getLevelDifficulty(125).tier).toBe('expert');
+    expect(getLevelDifficulty(180).tier).toBe('expert');
+    expect(getLevelDifficulty(201).tier).toBe('master');
+    expect(getLevelDifficulty(1500).tier).toBe('master');
+    expect(getLevelDifficulty(1501).tier).toBe('legend');
     expect(getLevelDifficulty(3200).tier).toBe('legend');
   });
 
@@ -112,7 +134,7 @@ describe('LevelProgression (3650-level campaign)', () => {
   });
 
   it('can generate boards for milestone levels', () => {
-    for (const level of [1, 5, 20, 40, 3650]) {
+    for (const level of [1, 10, 20, 40, 90, 201, 3650]) {
       const engine = WaterSortEngine.createDefaultLevel(level);
       const diff = getLevelDifficulty(level);
       expect(engine.getTubes()).toHaveLength(diff.colorCount + diff.emptyTubes);

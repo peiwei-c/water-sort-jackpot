@@ -1,31 +1,48 @@
 /**
- * Year-long campaign difficulty curve (~10 stations/day × 365 days).
- * Tutorial: +1 fluid tube (and color) every 5 levels through FAST_RAMP_END.
- * Then colors tick up slowly so level 1500 is larger than level 50.
- * Pure data + math — no UI or ad code.
+ * 3650-level campaign difficulty curve.
+ * Color dwell is 10 levels by default; Normal 20, Hard 30, Expert 40.
+ * After the 12-color cap, difficulty continues via move-budget squeeze
+ * and scramble complexity. Pure data + math — no UI or ad code.
  */
 
-/** ~10 first clears per day for a full year of daily play. */
 export const MAX_LEVEL = 3650;
 export const LEVEL_CAPACITY = 4;
 
 /** Board size at level 1 (fluid tubes + empties). */
 export const START_TOTAL_TUBES = 5;
-/** Tutorial: levels spent at each tube count before adding another fluid tube. */
-export const LEVELS_PER_TUBE_STEP = 5;
-/** Last level of the fast +1/5-level tutorial (6 colors / 7 tubes). */
-export const FAST_RAMP_END = 15;
+/** Colors at level 1 (4 colors + 1 empty = 5 tubes). */
+export const START_COLOR_COUNT = 4;
+/** Default levels spent at a color (Beginner, Easy). */
+export const LEVELS_PER_TUBE_STEP = 10;
+/** Levels spent at each Normal color (6 then 7). */
+export const NORMAL_LEVELS_PER_COLOR = 20;
+/** Levels spent at each Hard color (8 then 9). */
+export const HARD_LEVELS_PER_COLOR = 30;
+/** Levels spent at each Expert color (10 then 11). */
+export const EXPERT_LEVELS_PER_COLOR = 40;
 /** Palette / engine cap for distinct liquids. */
 export const MAX_COLOR_COUNT = 12;
 /** Helper empties baked into every generated board. */
 export const BASE_EMPTY_TUBES = 1;
+
 /**
- * After the tutorial, one extra color every this many levels.
- * 6 remaining steps (7→12) across the rest of the campaign.
+ * Dwell at each color from START_COLOR_COUNT through MAX_COLOR_COUNT - 1.
+ * Index 0 = 4 colors (Beginner), last index = 11 colors (Expert).
  */
-export const SLOW_LEVELS_PER_COLOR = Math.floor(
-  (MAX_LEVEL - FAST_RAMP_END) / (MAX_COLOR_COUNT - 6),
-);
+export const LEVELS_AT_COLOR: readonly number[] = [
+  LEVELS_PER_TUBE_STEP, // 4 — Beginner
+  LEVELS_PER_TUBE_STEP, // 5 — Easy
+  NORMAL_LEVELS_PER_COLOR, // 6 — Normal
+  NORMAL_LEVELS_PER_COLOR, // 7 — Normal
+  HARD_LEVELS_PER_COLOR, // 8 — Hard
+  HARD_LEVELS_PER_COLOR, // 9 — Hard
+  EXPERT_LEVELS_PER_COLOR, // 10 — Expert
+  EXPERT_LEVELS_PER_COLOR, // 11 — Expert
+];
+
+/** First level that uses the 12-color cap. */
+export const COLOR_RAMP_END_LEVEL =
+  LEVELS_AT_COLOR.reduce((sum, n) => sum + n, 0) + 1;
 
 export type DifficultyTier =
   | 'beginner'
@@ -52,32 +69,36 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function tierFor(level: number): { tier: DifficultyTier; tierLabel: string } {
-  if (level <= 100) return { tier: 'beginner', tierLabel: 'Beginner' };
-  if (level <= 400) return { tier: 'easy', tierLabel: 'Easy' };
-  if (level <= 900) return { tier: 'normal', tierLabel: 'Normal' };
-  if (level <= 1500) return { tier: 'hard', tierLabel: 'Hard' };
-  if (level <= 2200) return { tier: 'expert', tierLabel: 'Expert' };
-  if (level <= 3000) return { tier: 'master', tierLabel: 'Master' };
+function tierFor(
+  level: number,
+  colorCount: number,
+): { tier: DifficultyTier; tierLabel: string } {
+  if (colorCount <= 4) return { tier: 'beginner', tierLabel: 'Beginner' };
+  if (colorCount <= 5) return { tier: 'easy', tierLabel: 'Easy' };
+  if (colorCount <= 7) return { tier: 'normal', tierLabel: 'Normal' };
+  if (colorCount <= 9) return { tier: 'hard', tierLabel: 'Hard' };
+  if (colorCount <= 11) return { tier: 'expert', tierLabel: 'Expert' };
+  if (level <= 1500) return { tier: 'master', tierLabel: 'Master' };
   return { tier: 'legend', tierLabel: 'Legend' };
 }
 
 /**
  * Fluid tubes = colors.
- * 1–5: 4, 6–10: 5, 11–15: 6, then +1 every SLOW_LEVELS_PER_COLOR.
+ * Beginner 1–10: 4 colors (10)
+ * Easy 11–20: 5 colors (10)
+ * Normal 21–40 / 41–60: 6 then 7 colors (20 each)
+ * Hard 61–90 / 91–120: 8 then 9 colors (30 each)
+ * Expert 121–160 / 161–200: 10 then 11 colors (40 each)
+ * Level 201+: 12 colors (max)
  */
 function colorCountFor(level: number): number {
-  if (level <= FAST_RAMP_END) {
-    return clamp(
-      START_TOTAL_TUBES -
-        BASE_EMPTY_TUBES +
-        Math.floor((level - 1) / LEVELS_PER_TUBE_STEP),
-      1,
-      MAX_COLOR_COUNT,
-    );
+  let remaining = level;
+  for (let i = 0; i < LEVELS_AT_COLOR.length; i++) {
+    const dwell = LEVELS_AT_COLOR[i];
+    if (remaining <= dwell) return START_COLOR_COUNT + i;
+    remaining -= dwell;
   }
-  const slowIndex = Math.floor((level - FAST_RAMP_END - 1) / SLOW_LEVELS_PER_COLOR);
-  return clamp(7 + slowIndex, 7, MAX_COLOR_COUNT);
+  return MAX_COLOR_COUNT;
 }
 
 /**
@@ -114,8 +135,8 @@ function moveLimitFor(
 function scrambleStrictnessFor(level: number): number {
   if (level >= MAX_LEVEL) return 1;
   const colors = colorCountFor(level);
-  const colorSpan = Math.max(1, MAX_COLOR_COUNT - (START_TOTAL_TUBES - 1));
-  const stage = (colors - (START_TOTAL_TUBES - 1)) / colorSpan; // 0 → 1
+  const colorSpan = Math.max(1, MAX_COLOR_COUNT - START_COLOR_COUNT);
+  const stage = (colors - START_COLOR_COUNT) / colorSpan; // 0 → 1
   const campaign = (level - 1) / (MAX_LEVEL - 1);
   return clamp(stage * 0.4 + campaign * 0.6, 0, 1);
 }
@@ -130,7 +151,7 @@ export function getLevelDifficulty(level: number): LevelDifficulty {
   const emptyTubes = emptyTubesFor(safeLevel);
   const moveLimit = moveLimitFor(safeLevel, colorCount, emptyTubes, capacity);
   const scrambleStrictness = scrambleStrictnessFor(safeLevel);
-  const { tier, tierLabel } = tierFor(safeLevel);
+  const { tier, tierLabel } = tierFor(safeLevel, colorCount);
 
   return {
     level: safeLevel,
@@ -153,7 +174,7 @@ export function isCampaignComplete(completedLevel: number): boolean {
  * Sample milestones for docs / tests — verifies the tube/color ramp.
  */
 export function sampleDifficultyCurve(
-  steps: number[] = [1, 5, 15, 50, 1500, 3041, 3650],
+  steps: number[] = [1, 10, 20, 40, 60, 90, 120, 160, 201, 3650],
 ): LevelDifficulty[] {
   return steps.map(getLevelDifficulty);
 }
