@@ -5,6 +5,7 @@ import {
   StatusBar,
   SafeAreaView,
   AppState,
+  BackHandler,
   type AppStateStatus,
 } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
@@ -111,6 +112,23 @@ function AppShell() {
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
   }, [flushSession, refreshLives, refreshMissions]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      const { screen, modal, closeModal, goHome } = useGameStore.getState();
+      if (modal !== 'none') {
+        closeModal();
+        return true;
+      }
+      if (screen !== 'home') {
+        goHome();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!lastMessage) return;
