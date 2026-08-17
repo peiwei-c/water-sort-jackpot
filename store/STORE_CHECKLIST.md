@@ -19,6 +19,10 @@ Code is largely ready for both stores. Work through **Shared** first, then **App
 1. Link iOS app `com.aquasort.lab` and Android package `com.aquasort.lab`
 2. Privacy & messaging → enable **GDPR** + **IDFA / ATT** forms
 3. Confirm unit IDs match `src/services/admobUnitIds.ts`
+4. **app-ads.txt** — full steps: [APP_ADS_TXT.md](./APP_ADS_TXT.md)
+   - Live file must be **https://peiwei-c.github.io/app-ads.txt** (domain root; not `/water-sort-jackpot/`)
+   - Play **Store listing contact details → Website** and App Store **Marketing URL** must use host `peiwei-c.github.io`
+   - In AdMob: Apps → View all apps → app-ads.txt → Check for updates
 
 ### 3. Remove Ads IAP (same product ID both stores)
 **Full steps + copy-paste fields:** [IAP_REMOVE_ADS.md](./IAP_REMOVE_ADS.md)
@@ -60,6 +64,7 @@ Capture at least:
 - [ ] Create app with bundle ID `com.aquasort.lab`
 - [ ] Privacy Policy URL → live GitHub Pages privacy link
 - [ ] Support URL / email → monitored contact
+- [ ] Marketing URL (developer website) → `https://peiwei-c.github.io/water-sort-jackpot/` (app-ads.txt crawl)
 - [ ] Age rating questionnaire: ads + **simulated gambling** → expect **17+**
 - [ ] App Privacy nutrition labels (AdMob advertising / device IDs / tracking as applicable)
 - [ ] Screenshots: iPhone **6.7"** + **6.1"** minimum
@@ -78,6 +83,7 @@ Capture at least:
 
 - [ ] Create app with package `com.aquasort.lab`
 - [ ] Privacy Policy URL → same live Pages link
+- [ ] Store settings → Store listing contact details → Website → `https://peiwei-c.github.io/water-sort-jackpot/` (app-ads.txt crawl)
 - [ ] **App content → Ads → Yes, my app contains ads**
 - [ ] Content rating questionnaire (IARC): ads + gambling/simulated casino theme — expect mature / 18+ equivalent depending on answers
 - [ ] Target audience: **not children** (declare 18+ / adults only as appropriate)
@@ -107,6 +113,7 @@ Capture at least:
 - [x] UMP consent + iOS ATT
 - [x] Delay AdMob measurement until after consent
 - [x] Privacy Policy + Terms HTML under `docs/`
+- [x] app-ads.txt source + setup (`store/APP_ADS_TXT.md`; live at `https://peiwei-c.github.io/app-ads.txt`)
 - [x] In-app Privacy / Terms links
 - [x] Error boundary
 - [x] EAS development / preview / production profiles
@@ -119,8 +126,8 @@ Capture at least:
 ## Suggested order
 
 1. Fix Pages + support email  
-2. AdMob Privacy & messaging (both apps)  
-3. Create ASC + Play apps; paste Privacy URL  
+2. AdMob Privacy & messaging (both apps) + app-ads.txt crawl  
+3. Create ASC + Play apps; paste Privacy URL + developer website (`peiwei-c.github.io`)  
 4. Create Remove Ads IAP on both stores  
 5. `eas build --platform all --profile production`  
 6. Screenshots from that build  
