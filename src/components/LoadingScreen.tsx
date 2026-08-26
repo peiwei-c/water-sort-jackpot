@@ -13,8 +13,7 @@ import { LAB, COLORS } from '../theme/colors';
 import { ANDROID_TOP_INSET } from '../theme/androidTopInset';
 
 /**
- * Branded boot screen (prototype Variant A — Liquid Path).
- * Shown while the game store hydrates from persistence.
+ * Branded boot screen while the game store hydrates.
  */
 export function LoadingScreen() {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -191,10 +190,10 @@ export function LoadingScreen() {
               },
             ]}
           >
-            AquaSort
+            Boba Shop
           </Animated.Text>
           <Animated.Text style={[styles.tag, { opacity: tagOpacity }]}>
-            HYDROLOGY LAB
+            SORT THE DRINKS
           </Animated.Text>
 
           <View style={styles.barTrack}>
@@ -246,8 +245,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 36,
-    backgroundColor: '#1a9e92',
-    shadowColor: LAB.glassBright,
+    backgroundColor: '#F25C78',
+    shadowColor: '#FFB703',
     shadowOpacity: 0.55,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 0 },
@@ -256,7 +255,7 @@ const styles = StyleSheet.create({
   orbInner: {
     ...StyleSheet.absoluteFill,
     borderRadius: 70,
-    backgroundColor: 'rgba(126, 227, 214, 0.45)',
+    backgroundColor: 'rgba(255, 183, 3, 0.45)',
   },
   orbRing: {
     width: 96,

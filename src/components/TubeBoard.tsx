@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
-import { Tube, SEGMENT_H, TUBE_GLASS_PAD } from './Tube';
+import { Tube, SEGMENT_H, TUBE_GLASS_PAD, CUP_STRAW_H, CUP_CAP_H } from './Tube';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
 import { waterColor, PALETTE_DEFAULT } from '../engines/StoreCatalog';
 import { useGameStore, POUR_ANIM_MS } from '../store/gameStore';
@@ -18,8 +18,7 @@ type Props = {
 };
 
 function mouthPoint(layout: Layout, capacity: number, fillCount: number) {
-  const rimH = 10;
-  const glassTop = layout.y + rimH - 3;
+  const glassTop = layout.y + CUP_STRAW_H * 0.35 + CUP_CAP_H;
   const glassH = capacity * SEGMENT_H + TUBE_GLASS_PAD;
   const waterTop = glassTop + glassH - fillCount * SEGMENT_H;
   return {

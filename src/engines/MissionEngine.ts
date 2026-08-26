@@ -1,5 +1,5 @@
 /**
- * Daily / weekly lab missions — pure progress + claim math.
+ * Daily / weekly shop missions — pure progress + claim math.
  * No UI or ad code.
  */
 
@@ -56,8 +56,8 @@ export const DAILY_MISSIONS: MissionDef[] = [
   {
     id: 'daily_clear_3',
     cadence: 'daily',
-    title: 'Sort 3 Stations',
-    blurb: 'Clear any 3 flasks today.',
+    title: 'Sort 3 tickets',
+    blurb: 'Clear any 3 drinks today.',
     metric: 'station_clear',
     target: 3,
     reward: { coins: 20 },
@@ -65,8 +65,8 @@ export const DAILY_MISSIONS: MissionDef[] = [
   {
     id: 'daily_clear_5',
     cadence: 'daily',
-    title: 'Lab Shift',
-    blurb: 'Clear 5 stations for an extra life.',
+    title: 'Rush hour',
+    blurb: 'Clear 5 tickets for an extra life.',
     metric: 'station_clear',
     target: 5,
     reward: { lives: 1, coins: 10 },
@@ -74,8 +74,8 @@ export const DAILY_MISSIONS: MissionDef[] = [
   {
     id: 'daily_first_2',
     cadence: 'daily',
-    title: 'New Samples',
-    blurb: 'First-clear 2 brand-new stations.',
+    title: 'New drinks',
+    blurb: 'First-clear 2 brand-new tickets.',
     metric: 'first_clear',
     target: 2,
     reward: { coins: 25, undoItems: 1 },
@@ -83,8 +83,8 @@ export const DAILY_MISSIONS: MissionDef[] = [
   {
     id: 'daily_spin_3',
     cadence: 'daily',
-    title: 'Spin the Centrifuge',
-    blurb: 'Run the Centrifuge 3 times.',
+    title: 'Lucky spin',
+    blurb: 'Run Lucky 3 times.',
     metric: 'centrifuge_spin',
     target: 3,
     reward: { freeSpins: 2, extraTubeItems: 1 },
@@ -104,8 +104,8 @@ export const WEEKLY_MISSIONS: MissionDef[] = [
   {
     id: 'weekly_clear_20',
     cadence: 'weekly',
-    title: 'Week on the Bench',
-    blurb: 'Clear 20 stations this week.',
+    title: 'Week on shift',
+    blurb: 'Clear 20 tickets this week.',
     metric: 'station_clear',
     target: 20,
     reward: { coins: 80, lives: 1 },
@@ -113,8 +113,8 @@ export const WEEKLY_MISSIONS: MissionDef[] = [
   {
     id: 'weekly_first_10',
     cadence: 'weekly',
-    title: 'Frontier Mapping',
-    blurb: 'First-clear 10 new stations this week.',
+    title: 'New recipes',
+    blurb: 'First-clear 10 new tickets this week.',
     metric: 'first_clear',
     target: 10,
     reward: { lives: 2, coins: 40, undoItems: 2 },
@@ -122,7 +122,7 @@ export const WEEKLY_MISSIONS: MissionDef[] = [
   {
     id: 'weekly_spin_15',
     cadence: 'weekly',
-    title: 'Centrifuge Marathon',
+    title: 'Lucky marathon',
     blurb: 'Spin 15 times this week.',
     metric: 'centrifuge_spin',
     target: 15,
@@ -327,7 +327,7 @@ export function formatRewardLabel(reward: MissionReward): string {
     parts.push(`+${reward.undoItems} undo`);
   }
   if (reward.extraTubeItems) {
-    parts.push(`+${reward.extraTubeItems} vial${reward.extraTubeItems === 1 ? '' : 's'}`);
+    parts.push(`+${reward.extraTubeItems} cup${reward.extraTubeItems === 1 ? '' : 's'}`);
   }
   if (reward.freeSpins) {
     parts.push(`+${reward.freeSpins} free spin${reward.freeSpins === 1 ? '' : 's'}`);

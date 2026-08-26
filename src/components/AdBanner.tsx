@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { getAdService } from '../services/AdService';
 import { AdMobAdService } from '../services/AdMobAdService';
+import { adsDisabled } from '../services/monetizationGate';
 
 /**
  * Renders an AdMob banner when the AdMob provider has shown the banner slot.
  * No-op for mock / fail-closed providers and on web.
  */
 export function AdBanner() {
+  const disabled = adsDisabled();
   const ads = getAdService();
-  const isAdMob = ads instanceof AdMobAdService;
+  const isAdMob = !disabled && ads instanceof AdMobAdService;
   const [visible, setVisible] = useState(
     () => isAdMob && ads.isBannerVisible() && ads.isReady('banner'),
   );
@@ -47,7 +49,7 @@ export function AdBanner() {
     }
   }, [ads, isAdMob, visible]);
 
-  if (!visible || !BannerView || !unitId) return null;
+  if (disabled || !visible || !BannerView || !unitId) return null;
 
   return (
     <View style={styles.wrap}>

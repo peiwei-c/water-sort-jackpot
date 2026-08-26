@@ -17,7 +17,7 @@ import {
   msUntilNextLife,
   formatRegenCountdown,
 } from '../store/gameStore';
-import { COLORS, LAB } from '../theme/colors';
+import { BOBA } from '../theme/boba';
 
 export function LevelCompleteModal() {
   const modal = useGameStore((s) => s.modal);
@@ -44,17 +44,17 @@ export function LevelCompleteModal() {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>STATION {level}</Text>
-          <Text style={styles.title}>Sorted!</Text>
+          <Text style={styles.eyebrow}>TICKET {level}</Text>
+          <Text style={styles.title}>Sealed!</Text>
           <Text style={styles.sub}>
             {coinLabel}
-            {nextUnlocked ? `\nStation ${level + 1} unlocked` : ''}
+            {nextUnlocked ? `\nTicket ${level + 1} unlocked` : ''}
             {!firstClear ? '\nReplay bonus' : ''}
           </Text>
           {isAdLoading ? (
             <View style={styles.col}>
               <ActivityIndicator
-                color={LAB.glassBright}
+                color={BOBA.straw}
                 style={{ marginVertical: 8 }}
               />
               <Text style={styles.sub}>Loading ad…</Text>
@@ -62,7 +62,7 @@ export function LevelCompleteModal() {
                 style={[styles.btn, styles.btnGhost]}
                 onPress={() => void nextLevel({ goHome: true })}
               >
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           ) : (
@@ -72,7 +72,7 @@ export function LevelCompleteModal() {
                   style={[styles.btn, styles.btnMain]}
                   onPress={() => void nextLevel({ openJackpot: false })}
                 >
-                  <Text style={styles.btnMainText}>Next Station</Text>
+                  <Text style={styles.btnMainText}>Next Ticket</Text>
                 </Pressable>
               ) : null}
               <Pressable
@@ -80,14 +80,14 @@ export function LevelCompleteModal() {
                 onPress={() => void nextLevel({ openJackpot: true })}
               >
                 <Text style={isFinal ? styles.btnMainText : styles.btnGhostText}>
-                  {isFinal ? 'Spin Centrifuge' : 'Next · Centrifuge'}
+                  {isFinal ? 'Lucky spin' : 'Next · Lucky'}
                 </Text>
               </Pressable>
               <Pressable
                 style={[styles.btn, styles.btnGhost]}
                 onPress={() => void nextLevel({ goHome: true })}
               >
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           )}
@@ -112,21 +112,20 @@ export function CampaignCompleteModal() {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>LAB CLEAR</Text>
-          <Text style={styles.title}>All {MAX_LEVEL} Stations!</Text>
+          <Text style={styles.eyebrow}>SHOP CLEAR</Text>
+          <Text style={styles.title}>All {MAX_LEVEL} tickets!</Text>
           <Text style={styles.sub}>
-            You beat every tier from Beginner to Legend. Spin the Centrifuge or
-            return to the path to replay.
+            You sealed every ticket. Take a Lucky spin or head home to replay.
           </Text>
           {isAdLoading ? (
             <View style={styles.col}>
               <ActivityIndicator
-                color={LAB.glassBright}
+                color={BOBA.straw}
                 style={{ marginVertical: 8 }}
               />
               <Text style={styles.sub}>Loading ad…</Text>
               <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           ) : (
@@ -135,10 +134,10 @@ export function CampaignCompleteModal() {
                 style={[styles.btn, styles.btnMain]}
                 onPress={openSlotMachine}
               >
-                <Text style={styles.btnMainText}>Spin Centrifuge</Text>
+                <Text style={styles.btnMainText}>Lucky spin</Text>
               </Pressable>
               <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           )}
@@ -189,16 +188,16 @@ export function OutOfLivesModal() {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.eyebrow}>NO LIVES LEFT</Text>
-          <Text style={styles.title}>Lab sealed!</Text>
+          <Text style={styles.title}>Shop closed!</Text>
           <Text style={styles.sub}>
-            You need a life to start or retry a station.
+            You need a life to start or retry a ticket.
             {regenLabel
               ? ` Next life in ${regenLabel}.`
               : ' Watch a short ad for +1 life.'}
           </Text>
           {isAdLoading ? (
             <ActivityIndicator
-              color={LAB.glassBright}
+              color={BOBA.straw}
               style={{ marginVertical: 16 }}
             />
           ) : (
@@ -223,7 +222,7 @@ export function OutOfLivesModal() {
                   goHome();
                 }}
               >
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           )}
@@ -249,14 +248,14 @@ export function ExtraTubeAdModal() {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Need a vial?</Text>
+          <Text style={styles.title}>Need a cup?</Text>
           <Text style={styles.sub}>
-            You’re out of empty vials. Watch a short ad for +1 vial, or earn more
-            from the Centrifuge.
+            You’re out of empty cups. Watch a short ad for +1 cup, or earn more
+            from Lucky.
           </Text>
           {isAdLoading ? (
             <ActivityIndicator
-              color={LAB.glassBright}
+              color={BOBA.straw}
               style={{ marginVertical: 16 }}
             />
           ) : (
@@ -307,11 +306,10 @@ export function UndoAdModal() {
         <View style={styles.card}>
           <Text style={styles.title}>Undo pours?</Text>
           <Text style={styles.sub}>
-            You’re out of undo items. Watch an ad to reverse your last 1–3 pours
-            (based on how many you can undo).
+            You’re out of undo items. Watch an ad to reverse your last 1–3 pours.
           </Text>
           {isAdLoading ? (
-            <ActivityIndicator color={LAB.glassBright} style={{ marginVertical: 16 }} />
+            <ActivityIndicator color={BOBA.straw} style={{ marginVertical: 16 }} />
           ) : (
             <View style={styles.row}>
               <Pressable
@@ -370,14 +368,14 @@ export function OutOfMovesModal() {
           <Text style={styles.title}>Reagents stalled!</Text>
           <Text style={styles.sub}>
             {showExtraMovesAd
-              ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} moves, or restart the station.`
+              ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} pours, or restart the ticket.`
               : canSkip
-                ? 'Retry, get more moves, or skip this station (unlocks the next). Progress is saved if you return to the path.'
-                : 'Retry the station, watch an ad for extra moves, or return to the path (progress is saved).'}
+                ? 'Retry, get more pours, or skip this ticket (unlocks the next). Progress is saved if you go home.'
+                : 'Retry the ticket, watch an ad for extra pours, or go home (progress is saved).'}
           </Text>
           {isAdLoading ? (
             <ActivityIndicator
-              color={LAB.glassBright}
+              color={BOBA.straw}
               style={{ marginVertical: 16 }}
             />
           ) : (
@@ -414,7 +412,7 @@ export function OutOfMovesModal() {
                   onPress={() => void skipLevel()}
                 >
                   <Text style={styles.btnMainText}>
-                    {adsReady ? 'Watch Ad · Skip Station' : 'Skip Unavailable'}
+                    {adsReady ? 'Watch Ad · Skip Ticket' : 'Skip Unavailable'}
                   </Text>
                 </Pressable>
               ) : null}
@@ -422,10 +420,10 @@ export function OutOfMovesModal() {
                 style={[styles.btn, styles.btnGhost]}
                 onPress={restartLevel}
               >
-                <Text style={styles.btnGhostText}>Retry Station</Text>
+                <Text style={styles.btnGhostText}>Retry Ticket</Text>
               </Pressable>
               <Pressable style={[styles.btn, styles.btnGhost]} onPress={goHome}>
-                <Text style={styles.btnGhostText}>Back to Path</Text>
+                <Text style={styles.btnGhostText}>Home</Text>
               </Pressable>
             </View>
           )}
@@ -438,7 +436,7 @@ export function OutOfMovesModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(4, 18, 24, 0.82)',
+    backgroundColor: 'rgba(42, 20, 24, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
@@ -448,12 +446,11 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     borderRadius: 22,
     padding: 22,
-    backgroundColor: LAB.benchDeep,
-    borderWidth: 1.5,
-    borderColor: 'rgba(126, 227, 214, 0.32)',
+    backgroundColor: '#fff8f0',
+    borderWidth: 0,
   },
   eyebrow: {
-    color: LAB.label,
+    color: BOBA.straw,
     fontWeight: '800',
     letterSpacing: 2,
     fontSize: 11,
@@ -462,14 +459,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '900',
-    color: COLORS.text,
+    color: BOBA.ink,
     textAlign: 'center',
     marginTop: 4,
   },
   sub: {
     marginTop: 8,
     marginBottom: 18,
-    color: COLORS.textMuted,
+    color: 'rgba(74,34,28,0.68)',
     textAlign: 'center',
     fontSize: 15,
     lineHeight: 22,
@@ -493,28 +490,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   btnGhost: {
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.22)',
+    backgroundColor: '#fff6ee',
     flexGrow: 1,
   },
   btnMain: {
-    backgroundColor: LAB.reagent,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 230, 150, 0.35)',
+    backgroundColor: BOBA.straw,
     flexGrow: 1,
   },
   btnDisabled: {
     opacity: 0.45,
   },
   btnGhostText: {
-    color: COLORS.text,
+    color: BOBA.ink,
     fontWeight: '700',
     fontSize: 15,
     textAlign: 'center',
   },
   btnMainText: {
-    color: '#1A1200',
+    color: BOBA.cream,
     fontWeight: '800',
     fontSize: 15,
     textAlign: 'center',

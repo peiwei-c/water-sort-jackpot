@@ -17,7 +17,7 @@ type Props = {
 };
 
 /**
- * Lab-styled audio settings: independent BGM / SFX volume + mute.
+ * Shop-styled audio settings: independent BGM / SFX volume + mute.
  * Wired to AudioManager (persists via AsyncStorage).
  */
 export function AudioSettingsModal({ visible, onClose }: Props) {
@@ -29,9 +29,9 @@ export function AudioSettingsModal({ visible, onClose }: Props) {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <DialogCloseX onPress={onClose} />
-          <Text style={styles.eyebrow}>HYDROLOGY LAB</Text>
+          <Text style={styles.eyebrow}>BOBA SHOP</Text>
           <Text style={styles.title}>Audio</Text>
-          <Text style={styles.sub}>Tune the bench speakers. Prefs save automatically.</Text>
+          <Text style={styles.sub}>Tune the shop speakers. Prefs save automatically.</Text>
 
           <BusRow
             label="Music (BGM)"

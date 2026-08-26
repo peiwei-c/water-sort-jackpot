@@ -3,6 +3,8 @@
  * Soft-fails when native modules are missing (Jest / Expo Go / web).
  */
 
+import { adsDisabled } from './monetizationGate';
+
 export type AdsBootstrapResult = {
   consentOk: boolean;
   trackingStatus: string;
@@ -47,6 +49,15 @@ async function requestAttIfNeeded(): Promise<string> {
  * initialize the configured ad provider and show the home banner.
  */
 export async function bootstrapAds(): Promise<AdsBootstrapResult> {
+  if (adsDisabled()) {
+    return {
+      consentOk: true,
+      trackingStatus: 'ads-disabled',
+      adsReady: false,
+      message: 'Ads disabled for this build',
+    };
+  }
+
   let consentOk = true;
   let trackingStatus = 'skipped';
 

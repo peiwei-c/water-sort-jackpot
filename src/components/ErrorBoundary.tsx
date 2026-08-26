@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <View style={styles.root}>
-        <Text style={styles.title}>Lab glitch</Text>
+        <Text style={styles.title}>Shop glitch</Text>
         <Text style={styles.body}>
           Something went wrong. Your progress should still be saved — try again.
         </Text>

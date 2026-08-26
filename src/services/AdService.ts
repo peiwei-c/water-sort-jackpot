@@ -2,7 +2,7 @@
  * Abstract ad layer for AdMob / AppLovin with a mock fallback for local play.
  */
 
-import { allowMockMonetization } from './monetizationGate';
+import { allowMockMonetization, adsDisabled } from './monetizationGate';
 
 export type AdPlacement =
   | 'interstitial_level'
@@ -208,6 +208,10 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
 
 export function getAdService(): IAdService {
   if (!singleton) {
+    if (adsDisabled()) {
+      singleton = new FailClosedAdService('mock');
+      return singleton;
+    }
     const fromEnv = process.env.EXPO_PUBLIC_AD_PROVIDER as
       | AdProviderName
       | undefined;

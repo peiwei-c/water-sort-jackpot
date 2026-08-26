@@ -135,10 +135,10 @@ export function SlotMachineModal() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.titleRow}>
-              <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
+              <Text style={styles.labEyebrow}>AFTER HOURS</Text>
             </View>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>Centrifuge</Text>
+              <Text style={styles.title}>Lucky spin</Text>
               <Pressable
                 style={styles.infoBtn}
                 onPress={() => setShowPaytable(true)}
@@ -151,13 +151,12 @@ export function SlotMachineModal() {
             </View>
 
             <Text style={styles.sub}>
-              Dial reagent lines to open more chamber rows. Spin the drum to
-              extract coins and lab supplies.
+              Dial lines to open more rows. Spin for coins and shop supplies.
             </Text>
 
             <View style={styles.wallet}>
               <View style={styles.balancePill}>
-                <Text style={styles.balanceLabel}>Reagents</Text>
+                <Text style={styles.balanceLabel}>Coins</Text>
                 <Text style={styles.walletText}>🪙 {coins}</Text>
               </View>
               {freeSpins > 0 ? (
@@ -172,7 +171,7 @@ export function SlotMachineModal() {
             <View style={styles.cabinet}>
               <View style={styles.cabinetTop}>
                 <View style={styles.hazardBar} />
-                <Text style={styles.cabinetBadge}>CENTRIFUGE CHAMBER</Text>
+                <Text style={styles.cabinetBadge}>LUCKY WINDOW</Text>
                 <View style={styles.hazardBar} />
               </View>
 
@@ -339,7 +338,7 @@ export function SlotMachineModal() {
                   onPress={closeModal}
                   disabled={spinning}
                 >
-                  <Text style={styles.btnGhostText}>Leave Chamber</Text>
+                  <Text style={styles.btnGhostText}>Home</Text>
                 </Pressable>
                 {canAffordSpin ? (
                   <Pressable
