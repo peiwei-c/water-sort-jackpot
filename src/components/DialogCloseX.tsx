@@ -1,8 +1,8 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { LAB } from '../theme/colors';
+import { BOBA } from '../theme/boba';
 
-/** Top-right × control for lab info dialogs. */
+/** Top-right × control for shop dialogs. */
 export function DialogCloseX({
   onPress,
   accessibilityLabel = 'Close',
@@ -34,12 +34,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.35)',
+    backgroundColor: BOBA.cream,
+    shadowColor: BOBA.peach,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   text: {
-    color: LAB.glassBright,
+    color: BOBA.ink,
     fontSize: 22,
     fontWeight: '700',
     lineHeight: 24,

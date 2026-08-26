@@ -26,6 +26,17 @@
         "buildType": "apk"
       }
     },
+    "screenshots": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_NO_ADS": "true",
+        "EXPO_PUBLIC_AD_PROVIDER": "admob",
+        "EXPO_PUBLIC_ALLOW_MOCK_MONETIZATION": "false"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {

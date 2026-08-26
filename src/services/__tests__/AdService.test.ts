@@ -3,6 +3,7 @@ import {
   FailClosedAdService,
   createAdService,
   resetAdService,
+  isInterstitialClearLevel,
 } from '../AdService';
 
 describe('AdService mock', () => {
@@ -60,5 +61,17 @@ describe('AdService mock', () => {
     await expect(applovin.initialize()).resolves.toBeUndefined();
     const result = await applovin.showRewarded('rewarded_free_spins');
     expect(result.rewarded).toBe(false);
+  });
+});
+
+describe('isInterstitialClearLevel', () => {
+  it('is true only on tickets 10, 20, 30, …', () => {
+    expect(isInterstitialClearLevel(0)).toBe(false);
+    expect(isInterstitialClearLevel(1)).toBe(false);
+    expect(isInterstitialClearLevel(9)).toBe(false);
+    expect(isInterstitialClearLevel(10)).toBe(true);
+    expect(isInterstitialClearLevel(11)).toBe(false);
+    expect(isInterstitialClearLevel(20)).toBe(true);
+    expect(isInterstitialClearLevel(30)).toBe(true);
   });
 });

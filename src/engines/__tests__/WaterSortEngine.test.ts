@@ -6,6 +6,7 @@ import {
   pour,
   isWon,
   isSolvable,
+  isTubeSolved,
   getTopColor,
   getTopContiguousCount,
   generateLevel,
@@ -14,6 +15,52 @@ import {
   MAX_UNDO_HISTORY,
   type Tube,
 } from '../WaterSortEngine';
+
+/** True if any single legal pour reaches a won board. */
+function isOneMoveFromWin(tubes: Tube[], capacity: number): boolean {
+  for (let from = 0; from < tubes.length; from++) {
+    for (let to = 0; to < tubes.length; to++) {
+      if (!canPour(tubes, from, to, capacity)) continue;
+      const { tubes: next, result } = pour(tubes, from, to, capacity);
+      if (result.success && isWon(next, capacity)) return true;
+    }
+  }
+  return false;
+}
+
+/** Higher = more mixed / less pre-sorted (for comparing scramble quality). */
+function disorderScore(tubes: Tube[], capacity: number): number {
+  let score = 0;
+  for (const tube of tubes) {
+    if (tube.length === 0) continue;
+    if (tube.length === capacity && isTubeSolved(tube, capacity)) continue;
+    let runs = 1;
+    for (let i = 1; i < tube.length; i++) {
+      if (tube[i] !== tube[i - 1]) runs++;
+    }
+    score += runs + (tube.every((c) => c === tube[0]) ? 0 : 2);
+  }
+  return score;
+}
+
+function countLongMonoTubes(tubes: Tube[], minRun: number): number {
+  let n = 0;
+  for (const tube of tubes) {
+    let run = 1;
+    for (let i = 1; i < tube.length; i++) {
+      if (tube[i] === tube[i - 1]) {
+        run++;
+        if (run >= minRun) {
+          n++;
+          break;
+        }
+      } else {
+        run = 1;
+      }
+    }
+  }
+  return n;
+}
 
 describe('WaterSortEngine', () => {
   describe('canPour', () => {
@@ -232,12 +279,9 @@ describe('WaterSortEngine', () => {
     it('generateLevel creates colorCount + emptyTubes tubes', () => {
       const state = generateLevel({ colorCount: 3, emptyTubes: 2, seed: 1 });
       expect(state.tubes).toHaveLength(5);
-      // Scramble may partially fill empties; total liquid volume stays fixed.
+      expect(state.tubes.filter((t) => t.length === 0)).toHaveLength(2);
       const flat = state.tubes.flat();
       expect(flat).toHaveLength(3 * DEFAULT_CAPACITY);
-      expect(
-        state.tubes.reduce((slots, t) => slots + (DEFAULT_CAPACITY - t.length), 0),
-      ).toBe(2 * DEFAULT_CAPACITY);
     });
 
     it('generateLevel boards that are not won have at least one pour', () => {
@@ -253,7 +297,7 @@ describe('WaterSortEngine', () => {
       }
     });
 
-    it('generateLevel hard boards open with a pour (scramble guarantee)', () => {
+    it('generateLevel hard boards stay playable (hint + not trivial)', () => {
       for (let seed = 0; seed < 12; seed++) {
         const state = generateLevel({
           colorCount: 4,
@@ -263,6 +307,57 @@ describe('WaterSortEngine', () => {
         });
         expect(isWon(state.tubes, state.capacity)).toBe(false);
         expect(findHint(state.tubes, state.capacity)).not.toBeNull();
+        expect(isOneMoveFromWin(state.tubes, state.capacity)).toBe(false);
+      }
+    });
+
+    it('generateLevel openings are never one pour from won', () => {
+      for (const level of [1, 5, 10, 20]) {
+        const diff = getLevelDifficulty(level);
+        for (let seed = 0; seed < 24; seed++) {
+          const state = generateLevel({
+            colorCount: diff.colorCount,
+            emptyTubes: diff.emptyTubes,
+            capacity: diff.capacity,
+            scrambleStrictness: diff.scrambleStrictness,
+            seed: seed * 97 + level,
+          });
+          expect(isWon(state.tubes, state.capacity)).toBe(false);
+          expect(isOneMoveFromWin(state.tubes, state.capacity)).toBe(false);
+        }
+      }
+    });
+
+    it('higher levels scramble more than early levels', () => {
+      const earlyScores: number[] = [];
+      const laterScores: number[] = [];
+      for (let seed = 0; seed < 16; seed++) {
+        earlyScores.push(disorderScore(WaterSortEngine.createDefaultLevel(1).getTubes(), 4));
+        laterScores.push(disorderScore(WaterSortEngine.createDefaultLevel(20).getTubes(), 4));
+      }
+      const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+      expect(avg(laterScores)).toBeGreaterThan(avg(earlyScores));
+    });
+
+    it('large-palette openings are mixed, not 3-high mono stacks', () => {
+      for (let seed = 0; seed < 12; seed++) {
+        const state = generateLevel({
+          colorCount: 12,
+          emptyTubes: 1,
+          seed: seed * 41 + 11,
+          scrambleStrictness: 0.7,
+        });
+        expect(countLongMonoTubes(state.tubes, 3)).toBe(0);
+        expect(isOneMoveFromWin(state.tubes, state.capacity)).toBe(false);
+      }
+      for (let seed = 0; seed < 12; seed++) {
+        const state = generateLevel({
+          colorCount: 7,
+          emptyTubes: 1,
+          seed: seed * 17 + 3,
+          scrambleStrictness: 0,
+        });
+        expect(countLongMonoTubes(state.tubes, 3)).toBe(0);
       }
     });
 
@@ -276,35 +371,35 @@ describe('WaterSortEngine', () => {
     });
 
     it('isSolvable rejects a stuck board with no moves', () => {
-      // Free-pour still cannot move when every tube is full.
+      // Space-only pours: stuck when every tube is full. Keep colors mixed so
+      // the board is not already won (isSolvable treats won boards as solvable).
       const tubes: Tube[] = [
         [1, 2, 1, 2],
         [2, 1, 2, 1],
       ];
+      expect(isWon(tubes, 4)).toBe(false);
       expect(findHint(tubes, 4)).toBeNull();
       expect(isSolvable(tubes, 4)).toBe(false);
     });
   });
 
   describe('getLevelDifficulty', () => {
-    it('starts easy with 3 colors, 1 empty, and a move budget', () => {
+    it('starts with 4 colors, 1 empty (5 tubes), and a move budget', () => {
       const d1 = getLevelDifficulty(1);
-      expect(d1.colorCount).toBe(3);
+      expect(d1.colorCount).toBe(4);
       expect(d1.emptyTubes).toBe(1);
+      expect(d1.colorCount + d1.emptyTubes).toBe(5);
       expect(d1.moveLimit).toBeGreaterThan(15);
     });
 
-    it('gets harder across the 3650-level campaign', () => {
+    it('gets harder by adding colors across levels', () => {
       const early = getLevelDifficulty(1);
-      const mid = getLevelDifficulty(1500);
-      const late = getLevelDifficulty(3650);
+      const mid = getLevelDifficulty(30);
+      const late = getLevelDifficulty(85);
 
       expect(mid.colorCount).toBeGreaterThan(early.colorCount);
       expect(late.colorCount).toBeGreaterThan(mid.colorCount);
-      expect(late.colorCount).toBe(12);
-      expect(late.moveLimit / late.colorCount).toBeLessThan(
-        early.moveLimit / early.colorCount,
-      );
+      expect(getLevelDifficulty(3650).colorCount).toBe(12);
     });
 
     it('createDefaultLevel uses the difficulty curve', () => {

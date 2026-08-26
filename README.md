@@ -43,7 +43,9 @@ Unit IDs: `src/services/admobUnitIds.ts`. Google `TestIds` are used in `__DEV__`
 
 ## Store release
 
-Follow **[`store/STORE_CHECKLIST.md`](store/STORE_CHECKLIST.md)** end-to-end (EAS, GitHub Pages legal URLs, AdMob Privacy & messaging, App Store / Play Console).
+Follow **[`store/STORE_CHECKLIST.md`](store/STORE_CHECKLIST.md)** end-to-end (EAS, GitHub Pages legal URLs, AdMob Privacy & messaging, app-ads.txt, App Store / Play Console).
+
+AdMob **app-ads.txt**: [`store/APP_ADS_TXT.md`](store/APP_ADS_TXT.md) — live at https://peiwei-c.github.io/app-ads.txt (domain root, not this project’s `/docs` Pages path).
 
 Legal pages live in `docs/` for GitHub Pages:
 - Privacy: `docs/privacy.html`

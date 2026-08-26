@@ -3,7 +3,7 @@
  * Pure data + math — no UI or ad code.
  */
 
-export const MAX_LIVES = 5;
+export const MAX_LIVES = 10;
 /** One life every 30 minutes while below max. */
 export const LIFE_REGEN_MS = 30 * 60 * 1000;
 

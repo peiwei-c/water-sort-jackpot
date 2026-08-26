@@ -11,3 +11,9 @@ export function allowMockMonetization(): boolean {
   if (process.env.NODE_ENV === 'test') return true;
   return false;
 }
+
+/** Screenshot / internal APK: no banner, interstitial, consent, or AdMob init. */
+export function adsDisabled(): boolean {
+  const flag = process.env.EXPO_PUBLIC_NO_ADS;
+  return flag === 'true' || flag === '1';
+}

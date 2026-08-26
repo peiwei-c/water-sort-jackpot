@@ -28,7 +28,7 @@ type FadeHandle = {
 };
 
 /**
- * Singleton audio bus for AquaSort.
+ * Singleton audio bus for Boba Shop.
  * - BGM: dual-player crossfade, looping, AppState pause/resume
  * - SFX: fixed pool so overlapping pours/taps don't cut each other off
  * - Prefs: volume + mute per bus, persisted via AsyncStorage

@@ -53,10 +53,11 @@ import {
 import { getAudioManager } from '../services/audio/AudioManager';
 import {
   getAdService,
-  INTERSTITIAL_EVERY_N_LEVELS,
+  isInterstitialClearLevel,
   type AdPlacement,
 } from '../services/AdService';
 import { getAdManager } from '../services/AdManager';
+import { adsDisabled } from '../services/monetizationGate';
 import {
   purchaseRemoveAds as iapPurchaseRemoveAds,
   restorePurchases as iapRestorePurchases,
@@ -409,6 +410,65 @@ function collectPendingQuietly(
   return true;
 }
 
+type StoreSet = (
+  partial:
+    | Partial<GameStore>
+    | ((state: GameStore) => Partial<GameStore>),
+) => void;
+
+/**
+ * After a centrifuge roll: auto-collect 1× when the player can still afford
+ * another run. Hold the payout for the 2× ad offer only when they are short.
+ */
+function settleSpinResult(
+  get: () => GameStore,
+  set: StoreSet,
+  result: SpinResult,
+  coinsAfterBet: number,
+  extra: Partial<GameStore> = {},
+): void {
+  const payout = result.payout;
+  const {
+    betPerLine,
+    activeLines,
+    _jackpot,
+    undoItems,
+    extraTubeItems,
+    ownedItemIds,
+  } = get();
+
+  if (payout.kind !== 'none') {
+    const coinsAfterCollect = coinsAfterBet + payout.coins;
+    if (_jackpot.canAffordSpin(coinsAfterCollect, betPerLine, activeLines)) {
+      const cosmetics = grantCosmeticFromPayout(
+        ownedItemIds,
+        payout.unlockRareSkin,
+      );
+      set({
+        ...extra,
+        coins: coinsAfterCollect,
+        undoItems: undoItems + payout.undoItems,
+        extraTubeItems: extraTubeItems + payout.extraTubeItems,
+        ...cosmetics,
+        lastSpin: result,
+        pendingPayout: null,
+        modal: 'spin_result',
+        lastMessage: payout.label,
+      });
+      return;
+    }
+  }
+
+  set({
+    ...extra,
+    coins: coinsAfterBet,
+    lastSpin: result,
+    pendingPayout: payout.kind === 'none' ? null : payout,
+    modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
+    lastMessage: payout.label,
+  });
+}
+
 function settlePendingPayout(
   get: () => GameStore,
   set: (
@@ -480,7 +540,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     lastClearCoinReward: LEVEL_COIN_REWARD,
     session: null,
     hydrated: false,
-    isNoAdsPurchased: false,
+    isNoAdsPurchased: adsDisabled(),
     hasSeenLabManual: false,
     consecutiveFailCount: 0,
     hintHighlight: null,
@@ -494,7 +554,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (get().hydrated) return;
       const data = await loadPersistedGame();
       if (!data) {
-        set({ hydrated: true });
+        set({ hydrated: true, isNoAdsPurchased: adsDisabled() });
         return;
       }
       const synced = syncLives({
@@ -518,7 +578,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         betPerLine: clampBet(data.betPerLine),
         activeLines: clampLines(data.activeLines),
         session: data.session,
-        isNoAdsPurchased: data.isNoAdsPurchased,
+        isNoAdsPurchased: adsDisabled() || data.isNoAdsPurchased,
         levelsCompletedSinceAd: data.levelsCompletedSinceAd,
         pendingPayout: data.pendingPayout,
         hasSeenLabManual: data.hasSeenLabManual,
@@ -732,10 +792,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         getAudioManager().playSfx('success');
         set({ session: null });
         persistSoon();
-        const since = get().levelsCompletedSinceAd;
         if (
           !opts?.skipAds &&
-          since >= INTERSTITIAL_EVERY_N_LEVELS
+          isInterstitialClearLevel(get().level)
         ) {
           if (get().isNoAdsPurchased) {
             set({ levelsCompletedSinceAd: 0 });
@@ -811,7 +870,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { extraTubeItems, _puzzle, modal, pourAnim } = get();
       if (pourAnim || modal === 'out_of_moves' || modal === 'level_complete') return;
       if (extraTubeItems <= 0) {
-        set({ modal: 'ad_extra_tube', lastMessage: 'Watch an ad for an extra tube?' });
+        set({ modal: 'ad_extra_tube', lastMessage: 'Watch an ad for an extra cup?' });
         return;
       }
       _puzzle.addEmptyTube();
@@ -819,7 +878,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         extraTubeItems: extraTubeItems - 1,
         ...syncFromPuzzle(_puzzle),
         hintHighlight: null,
-        lastMessage: 'Extra tube added',
+        lastMessage: 'Extra cup added',
         session: captureSession(get()),
       });
       persistSoon();
@@ -839,7 +898,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     skipLevel: async () => {
       if (get().consecutiveFailCount < SKIP_AFTER_FAILS) {
-        set({ lastMessage: 'Skip unlocks after 2 fails on this station' });
+        set({ lastMessage: 'Skip unlocks after 2 fails on this ticket' });
         return false;
       }
       if (!get().adsReady || !getAdService().isReady('rewarded')) {
@@ -874,7 +933,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           modal: 'none',
           hintHighlight: null,
           consecutiveFailCount: sameLevel ? get().consecutiveFailCount : 0,
-          lastMessage: 'Continuing station…',
+          lastMessage: 'Continuing ticket…',
         });
         return;
       }
@@ -924,7 +983,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         pourAnim: null,
         modal: 'none',
         lastMessage: session
-          ? 'Progress saved — tap the flask to continue'
+          ? 'Progress saved — tap Pour to continue'
           : null,
         session,
       });
@@ -1031,7 +1090,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           equippedPathId: id,
           lastMessage:
             (item.moveScale ?? 1) < 1
-              ? `Equipped ${item.name} · harder move budget on next station`
+              ? `Equipped ${item.name} · harder pour budget on next ticket`
               : `Equipped ${item.name}`,
         });
       } else if (item.kind === 'palette') {
@@ -1115,7 +1174,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({
           screen: 'home',
           modal: 'none',
-          lastMessage: 'New level unlocked — pick it on the path',
+          lastMessage: 'New ticket unlocked — tap Pour',
           session: null,
           consecutiveFailCount: 0,
           hintHighlight: null,
@@ -1138,7 +1197,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           session: null,
           consecutiveFailCount: 0,
           hintHighlight: null,
-          lastMessage: 'Station cleared — need a life for the next one',
+          lastMessage: 'Ticket sealed — need a life for the next one',
         });
         persistSoon();
         return;
@@ -1160,7 +1219,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         consecutiveFailCount: 0,
         hintHighlight: null,
         lastMessage: openJackpot
-          ? `Level ${level} ready · spin the Centrifuge`
+          ? `Ticket ${level} ready · spin Lucky`
           : `Level ${level} · ${diff.tierLabel}`,
         session: null,
         ...livesSnapshot(spent),
@@ -1300,14 +1359,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           return;
         }
 
-        // Last free spin — offer Collect / 2× like a paid win
-        set({
-          freeSpins: 0,
-          lastSpin: result,
-          pendingPayout: payout.kind === 'none' ? null : payout,
-          modal: payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-          lastMessage: payout.label,
-        });
+        // Last free spin — auto-collect if funded; 2× ad only when broke
+        settleSpinResult(get, set, result, coins, { freeSpins: 0 });
         trackMission(get, set, 'centrifuge_spin', 1);
         persistSoon();
         return;
@@ -1338,13 +1391,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const result = _jackpot.spin(coins, betPerLine, activeLines);
       if (!result) return;
 
-      set({
-        coins: coins - result.tokensSpent,
-        lastSpin: result,
-        pendingPayout: result.payout.kind === 'none' ? null : result.payout,
-        modal: result.payout.kind === 'none' ? 'spin_result' : 'ad_2x_payout',
-        lastMessage: result.payout.label,
-      });
+      settleSpinResult(get, set, result, coins - result.tokensSpent);
       trackMission(get, set, 'centrifuge_spin', 1);
       persistSoon();
       } finally {
@@ -1376,7 +1423,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             ...syncFromPuzzle(_puzzle),
             modal: 'none',
             hintHighlight: null,
-            lastMessage: '+1 Extra Empty Tube',
+            lastMessage: '+1 extra empty cup',
             session: captureSession(get()),
           });
           persistSoon();
@@ -1420,7 +1467,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             isAdLoading: false,
             hintHighlight: hint,
             modal: 'none',
-            lastMessage: 'Hint: pour the highlighted vials',
+            lastMessage: 'Hint: pour the highlighted cups',
           });
         } else if (placement === 'rewarded_skip_level') {
           const current = get().level;
@@ -1440,8 +1487,8 @@ export const useGameStore = create<GameStore>((set, get) => {
             modal: 'none',
             lastMessage:
               current >= MAX_LEVEL
-                ? 'Station skipped'
-                : `Skipped · Station ${current + 1} unlocked`,
+                ? 'Ticket skipped'
+                : `Skipped · ticket ${current + 1} unlocked`,
           });
           persistSoon();
           if (current < MAX_LEVEL && unlockedLevel >= current + 1) {
@@ -1471,7 +1518,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             // Free spins only apply at 1/5/10 — clamp if on 25
             betPerLine: isFreeSpinBet(bet) ? bet : 10,
             modal: 'slot_machine',
-            lastMessage: '+3 Free Centrifuge Spins (bet 1 / 5 / 10 only)',
+            lastMessage: '+3 Lucky spins (bet 1 / 5 / 10 only)',
           });
         } else if (placement === 'rewarded_2x_payout') {
           set({ isAdLoading: false });

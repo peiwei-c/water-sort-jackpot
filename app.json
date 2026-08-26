@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "AquaSort Lab",
+    "name": "Boba Shop",
     "slug": "water-sort-jackpot",
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "primaryColor": "#0C2A32",
-    "description": "Sort colorful reagents in glass flasks, then spin the Centrifuge for boosts. A hydrology-lab puzzle with optional rewarded ads.",
+    "primaryColor": "#c45d48",
+    "description": "Sort colorful boba drinks, then spin Lucky for boosts. A pour-and-sort puzzle in a cute tea shop.",
     "privacy": "public",
     "ios": {
       "supportsTablet": true,
@@ -21,7 +21,7 @@
       "package": "com.aquasort.lab",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0C2A32",
+        "backgroundColor": "#5a2434",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -49,7 +49,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#06141C",
+        "backgroundColor": "#5a2434",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200
         }
@@ -86,7 +86,8 @@
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ],
-      "expo-iap"
+      "expo-iap",
+      "expo-font"
     ],
     "owner": "peiwei_c"
   }

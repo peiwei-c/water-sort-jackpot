@@ -1,0 +1,3118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AquaSort · Cute UI Prototype v2 hub</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <!--
+    PROTOTYPE — throwaway.
+    Question: What should a cute, engaging AquaSort personality look like (home + play + jackpot)?
+    Three variants via ?variant=A|B|C — structurally different, not palette tweaks.
+    v2 hub: B home is nav-only (counter / store / lucky / mission).
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Fredoka:wght@450;550;650;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --device-w: 390px;
+      --device-h: 844px;
+      --status-h: 54px;
+      --banner-h: 50px;
+      --safe-top: var(--status-h);
+      --safe-bot: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: #f0c9a8;
+      color: #3a221c;
+      font-family: Nunito, system-ui, sans-serif;
+    }
+    .stage {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 48px 16px 168px;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #ffd7b0 0%, transparent 55%),
+        #f0c9a8;
+    }
+    .meta {
+      position: fixed;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      z-index: 40;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+      font-size: 12px;
+      color: rgba(58,34,28,0.55);
+    }
+    .meta strong { color: rgba(58,34,28,0.88); font-weight: 700; }
+    .meta code {
+      font-family: ui-monospace, monospace;
+      background: rgba(255,255,255,0.07);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .state-dump {
+      position: fixed;
+      top: 42px;
+      right: 16px;
+      z-index: 40;
+      width: min(280px, 32vw);
+      max-height: 42dvh;
+      overflow: auto;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(10,8,14,0.72);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #c8f5c0;
+      font: 11px/1.45 ui-monospace, monospace;
+      white-space: pre;
+    }
+    @media (max-width: 920px) { .state-dump { display: none; } }
+
+    .device-shell {
+      transform-origin: top left;
+    }
+    .phone {
+      width: var(--device-w);
+      height: var(--device-h);
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      background: #f4c4a0;
+      box-shadow:
+        0 0 0 1px rgba(74,34,28,0.12),
+        0 0 0 8px #5a3828,
+        0 28px 60px rgba(74,34,28,0.28);
+    }
+    .phone[data-device="tablet"] {
+      --device-w: 834px;
+      --device-h: 1194px;
+      --status-h: 32px;
+      --banner-h: 90px;
+      border-radius: 24px;
+      box-shadow:
+        0 0 0 1px rgba(74,34,28,0.12),
+        0 0 0 10px #4a3228,
+        0 28px 60px rgba(74,34,28,0.28);
+    }
+    .status-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: var(--status-h);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      background: linear-gradient(180deg, #2a1418 0%, rgba(42,20,24,0.62) 62%, transparent);
+    }
+    .status-bar .clock { min-width: 48px; }
+    .status-bar .pips { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .status-notch {
+      position: absolute;
+      left: 50%; top: 10px;
+      transform: translateX(-50%);
+      width: 118px; height: 32px;
+      background: #1a1010;
+      border-radius: 20px;
+    }
+    .phone[data-device="tablet"] .status-bar {
+      background: rgba(255,248,240,0.72);
+      color: #3a221c;
+      font-size: 13px;
+      padding: 0 28px;
+    }
+    .phone[data-device="tablet"] .status-notch { display: none; }
+    .app-banner {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: var(--banner-h);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      background: #fff;
+      border-top: 1px solid rgba(74,34,28,0.14);
+      color: #3a221c;
+      font-family: Nunito, sans-serif;
+    }
+    .app-banner .ad-tag {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border: 1.5px solid #c45d48;
+      color: #c45d48;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .app-banner .ad-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      background: linear-gradient(135deg, #F25C78, #FFB703);
+    }
+    .phone[data-device="tablet"] .app-banner .ad-icon {
+      width: 56px; height: 56px; border-radius: 12px;
+    }
+    .app-banner .ad-copy { flex: 1; min-width: 0; }
+    .app-banner .ad-copy strong { display: block; font-size: 13px; font-weight: 800; line-height: 1.2; }
+    .app-banner .ad-copy span { font-size: 11px; opacity: 0.65; font-weight: 600; }
+    .app-banner .ad-cta {
+      flex-shrink: 0;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 12px;
+      border-radius: 999px;
+    }
+    .device-bar {
+      position: fixed;
+      bottom: 28px;
+      left: 16px;
+      transform: none;
+      z-index: 50;
+      display: flex; gap: 4px; padding: 4px;
+      background: #fff6ee;
+      border: 1px solid rgba(74,34,28,0.12);
+      border-radius: 999px;
+      box-shadow: 0 8px 28px rgba(74,34,28,0.16);
+    }
+    .device-bar button {
+      border: 0; background: transparent;
+      color: #7a564c;
+      font: 600 11px/1 Nunito, sans-serif;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .device-bar button.on { background: #4A221C; color: #fff; }
+    .variant-root { position: absolute; inset: 0; }
+    .screen {
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      position: absolute;
+      inset: 0;
+      padding-top: calc(var(--status-h) + 10px);
+      padding-bottom: calc(var(--banner-h) + 8px);
+    }
+    .screen.active { display: flex; }
+
+    .switcher {
+      position: fixed;
+      bottom: 28px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px;
+      background: #f7f1ea;
+      color: #1a1210;
+      border-radius: 999px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 12px; font-weight: 600;
+      user-select: none;
+    }
+    .switcher button {
+      border: 0; background: transparent;
+      width: 36px; height: 36px; border-radius: 999px;
+      cursor: pointer; font-size: 16px; color: #1a1210;
+    }
+    .switcher button:hover { background: rgba(0,0,0,0.06); }
+    .switcher .label { min-width: 210px; text-align: center; padding: 0 8px; }
+
+    .flow-bar {
+      position: fixed;
+      bottom: 76px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex; gap: 6px; padding: 4px;
+      background: #fff6ee;
+      border: 1px solid rgba(74,34,28,0.12);
+      border-radius: 999px;
+      box-shadow: 0 8px 28px rgba(74,34,28,0.16);
+    }
+    .flow-bar button {
+      border: 0; background: transparent;
+      color: #7a564c;
+      font: 600 11px/1 Nunito, sans-serif;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .flow-bar button.on { background: #F25C78; color: #fff; }
+
+    .btn {
+      border: 0; cursor: pointer; font: inherit;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform 0.15s ease;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+    .btn[hidden] { display: none !important; }
+
+    /* Shared liquid (patterned for color-access) */
+    .liq-1 { background-color: var(--liq-1, #F07868);
+      background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.22) 5px 8px);
+    }
+    .liq-2 {
+      background-color: var(--liq-2, #3DC4B0);
+      background-image: radial-gradient(circle at 30% 40%, rgba(255,255,255,.4) 1.4px, transparent 1.8px);
+      background-size: 7px 7px;
+    }
+    .liq-3 {
+      background-color: var(--liq-3, #E8A838);
+      background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255,255,255,.28) 5px 7px);
+    }
+    .liq-4 { background-color: var(--liq-4, #7ED957); background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.25) 6px 8px); }
+    .liq-5 { background-color: var(--liq-5, #4ECDC4); background-image: radial-gradient(circle at 70% 30%, rgba(255,255,255,.45) 1.5px, transparent 1.9px); background-size: 8px 8px; }
+    .liq-6 { background-color: var(--liq-6, #5B9CFF); background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255,255,255,.22) 5px 7px); }
+    .liq-7 { background-color: var(--liq-7, #6C63FF); background-image: repeating-linear-gradient(-30deg, transparent 0 5px, rgba(255,255,255,.2) 5px 8px); }
+    .liq-8 { background-color: var(--liq-8, #B57EDC); background-image: radial-gradient(circle at 40% 60%, rgba(255,255,255,.4) 1.6px, transparent 2px); background-size: 9px 9px; }
+    .liq-9 { background-color: var(--liq-9, #F764B2); background-image: repeating-linear-gradient(0deg, transparent 0 4px, rgba(255,255,255,.25) 4px 6px); }
+    .liq-10 { background-color: var(--liq-10, #EB70AD); background-image: repeating-linear-gradient(60deg, transparent 0 6px, rgba(255,255,255,.2) 6px 9px); }
+    .liq-11 { background-color: var(--liq-11, #C4894B); background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.18) 5px 8px); }
+    .liq-12 { background-color: var(--liq-12, #DEDE7C); background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,.35) 1.4px, transparent 1.8px); background-size: 7px 7px; }
+    .liq-block {
+      display: block;
+      position: relative;
+      width: 100%;
+    }
+    .liq-block.top { border-radius: 8px 8px 0 0; }
+    .liq-block.top::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      height: 8px;
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.45), transparent);
+      pointer-events: none;
+    }
+    .liq-block.incoming {
+      transform-origin: center bottom;
+      animation: pourGrow 0.34s cubic-bezier(.2, 1.2, .3, 1);
+    }
+    @keyframes pourGrow {
+      from { transform: scaleY(var(--from, 0.18)); }
+      to { transform: scaleY(1); }
+    }
+    .pour-stream {
+      position: absolute;
+      height: 9px;
+      border-radius: 999px;
+      transform: rotate(var(--ang));
+      transform-origin: 0 50%;
+      z-index: 12;
+      pointer-events: none;
+      animation: ribbonIn 0.16s ease-out both;
+      box-shadow: 0 0 10px rgba(255,255,255,.35);
+    }
+    .pour-stream .drop {
+      display: block;
+      position: absolute;
+      right: -8px; top: 50%;
+      width: 16px; height: 16px;
+      margin-top: -8px;
+      border-radius: 50%;
+      box-shadow: inset -2px -2px 0 rgba(255,255,255,.35);
+      animation: dropRun 0.5s cubic-bezier(.2, .7, .2, 1) both;
+    }
+    .pour-stream.out { animation: ribbonOut 0.14s ease-in forwards; }
+    @keyframes ribbonIn {
+      from { transform: rotate(var(--ang)) scaleX(0.08); opacity: 0; }
+      to { transform: rotate(var(--ang)) scaleX(1); opacity: 1; }
+    }
+    @keyframes ribbonOut {
+      to { opacity: 0; transform: rotate(var(--ang)) scaleX(0.15); }
+    }
+    @keyframes dropRun {
+      from { transform: translateX(-120%) scale(0.55); opacity: 0; }
+      18% { opacity: 1; }
+      to { transform: translateX(0) scale(1); opacity: 1; }
+    }
+    @keyframes gulp {
+      0%, 100% { transform: scale(1, 1); }
+      32% { transform: scale(1.05, 0.92); }
+      62% { transform: scale(0.98, 1.06); }
+    }
+
+    /* =========================================================
+       A — Soft Lab  (greenhouse path · flask bench · centrifuge)
+       ========================================================= */
+    [data-variant="A"] {
+      --ink: #3A2A28;
+      --muted: #7A625C;
+      --mint: #4ECDBA;
+      --peach: #FF9B8A;
+      --gold: #E8A838;
+      font-family: Nunito, sans-serif;
+    }
+    [data-variant="A"] .screen {
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, #fff 0%, transparent 50%),
+        linear-gradient(180deg, #FFF6EE 0%, #E7F5F1 48%, #D8EFE8 100%);
+      color: var(--ink);
+    }
+
+    [data-variant="A"] .a-home { padding: calc(var(--safe-top) + 8px) 0 0; }
+    [data-variant="A"] .a-top {
+      padding: 0 20px 8px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    [data-variant="A"] .a-brand {
+      font-family: Fraunces, serif;
+      font-size: 28px; font-weight: 700; letter-spacing: -0.03em;
+    }
+    [data-variant="A"] .a-brand small {
+      display: block; font-family: Nunito, sans-serif;
+      font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--mint); font-weight: 800; margin-bottom: 2px;
+    }
+    [data-variant="A"] .a-pills { display: flex; gap: 8px; }
+    [data-variant="A"] .a-pill {
+      background: #fff; border-radius: 999px; padding: 8px 12px;
+      font-size: 14px; font-weight: 800;
+      box-shadow: 0 6px 0 #ead9cc;
+    }
+    [data-variant="A"] .a-pill.hearts { color: #e85d6a; }
+    [data-variant="A"] .a-path {
+      flex: 1; overflow-y: auto; position: relative;
+      padding: 8px 24px 120px; scrollbar-width: none;
+    }
+    [data-variant="A"] .a-path::-webkit-scrollbar { display: none; }
+    [data-variant="A"] .a-vine {
+      position: absolute; left: 50%; top: 12px; bottom: 100px;
+      width: 6px; transform: translateX(-50%);
+      background: repeating-linear-gradient(#7bc9a8, #7bc9a8 10px, #5eae8e 10px, #5eae8e 14px);
+      border-radius: 999px; opacity: 0.55;
+    }
+    [data-variant="A"] .a-node {
+      display: flex; align-items: center; gap: 14px; margin: 22px 0; position: relative;
+    }
+    [data-variant="A"] .a-node:nth-child(odd) { flex-direction: row; }
+    [data-variant="A"] .a-node:nth-child(even) { flex-direction: row-reverse; }
+    [data-variant="A"] .a-node-flask {
+      width: 64px; height: 76px; flex-shrink: 0;
+      border-radius: 16px 16px 28px 28px;
+      border: 3px solid #fff;
+      background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(78,205,186,.35));
+      box-shadow: 0 8px 0 #c9e4dc;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 16px;
+    }
+    [data-variant="A"] .a-node-flask.done { background: linear-gradient(180deg, #c6f5ea, #4ecdbab0); }
+    [data-variant="A"] .a-node-flask.now {
+      border-color: var(--gold);
+      box-shadow: 0 8px 0 #e8c56a, 0 0 0 6px rgba(232,168,56,.25);
+      animation: aBob 2.2s ease-in-out infinite;
+    }
+    [data-variant="A"] .a-node-flask.lock { opacity: 0.4; filter: grayscale(0.4); }
+    @keyframes aBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    [data-variant="A"] .a-node-meta { max-width: 150px; }
+    [data-variant="A"] .a-node-meta strong { display: block; font-size: 15px; }
+    [data-variant="A"] .a-node-meta em { font-style: normal; font-size: 12px; color: var(--muted); }
+    [data-variant="A"] .a-dock {
+      position: absolute; left: 14px; right: 14px; bottom: calc(var(--banner-h) + 12px);
+      display: flex; gap: 8px; z-index: 4;
+      padding: 10px; background: rgba(255,255,255,.78);
+      border-radius: 24px; backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(58,42,40,.12);
+    }
+    [data-variant="A"] .a-dock .ghost {
+      flex: 1; border-radius: 16px; padding: 12px;
+      background: #fff6ee; color: var(--ink); font-weight: 800; font-size: 13px;
+    }
+    [data-variant="A"] .a-dock .primary {
+      flex: 1.4; border-radius: 16px; padding: 12px;
+      background: var(--mint); color: #08332d; font-weight: 800; font-size: 14px;
+      box-shadow: 0 5px 0 #2ea894;
+    }
+
+    [data-variant="A"] .a-play { padding: calc(var(--safe-top) + 4px) 14px 12px; }
+    [data-variant="A"] .a-hud {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    [data-variant="A"] .a-buddy {
+      width: 48px; height: 52px; position: relative; flex-shrink: 0;
+    }
+    [data-variant="A"] .a-drop {
+      width: 40px; height: 48px; margin: 0 auto;
+      background: radial-gradient(circle at 35% 30%, #b8fff4, #4ecdbA 55%, #2a9d8f);
+      border-radius: 70% 70% 60% 60% / 45% 45% 80% 80%;
+      box-shadow: 0 6px 0 #2a9d8f55;
+      animation: aBlink 3.6s ease-in-out infinite;
+    }
+    [data-variant="A"] .a-drop::before,
+    [data-variant="A"] .a-drop::after {
+      content: ""; position: absolute; top: 16px; width: 6px; height: 8px;
+      background: #1a2a28; border-radius: 50%;
+    }
+    [data-variant="A"] .a-drop::before { left: 11px; }
+    [data-variant="A"] .a-drop::after { right: 11px; }
+    @keyframes aBlink {
+      0%, 42%, 48%, 100% { filter: none; }
+      45% { filter: brightness(1.08); }
+    }
+    [data-variant="A"] .a-hud-mid { flex: 1; }
+    [data-variant="A"] .a-hud-mid b { font-family: Fraunces, serif; font-size: 18px; }
+    [data-variant="A"] .a-hud-mid span { display: block; font-size: 12px; color: var(--muted); font-weight: 700; }
+    [data-variant="A"] .a-bench {
+      flex: 1; margin: 12px 0 8px; padding: 16px 10px 20px;
+      background: #fffdf8; border-radius: 28px;
+      border: 3px solid #fff;
+      box-shadow: 0 14px 0 #e2d2c2;
+      display: flex; flex-direction: column;
+    }
+    [data-variant="A"] .a-bench-label {
+      text-align: center; font-size: 11px; font-weight: 800;
+      letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted);
+      margin-bottom: 10px;
+    }
+    [data-variant="A"] .a-board {
+      flex: 1; display: flex; justify-content: space-around; align-items: flex-end;
+      gap: 4px; padding: 8px 4px 0;
+      position: relative; overflow: visible;
+    }
+    [data-variant="A"] .a-flask {
+      width: 56px; height: 108px; position: relative; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center;
+      background: none; border: 0; padding: 0; color: inherit;
+      transition: transform 0.2s ease;
+      transform-origin: 50% 90%;
+    }
+    [data-variant="A"] .a-neck {
+      width: 22px; height: 14px; background: rgba(255,255,255,.55);
+      border: 2.5px solid rgba(58,42,40,.22); border-bottom: 0;
+      border-radius: 6px 6px 0 0; z-index: 1;
+    }
+    [data-variant="A"] .a-body {
+      width: 52px; height: 88px;
+      border: 2.5px solid rgba(58,42,40,.22);
+      border-radius: 12px 12px 24px 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.12));
+      overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+      box-shadow: inset -8px 0 12px rgba(255,255,255,.45);
+    }
+    [data-variant="A"] .a-stack { display: flex; flex-direction: column-reverse; height: 100%; width: 100%; }
+    [data-variant="A"] .a-stack .liq-block:first-child {
+      border-bottom-left-radius: 20px;
+      border-bottom-right-radius: 20px;
+    }
+    [data-variant="A"] .a-flask.sel { transform: translateY(-14px); }
+    [data-variant="A"] .a-tilt {
+      display: flex; flex-direction: column; align-items: center;
+      width: 100%; height: 100%;
+      transform-origin: 50% 90%;
+      transition: transform 0.2s ease;
+    }
+    [data-variant="A"] .a-flask.pour-right { z-index: 6; }
+    [data-variant="A"] .a-flask.pour-right .a-tilt { transform: translateY(-16px) rotate(28deg); }
+    [data-variant="A"] .a-flask.pour-left { z-index: 6; }
+    [data-variant="A"] .a-flask.pour-left .a-tilt { transform: translateY(-16px) rotate(-28deg); }
+    [data-variant="A"] .a-flask.landing .a-body { animation: gulp 0.36s ease; }
+    [data-variant="A"] .a-flask.sel .a-body {
+      box-shadow: 0 0 0 4px rgba(78,205,186,.35), inset -8px 0 12px rgba(255,255,255,.45);
+    }
+    [data-variant="A"] .a-flask.done .a-cork {
+      position: absolute; top: 0; width: 18px; height: 12px;
+      background: #c48a5a; border-radius: 4px 4px 2px 2px; z-index: 2;
+    }
+    [data-variant="A"] .a-flask.done .a-face {
+      position: absolute; top: 42%; left: 0; right: 0; z-index: 2; pointer-events: none;
+    }
+    [data-variant="A"] .a-flask.done .a-face::before,
+    [data-variant="A"] .a-flask.done .a-face::after {
+      content: ""; position: absolute; top: 0; width: 7px; height: 8px;
+      background: #3A2A28; border-radius: 50%;
+    }
+    [data-variant="A"] .a-flask.done .a-face::before { left: 14px; }
+    [data-variant="A"] .a-flask.done .a-face::after { right: 14px; }
+    [data-variant="A"] .a-flask.done { animation: aPop 0.5s ease; }
+    @keyframes aPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    [data-variant="A"] .a-hint {
+      text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); min-height: 20px;
+    }
+    [data-variant="A"] .a-tools {
+      display: flex; gap: 8px; margin-top: 8px;
+    }
+    [data-variant="A"] .a-tools .chip {
+      flex: 1; border-radius: 16px; padding: 10px; background: #fff;
+      font-weight: 800; font-size: 13px; color: var(--ink);
+      box-shadow: 0 4px 0 #ead9cc;
+    }
+    [data-variant="A"] .a-tools .prize {
+      flex: 1.3; background: var(--gold); color: #3a2a00; box-shadow: 0 4px 0 #c48a18;
+    }
+
+    [data-variant="A"] .a-jackpot {
+      padding: calc(var(--safe-top) + 12px) 20px var(--safe-bot);
+      justify-content: space-between;
+    }
+    [data-variant="A"] .a-jackpot h2 {
+      font-family: Fraunces, serif; font-size: 28px; text-align: center;
+    }
+    [data-variant="A"] .a-jackpot p { text-align: center; color: var(--muted); font-weight: 700; margin-top: 4px; }
+    [data-variant="A"] .a-machine {
+      margin: 12px auto; width: 280px; height: 280px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 30%, #fff, #d7f4ee 45%, #9fe0d4);
+      border: 8px solid #fff;
+      box-shadow: 0 18px 0 #c5e4dc, inset 0 -20px 40px rgba(42,157,143,.15);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      position: relative;
+    }
+    [data-variant="A"] .a-machine::before {
+      content: ""; position: absolute; top: -18px; width: 70px; height: 22px;
+      background: #e8a838; border-radius: 8px;
+    }
+    [data-variant="A"] .a-reel {
+      width: 64px; height: 168px; overflow: hidden; border-radius: 16px;
+      background: #fff; border: 3px solid rgba(58,42,40,.12);
+    }
+    [data-variant="A"] .a-reel span {
+      display: flex; height: 56px; align-items: center; justify-content: center; font-size: 28px;
+    }
+    [data-variant="A"] .a-reel.strip { display: flex; flex-direction: column; }
+    [data-variant="A"] .a-reel.spin .strip { animation: aSpin 0.35s linear infinite; }
+    @keyframes aSpin { to { transform: translateY(-56px); } }
+    [data-variant="A"] .a-spin {
+      width: 100%; border-radius: 20px; padding: 16px;
+      background: var(--mint); color: #08332d; font-weight: 800; font-size: 18px;
+      box-shadow: 0 6px 0 #2ea894;
+    }
+    [data-variant="A"] .a-back {
+      background: transparent; color: var(--muted); font-weight: 800; padding: 10px;
+    }
+
+    /* =========================================================
+       B — Boba Store  (shift board · cups · lucky spin)
+       ========================================================= */
+    [data-variant="B"] {
+      --ink: #4A221C;
+      --straw: #F25C78;
+      --mango: #FFB703;
+      --matcha: #6FBF73;
+      --wood: #E8C9A0;
+      --wood-a: #e0b36a;
+      --wood-b: #c4894b;
+      --wood-c: #d4a05a;
+      --wood-shadow: #5a3218;
+      --wood-inset: #f3d7a4;
+      --straw-a: #6fbf73;
+      --straw-b: #f7fff4;
+      --liq-1: #e45b5b; --liq-2: #3bbbb0; --liq-3: #f0a020; --liq-4: #6db85a;
+      --liq-5: #4ad4c8; --liq-6: #4a96ff; --liq-7: #6a5cff; --liq-8: #c08ae0;
+      --liq-9: #f04a9a; --liq-10: #f070b0; --liq-11: #c4894b; --liq-12: #e8e06a;
+      font-family: Fredoka, Nunito, sans-serif;
+    }
+    [data-variant="B"] .screen {
+      padding: calc(var(--status-h) + 12px) 12px calc(var(--banner-h) + 14px);
+      justify-content: stretch;
+      background:
+        radial-gradient(ellipse 70% 36% at 80% 8%, #ffc07866, transparent 55%),
+        radial-gradient(ellipse 50% 30% at 12% 18%, #ff8aa044, transparent 50%),
+        linear-gradient(180deg, #5a2434 0%, #c45d48 22%, #e08a58 48%, #d4a06a 100%);
+      color: #fff8f0;
+    }
+    [data-variant="B"] .b-lives {
+      background: #fff; border-radius: 999px; padding: 8px 12px;
+      font-size: 16px; font-weight: 700; color: var(--ink);
+      box-shadow: 0 5px 0 #e7b89a;
+    }
+    [data-variant="B"] .b-coin {
+      background: var(--mango); border-radius: 999px; padding: 8px 14px;
+      font-weight: 700; color: var(--ink); box-shadow: 0 5px 0 #d49a00;
+    }
+    [data-variant="B"] .b-pills {
+      display: flex; gap: 8px; align-items: center;
+    }
+    [data-variant="B"] .b-hub {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      padding: 8px 4px 4px;
+    }
+    [data-variant="B"] .b-hub-head {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    [data-variant="B"] .b-sign {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: #ffd08a;
+    }
+    [data-variant="B"] .b-hub-head h1 {
+      font-family: "Baloo 2", sans-serif;
+      font-size: 34px;
+      line-height: 1.05;
+      margin: 6px 0 6px;
+      color: #fff8f0;
+    }
+    [data-variant="B"] .b-hub-head p {
+      font-size: 14px; font-weight: 650; opacity: 0.78;
+    }
+    [data-variant="B"] .b-hub-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    [data-variant="B"] .b-hub-grid .btn {
+      flex-direction: column;
+      min-height: 118px;
+      border-radius: 22px;
+      background: #fff8f0;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 6px 0 #8a5a28;
+      gap: 8px;
+    }
+    [data-variant="B"] .b-hub-grid .btn b {
+      font-size: 28px;
+      line-height: 1;
+    }
+    [data-variant="B"] .b-hub-grid .btn.counter {
+      background: var(--straw);
+      color: #fff;
+      box-shadow: 0 6px 0 #c63d58;
+    }
+    [data-variant="B"] .b-hub-grid .btn.lucky {
+      background: var(--mango);
+      color: var(--ink);
+      box-shadow: 0 6px 0 #d49a00;
+    }
+    [data-variant="B"] .b-shelf {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 10px 10px;
+    }
+    [data-variant="B"] .b-scene {
+      position: absolute; left: 0; right: 0; top: calc(var(--status-h) + 4px); bottom: var(--banner-h);
+      pointer-events: none; z-index: 0;
+      background:
+        repeating-linear-gradient(#f6d2c0 0 22px, #e8b09a 22px 24px),
+        repeating-linear-gradient(90deg, #f6d2c0 0 34px, #e8b09a 34px 36px);
+      opacity: 0.28;
+      border-radius: 0;
+      mask-image: linear-gradient(180deg, #000 0 18%, transparent 42%);
+    }
+    [data-variant="B"] .b-scene i {
+      position: absolute; top: 10px; width: 7px; height: 7px; border-radius: 50%;
+      background: #ffe08a; box-shadow: 0 0 10px 3px #ffb703aa;
+    }
+    [data-variant="B"] .b-scene i:nth-child(1) { left: 18%; }
+    [data-variant="B"] .b-scene i:nth-child(2) { left: 50%; top: 6px; }
+    [data-variant="B"] .b-scene i:nth-child(3) { left: 82%; }
+    [data-variant="B"] .b-play-top,
+    [data-variant="B"] .b-counter { position: relative; z-index: 1; }
+    [data-variant="B"] .b-play-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-shrink: 0;
+      gap: 8px;
+      min-width: 0;
+    }
+    [data-variant="B"] .b-play-top > div:first-child {
+      min-width: 0;
+      flex: 1;
+    }
+    [data-variant="B"] .b-pills {
+      display: flex; gap: 8px; align-items: center;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-play-top h2 {
+      font-family: "Baloo 2", sans-serif; font-size: 22px;
+    }
+    [data-variant="B"] .b-floor {
+      flex-shrink: 0;
+      position: relative;
+      z-index: 3;
+      padding: 8px 0 6px;
+      background: transparent;
+    }
+    [data-variant="B"] .b-counter {
+      flex: 1;
+      min-height: 0;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      border-radius: 18px 18px 12px 12px;
+      background:
+        repeating-linear-gradient(180deg, var(--wood-a) 0 3px, var(--wood-b) 3px 4px, var(--wood-c) 4px 7px);
+      padding: 6px 4px 10px;
+      box-shadow: 0 8px 0 var(--wood-shadow), inset 0 2px 0 var(--wood-inset);
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-play .b-counter {
+      overflow: visible;
+    }
+    [data-variant="B"] .b-menu {
+      text-align: center; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #f3e6c4;
+      margin: 0 10px 6px; padding: 5px 8px;
+      background: #2c2418;
+      border-radius: 8px;
+      box-shadow: inset 0 1px 0 #5a4a32, 0 2px 0 #1a140e;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-ticket-no {
+      display: block; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: #ffd08a; opacity: 0.95;
+    }
+    [data-variant="B"] .b-board {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-auto-rows: 1fr;
+      align-items: stretch;
+      justify-items: stretch;
+      gap: 2px 2px;
+      padding: 2px 4px 6px;
+      position: relative; overflow: visible;
+    }
+    [data-variant="B"] .b-board.dense {
+      grid-template-columns: repeat(20, 1fr);
+    }
+    [data-variant="B"] .b-board.dense .b-cup { grid-column: span 4; }
+    [data-variant="B"] .b-board.dense .b-cup:nth-child(6),
+    [data-variant="B"] .b-board.dense .b-cup:nth-child(10) {
+      grid-column: 3 / span 4;
+    }
+    /* 14 cups → 5–5–4 · 15 cups → 5–5–5 */
+    [data-variant="B"] .b-board.dense.wide .b-cup:nth-child(6),
+    [data-variant="B"] .b-board.dense.wide .b-cup:nth-child(10),
+    [data-variant="B"] .b-board.dense.full .b-cup:nth-child(6),
+    [data-variant="B"] .b-board.dense.full .b-cup:nth-child(10),
+    [data-variant="B"] .b-board.dense.full .b-cup:nth-child(11) {
+      grid-column: span 4;
+    }
+    [data-variant="B"] .b-board.dense.wide .b-cup:nth-child(11) {
+      grid-column: 3 / span 4;
+    }
+    .phone[data-device="tablet"] [data-variant="B"] .b-board {
+      gap: 8px 6px;
+      padding: 8px 12px 12px;
+    }
+    [data-variant="B"] .b-cup {
+      width: 100%; height: 100%;
+      min-width: 0; min-height: 0;
+      position: relative; cursor: pointer;
+      background: none; border: 0; padding: 0; color: inherit;
+      transition: transform 0.22s cubic-bezier(.2, 1.3, .3, 1);
+      transform-origin: 50% 88%;
+    }
+    [data-variant="B"] .b-cup::after {
+      content: "";
+      position: absolute; left: 12%; right: 12%; bottom: 0; height: 10%;
+      background: radial-gradient(ellipse at 50% 50%, rgba(50,24,10,.4), transparent 72%);
+      z-index: 0; pointer-events: none;
+    }
+    [data-variant="B"] .b-tilt {
+      display: block; width: 100%; height: 100%; position: relative;
+      transform-origin: 50% 88%;
+      transition: transform 0.22s cubic-bezier(.2, 1.3, .3, 1);
+      z-index: 1;
+    }
+    [data-variant="B"] .b-straw {
+      position: absolute; top: 0; left: 52%; width: 18%; min-width: 8px; height: 20%;
+      transform: translateX(-50%) rotate(7deg);
+      background:
+        repeating-linear-gradient(90deg, var(--straw-a) 0 3px, var(--straw-b) 3px 6px);
+      border-radius: 3px 3px 2px 2px;
+      box-shadow: 1px 0 0 rgba(40,20,10,.2), inset -1px 0 0 rgba(255,255,255,.5);
+      z-index: 5;
+    }
+    [data-variant="B"] .b-cap {
+      position: absolute; top: 7%; left: 10%; right: 10%; height: 14%;
+      background:
+        radial-gradient(ellipse at 32% 28%, rgba(255,255,255,.9), transparent 42%),
+        linear-gradient(180deg, #f7fbff 0%, #d5dee8 55%, #b7c3d0 100%);
+      border-radius: 50% 50% 12% 12% / 95% 95% 12% 12%;
+      box-shadow:
+        inset 0 -3px 0 #9aabba,
+        0 2px 0 rgba(255,255,255,.7);
+      z-index: 4;
+    }
+    [data-variant="B"] .b-cap::after {
+      content: "";
+      position: absolute; left: 50%; top: 58%;
+      width: 22%; height: 38%;
+      transform: translateX(-50%);
+      background: #3a2a28;
+      border-radius: 3px;
+      box-shadow: inset 0 0 0 1.5px #c5d0da;
+    }
+    [data-variant="B"] .b-rim {
+      position: absolute; top: 18%; left: 7%; right: 7%; height: 4%;
+      background: linear-gradient(180deg, #fff, #d8e0e8);
+      border-radius: 3px;
+      box-shadow: 0 1px 0 #9aa8b6;
+      z-index: 3;
+    }
+    [data-variant="B"] .b-glass {
+      position: absolute; top: 20%; left: 8%; right: 8%; bottom: 5%;
+      border-radius: 4px 4px 22px 22px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.22) 0 14%, transparent 28%, rgba(40,18,8,.08) 100%),
+        linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,248,240,.04));
+      border: 1.5px solid rgba(255,255,255,.55);
+      border-bottom-color: rgba(74,34,28,.28);
+      box-shadow:
+        inset 5px 0 8px rgba(255,255,255,.35),
+        inset -7px 0 10px rgba(40,18,8,.12);
+      transform-origin: 50% 100%;
+      z-index: 2;
+    }
+    [data-variant="B"] .b-glass::before {
+      content: "";
+      position: absolute; left: 6%; right: 6%; top: -2%;
+      height: 10%;
+      border-radius: 50%;
+      background: rgba(255,255,255,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+      z-index: 5; pointer-events: none;
+    }
+    [data-variant="B"] .b-shine {
+      position: absolute; left: 12%; top: 8%; bottom: 14%; width: 16%;
+      border-radius: 40px;
+      background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.04));
+      pointer-events: none; z-index: 4;
+    }
+    [data-variant="B"] .b-stack {
+      position: absolute;
+      left: 0; right: 0; bottom: 0; top: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      justify-content: flex-start;
+      padding: 0 8% 6%;
+      box-sizing: border-box;
+      z-index: 1;
+    }
+    [data-variant="B"] .b-stack .liq-block {
+      overflow: hidden;
+      flex: none;
+      background-image: linear-gradient(90deg, rgba(255,255,255,.2), transparent 38%, rgba(40,12,8,.12));
+      background-size: auto;
+      background-repeat: no-repeat;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+    }
+    [data-variant="B"] .b-stack .liq-block:first-child {
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+    }
+    [data-variant="B"] .b-stack .liq-block.top::before {
+      height: 18%;
+      background: linear-gradient(180deg, rgba(255,255,255,.4), transparent);
+    }
+    [data-variant="B"] .b-bits {
+      position: absolute;
+      left: 10%; right: 10%;
+      bottom: 8%;
+      height: 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 2px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    [data-variant="B"] .liq-block.incoming .b-bits {
+      animation: bitsSettle 0.38s ease;
+    }
+    @keyframes bitsSettle {
+      from { transform: translateY(-70%); opacity: 0.35; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    [data-variant="B"] .b-bits b {
+      display: block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex: none;
+    }
+    [data-variant="B"] .b-bits.black b {
+      background: radial-gradient(circle at 32% 28%, #4a3228, #1a1008 58%, #0c0806);
+      box-shadow: inset 1px 1px 0 rgba(255,255,255,.28), 0 1px 0 rgba(0,0,0,.25);
+    }
+    [data-variant="B"] .b-bits.white b {
+      background: radial-gradient(circle at 32% 28%, #fff, #f3eee6 55%, #d4cbc0);
+      box-shadow: inset 0 -1px 0 rgba(90,70,50,.18), 0 1px 0 rgba(0,0,0,.12);
+    }
+    [data-variant="B"] .b-bits b:nth-child(1) { margin-bottom: 1px; }
+    [data-variant="B"] .b-bits b:nth-child(2) { width: 8px; height: 8px; margin-bottom: 0; }
+    [data-variant="B"] .b-bits b:nth-child(3) { margin-bottom: 5px; width: 6px; height: 6px; }
+    [data-variant="B"] .b-bits b:nth-child(4) { margin-bottom: 2px; }
+    [data-variant="B"] .b-bits b:nth-child(5) { width: 8px; height: 8px; margin-bottom: 4px; }
+    [data-variant="B"] .b-bits b:nth-child(6) { margin-bottom: 0; width: 6px; height: 6px; }
+    .phone[data-device="tablet"] [data-variant="B"] .b-bits { height: 24px; gap: 4px; }
+    .phone[data-device="tablet"] [data-variant="B"] .b-bits b { width: 11px; height: 11px; }
+    .phone[data-device="tablet"] [data-variant="B"] .b-bits b:nth-child(2),
+    .phone[data-device="tablet"] [data-variant="B"] .b-bits b:nth-child(5) { width: 13px; height: 13px; }
+    [data-variant="B"] .b-stack .liq-1 { background-color: var(--liq-1); }
+    [data-variant="B"] .b-stack .liq-2 { background-color: var(--liq-2); }
+    [data-variant="B"] .b-stack .liq-3 { background-color: var(--liq-3); }
+    [data-variant="B"] .b-stack .liq-4 { background-color: var(--liq-4); }
+    [data-variant="B"] .b-stack .liq-5 { background-color: var(--liq-5); }
+    [data-variant="B"] .b-stack .liq-6 { background-color: var(--liq-6); }
+    [data-variant="B"] .b-stack .liq-7 { background-color: var(--liq-7); }
+    [data-variant="B"] .b-stack .liq-8 { background-color: var(--liq-8); }
+    [data-variant="B"] .b-stack .liq-9 { background-color: var(--liq-9); }
+    [data-variant="B"] .b-stack .liq-10 { background-color: var(--liq-10); }
+    [data-variant="B"] .b-stack .liq-11 { background-color: var(--liq-11); }
+    [data-variant="B"] .b-stack .liq-12 { background-color: var(--liq-12); }
+    .phone[data-cup="cup_crown"] .b-rim {
+      background: linear-gradient(180deg, #ffe9a0, #d4a017);
+      box-shadow: 0 1px 0 #8a6a10;
+    }
+    .phone[data-cup="cup_crown"] .b-cap::after {
+      box-shadow: inset 0 0 0 1.5px #f0d070;
+    }
+    .phone[data-cup="cup_crown"] .b-glass {
+      border-color: rgba(240, 200, 80, 0.75);
+    }
+    .phone[data-cap="cap_gold"] .b-cap {
+      background:
+        radial-gradient(ellipse at 32% 28%, rgba(255,255,255,.9), transparent 42%),
+        linear-gradient(180deg, #fff4c4 0%, #e8b84a 55%, #c49220 100%);
+    }
+    .phone[data-counter="counter_honey"] .b-home,
+    .phone[data-counter="counter_honey"] .b-play,
+    .phone[data-counter="counter_honey"] .b-jackpot,
+    .phone[data-counter="counter_honey"] .b-missions,
+    .phone[data-counter="counter_honey"] .b-store {
+      background:
+        radial-gradient(ellipse 70% 36% at 80% 8%, #ffd07888, transparent 55%),
+        linear-gradient(180deg, #6a3018 0%, #d47828 28%, #f0b050 58%, #e8c878 100%);
+    }
+    .phone[data-counter="counter_night"] .b-home,
+    .phone[data-counter="counter_night"] .b-play,
+    .phone[data-counter="counter_night"] .b-jackpot,
+    .phone[data-counter="counter_night"] .b-missions,
+    .phone[data-counter="counter_night"] .b-store {
+      background:
+        radial-gradient(ellipse 70% 36% at 80% 8%, #c070ff44, transparent 55%),
+        radial-gradient(ellipse 50% 30% at 12% 18%, #ff4aa833, transparent 50%),
+        linear-gradient(180deg, #1a1020 0%, #3a1840 28%, #5a2460 55%, #2a1830 100%);
+    }
+    [data-variant="B"] .b-shelf-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #f3e6c4;
+      padding: 8px 4px 2px;
+    }
+    [data-variant="B"] .b-sku-btn.equip {
+      background: var(--mango);
+      color: var(--ink);
+      box-shadow: 0 3px 0 #d49a00;
+    }
+    [data-variant="B"] .b-sku-btn.need {
+      opacity: 0.55;
+    }
+    [data-variant="B"] .b-stack .liq-2::after,
+    [data-variant="B"] .b-stack .liq-3::after,
+    [data-variant="B"] .b-stack .liq-6::after,
+    [data-variant="B"] .b-stack .liq-7::after,
+    [data-variant="B"] .b-stack .liq-9::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+    }
+    /* mint — thin tea: cool spec, darker pool */
+    [data-variant="B"] .b-stack .liq-2::after {
+      background-image:
+        radial-gradient(ellipse 120% 70% at 50% 0%, rgba(255,255,255,.62), transparent 58%),
+        radial-gradient(ellipse 48% 80% at 18% 32%, rgba(255,255,255,.55), transparent 54%),
+        radial-gradient(ellipse 70% 45% at 78% 72%, rgba(0,70,65,.28), transparent 60%),
+        linear-gradient(90deg, rgba(255,255,255,.28), transparent 42%, rgba(0,40,38,.22)),
+        linear-gradient(180deg, rgba(255,255,255,.18) 0%, transparent 28%, rgba(0,50,46,.2));
+    }
+    /* mango — thick nectar: oily sheen, amber swirl */
+    [data-variant="B"] .b-stack .liq-3::after {
+      background-image:
+        radial-gradient(ellipse 120% 65% at 50% 0%, rgba(255,236,170,.55), transparent 56%),
+        radial-gradient(ellipse 50% 70% at 22% 26%, rgba(255,248,210,.58), transparent 52%),
+        radial-gradient(ellipse 75% 48% at 72% 68%, rgba(180,70,0,.28), transparent 58%),
+        linear-gradient(90deg, rgba(255,220,140,.22), transparent 42%, rgba(90,35,0,.24)),
+        linear-gradient(180deg, rgba(255,255,255,.1) 0%, transparent 24%, rgba(130,50,0,.28));
+    }
+    /* soda — watery caustics */
+    [data-variant="B"] .b-stack .liq-6::after {
+      background-image:
+        radial-gradient(ellipse 115% 60% at 50% 0%, rgba(255,255,255,.68), transparent 55%),
+        radial-gradient(ellipse 42% 78% at 16% 24%, rgba(255,255,255,.72), transparent 50%),
+        radial-gradient(ellipse 80% 42% at 74% 70%, rgba(160,210,255,.4), transparent 58%),
+        linear-gradient(90deg, rgba(255,255,255,.32), transparent 40%, rgba(0,24,70,.22)),
+        linear-gradient(180deg, rgba(255,255,255,.22) 0%, transparent 36%, rgba(0,30,80,.14));
+    }
+    /* grape — silky fold */
+    [data-variant="B"] .b-stack .liq-7::after {
+      background-image:
+        radial-gradient(ellipse 118% 58% at 50% 0%, rgba(230,220,255,.55), transparent 56%),
+        radial-gradient(ellipse 58% 85% at 26% 36%, rgba(255,255,255,.32), transparent 54%),
+        radial-gradient(ellipse 70% 50% at 80% 78%, rgba(30,0,70,.3), transparent 58%),
+        linear-gradient(90deg, rgba(210,200,255,.22), transparent 44%, rgba(20,0,50,.26)),
+        linear-gradient(180deg, rgba(255,255,255,.14) 0%, transparent 26%, rgba(18,0,45,.24));
+    }
+    /* berry — jammy, denser at the base */
+    [data-variant="B"] .b-stack .liq-9::after {
+      background-image:
+        radial-gradient(ellipse 120% 60% at 50% 0%, rgba(255,210,230,.55), transparent 54%),
+        radial-gradient(ellipse 46% 68% at 20% 22%, rgba(255,230,240,.48), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 76% 82%, rgba(90,0,40,.32), transparent 58%),
+        linear-gradient(90deg, rgba(255,180,210,.18), transparent 42%, rgba(70,0,32,.28)),
+        linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 22%, rgba(90,0,40,.32));
+    }
+    [data-variant="B"] .b-cup.sel { transform: translateY(-12px) scale(1.04); }
+    [data-variant="B"] .b-cup.pour-right { z-index: 6; }
+    [data-variant="B"] .b-cup.pour-right .b-tilt { transform: translateY(-20px) rotate(34deg); }
+    [data-variant="B"] .b-cup.pour-left { z-index: 6; }
+    [data-variant="B"] .b-cup.pour-left .b-tilt { transform: translateY(-20px) rotate(-34deg); }
+    [data-variant="B"] .b-cup.pour-right .b-straw { transform: translateX(-50%) rotate(18deg); }
+    [data-variant="B"] .b-cup.pour-left .b-straw { transform: translateX(-50%) rotate(-6deg); }
+    [data-variant="B"] .b-cup.landing .b-glass { animation: gulp 0.4s ease; }
+    [data-variant="B"] .pour-stream { height: 11px; filter: saturate(1.15); }
+    [data-variant="B"] .pour-stream .drop { width: 18px; height: 18px; margin-top: -9px; }
+    [data-variant="B"] .b-cup.done .b-cap {
+      background:
+        radial-gradient(ellipse at 32% 28%, rgba(255,255,255,.9), transparent 42%),
+        linear-gradient(180deg, #e8f8d8 0%, #8fd18a 100%);
+    }
+    [data-variant="B"] .b-cup.done { animation: aPop 0.45s ease; }
+    [data-variant="B"] .b-play-hint {
+      text-align: center; font-weight: 650; margin: 8px 0 6px; font-size: 13px;
+      color: #4A221C;
+    }
+    [data-variant="B"] .b-dock {
+      display: flex; gap: 6px; align-items: stretch;
+    }
+    [data-variant="B"] .b-dock .tool {
+      flex: 1; background: #fff; border-radius: 16px; padding: 8px 4px 7px;
+      font-weight: 700; font-size: 11px; color: var(--ink);
+      box-shadow: 0 5px 0 #e7b89a;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      line-height: 1.1;
+    }
+    [data-variant="B"] .b-dock .tool b {
+      font-style: normal; font-weight: 700; font-size: 15px; line-height: 1;
+    }
+    [data-variant="B"] .b-dock .prize {
+      flex: 1.35; background: var(--straw); color: #fff;
+      border-radius: 18px; padding: 10px 8px; font-weight: 700; font-size: 13px;
+      box-shadow: 0 6px 0 #c63d58;
+    }
+    [data-variant="B"] .b-dock .prize.ad {
+      background: var(--mango);
+      color: var(--ink);
+      box-shadow: 0 6px 0 #d49a00;
+    }
+    [data-variant="B"] .b-play .b-dock .tool {
+      font-size: 10px; padding: 7px 2px 6px;
+    }
+    [data-variant="B"] .b-play .b-dock .prize {
+      flex: 1.1; font-size: 12px; padding: 8px 4px;
+    }
+    [data-variant="B"] .b-dock .tool.dim { opacity: 0.45; }
+    [data-variant="B"] .b-missions .b-dock .prize {
+      flex: 1.6;
+      font-size: 15px;
+      padding: 12px 10px;
+    }
+    [data-variant="B"] .b-card.claimed {
+      opacity: 0.55;
+      cursor: default;
+    }
+    [data-variant="B"] .b-card.claimed .go { color: var(--ink); opacity: 0.55; }
+
+    [data-variant="B"] .b-shift {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 10px 10px;
+    }
+    [data-variant="B"] .b-card {
+      width: 100%;
+      border: 0;
+      background: #fff8f0;
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 12px;
+      text-align: left;
+      font: inherit;
+      box-shadow: 0 4px 0 #8a5a28;
+      cursor: pointer;
+    }
+    [data-variant="B"] .b-card:active { transform: translateY(2px); box-shadow: 0 2px 0 #8a5a28; }
+    [data-variant="B"] .b-card .kicker {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c45d48;
+      margin-bottom: 2px;
+    }
+    [data-variant="B"] .b-card strong { display: block; font-size: 16px; font-weight: 700; }
+    [data-variant="B"] .b-card em {
+      display: block;
+      font-style: normal;
+      font-size: 12px;
+      font-weight: 650;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+    [data-variant="B"] .b-card .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    [data-variant="B"] .b-card .go {
+      color: var(--straw);
+      font-weight: 700;
+      font-size: 12px;
+    }
+    [data-variant="B"] .b-sku {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: default;
+    }
+    [data-variant="B"] .b-sku:active { transform: none; box-shadow: 0 4px 0 #8a5a28; }
+    [data-variant="B"] .b-sku-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    [data-variant="B"] .b-sku-buy {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 6px;
+      min-width: 86px;
+    }
+    [data-variant="B"] .b-sku-cost {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    [data-variant="B"] .b-sku-btn {
+      border: 0;
+      min-width: 76px;
+      background: var(--straw);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      box-shadow: 0 3px 0 #c63d58;
+      cursor: pointer;
+    }
+    [data-variant="B"] .b-sku-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c63d58; }
+    [data-variant="B"] .b-sku.gone .b-sku-cost { opacity: 0.7; }
+    [data-variant="B"] .b-sku.gone .b-sku-btn {
+      background: #ead4b8;
+      color: var(--ink);
+      box-shadow: 0 3px 0 #c4a078;
+      cursor: default;
+    }
+    [data-variant="B"] .b-card.gone { opacity: 0.55; }
+    [data-variant="B"] .b-track {
+      height: 8px;
+      margin-top: 8px;
+      background: #ead4b8;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-fill {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--straw);
+    }
+    [data-variant="B"] .b-fill.matcha { background: var(--matcha); }
+    [data-variant="B"] .b-fill.mango { background: var(--mango); }
+    [data-variant="B"] .b-card.ready {
+      outline: 3px solid var(--mango);
+    }
+
+    [data-variant="B"] .b-slot {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      padding: 4px 6px 6px;
+    }
+    [data-variant="B"] .b-slot-body {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #ff7a92, #f25c78 40%, #c63d58);
+      border-radius: 24px;
+      padding: 8px 8px 10px;
+      box-shadow: 0 8px 0 #8a2840, inset 0 2px 0 #ffb3c0;
+    }
+    [data-variant="B"] .b-slot-lid {
+      height: 12px;
+      margin: -4px 28px 8px;
+      background: #fff8f0;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 2px 0 #e7b89a;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-machine {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0 26px;
+      overflow: hidden;
+      max-width: 100%;
+    }
+    [data-variant="B"] .b-rails {
+      position: absolute;
+      top: 8px; bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      width: 22px;
+      z-index: 2;
+    }
+    [data-variant="B"] .b-rails[data-rails="left"] { left: 2px; }
+    [data-variant="B"] .b-rails[data-rails="right"] { right: 2px; }
+    [data-variant="B"] .b-rails i {
+      display: flex;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; font-style: normal;
+      color: #2c2418;
+      box-shadow: 0 1px 0 #1a140e;
+    }
+    [data-variant="B"] .b-rails i.win {
+      transform: scale(1.18);
+      box-shadow: 0 0 8px #fff8f0;
+    }
+    [data-variant="B"] .b-slot-window {
+      --cell: 72px;
+      --gap: 8px;
+      --rows: 3;
+      position: relative;
+      display: flex;
+      flex: none;
+      gap: var(--gap);
+      height: calc(var(--cell) * var(--rows));
+      width: calc(var(--cell) * 3 + var(--gap) * 2);
+      max-height: 100%;
+      max-width: 100%;
+      background: #2c2418;
+      border-radius: 16px;
+      padding: 8px;
+      box-sizing: content-box;
+      box-shadow: inset 0 4px 10px #1a140e;
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-reel {
+      flex: 1;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #fff8f0;
+      border: 2px solid #f3d7a4;
+    }
+    [data-variant="B"] .b-reel .strip {
+      display: flex;
+      flex-direction: column;
+    }
+    [data-variant="B"] .b-reel span {
+      display: flex;
+      height: var(--cell);
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(var(--cell) * 0.5);
+    }
+    [data-variant="B"] .b-reel.spin .strip { animation: bSpin 0.28s linear infinite; }
+    @keyframes bSpin { to { transform: translateY(calc(-1 * var(--cell))); } }
+    [data-variant="B"] .b-paylines {
+      position: absolute;
+      left: 8px; top: 8px;
+      width: calc(var(--cell) * 3 + var(--gap) * 2);
+      height: calc(var(--cell) * var(--rows));
+      pointer-events: none;
+      overflow: visible;
+    }
+    [data-variant="B"] .b-steps {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-step {
+      flex: 1;
+      background: #fff8f0;
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 6px 6px 7px;
+      text-align: center;
+      box-shadow: 0 3px 0 #c63d58;
+    }
+    [data-variant="B"] .b-step span {
+      display: block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.65;
+    }
+    [data-variant="B"] .b-stepper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+      gap: 4px;
+    }
+    [data-variant="B"] .b-stepper button {
+      width: 28px; height: 28px;
+      border: 0; border-radius: 8px;
+      background: var(--mango);
+      color: var(--ink);
+      font-weight: 800; font-size: 16px;
+      box-shadow: 0 2px 0 #d49a00;
+      cursor: pointer;
+    }
+    [data-variant="B"] .b-stepper b {
+      flex: 1;
+      font-size: 16px;
+    }
+    [data-variant="B"] .b-treat {
+      margin: 0 10px 6px;
+      padding: 5px 8px 7px;
+      background: #2c2418;
+      border-radius: 8px;
+      box-shadow: inset 0 1px 0 #5a4a32, 0 2px 0 #1a140e;
+      flex-shrink: 0;
+    }
+    [data-variant="B"] .b-treat .b-menu {
+      margin: 0;
+      padding: 2px 0 4px;
+      background: none;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    [data-variant="B"] .b-pay {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 10px;
+      margin: 0;
+      padding: 0;
+      font-size: 10px;
+      font-weight: 700;
+      color: #f3e6c4;
+      line-height: 1.3;
+    }
+    [data-variant="B"] .b-pay li {
+      list-style: none;
+      opacity: 0.95;
+    }
+    [data-variant="B"] .b-cost {
+      margin-top: 5px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #ffd08a;
+    }
+    .phone[data-device="tablet"] [data-variant="B"] .b-slot-window {
+      --cell: 110px;
+      --gap: 10px;
+    }
+    [data-variant="B"] .b-jackpot .b-dock .prize { flex: 1.8; }
+
+    /* =========================================================
+       C — Creature Reef  (tide-pool map · bowls · clam lottery)
+       ========================================================= */
+    [data-variant="C"] {
+      --ink: #1E4450;
+      --sea: #5EC4C8;
+      --sand: #F6E6C8;
+      --coral: #FF8A7A;
+      --foam: #E7FBFF;
+      font-family: "Baloo 2", Nunito, sans-serif;
+    }
+    [data-variant="C"] .screen {
+      background:
+        linear-gradient(180deg, #BDEBFF 0%, #7ED5E0 42%, #F6E6C8 42%);
+      color: var(--ink);
+    }
+    [data-variant="C"] .c-home { padding: calc(var(--safe-top) + 4px) 0 12px; }
+    [data-variant="C"] .c-sky {
+      padding: 0 16px 8px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    [data-variant="C"] .c-sky h1 { font-size: 26px; line-height: 1; }
+    [data-variant="C"] .c-sky h1 small {
+      display: block; font-size: 12px; font-weight: 600; opacity: 0.7; letter-spacing: 0.06em;
+    }
+    [data-variant="C"] .c-bubbles {
+      display: flex; gap: 6px;
+    }
+    [data-variant="C"] .c-bubbles i {
+      font-style: normal; background: #fff; width: 36px; height: 36px;
+      border-radius: 50%; display: grid; place-items: center; font-size: 14px;
+      box-shadow: 0 4px 0 #7eb8c4;
+    }
+    [data-variant="C"] .c-map {
+      flex: 1; overflow-x: auto; display: flex; align-items: flex-end;
+      gap: 18px; padding: 8px 24px 20px; scrollbar-width: none;
+    }
+    [data-variant="C"] .c-map::-webkit-scrollbar { display: none; }
+    [data-variant="C"] .c-isle {
+      min-width: 92px; text-align: center; flex-shrink: 0;
+    }
+    [data-variant="C"] .c-bowl-node {
+      width: 78px; height: 78px; margin: 0 auto 8px; border-radius: 50%;
+      border: 4px solid #fff;
+      background: radial-gradient(circle at 35% 30%, #fff8, #5ec4c8 50%, #3aa8b0);
+      display: grid; place-items: center; font-size: 22px;
+      box-shadow: 0 10px 0 #3aa8b088;
+    }
+    [data-variant="C"] .c-isle.now .c-bowl-node {
+      width: 104px; height: 104px; font-size: 36px;
+      box-shadow: 0 12px 0 #ff8a7a88, 0 0 0 6px #fff6;
+      animation: cFloat 2.8s ease-in-out infinite;
+    }
+    [data-variant="C"] .c-isle.lock .c-bowl-node { filter: grayscale(0.5); opacity: 0.55; }
+    @keyframes cFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    [data-variant="C"] .c-isle strong { display: block; font-size: 13px; }
+    [data-variant="C"] .c-play-cta {
+      margin: 0 16px; border-radius: 999px; padding: 14px;
+      background: var(--coral); color: #fff; font-size: 18px; font-weight: 700;
+      box-shadow: 0 7px 0 #d56a5c;
+    }
+    [data-variant="C"] .c-chest-row {
+      margin: 10px 16px 0; display: flex; align-items: center; gap: 10px;
+      background: #fff8; border-radius: 20px; padding: 8px 12px;
+    }
+    [data-variant="C"] .c-chest-toy {
+      width: 48px; height: 36px; background: #c48a3a; border-radius: 6px 6px 10px 10px;
+      position: relative;
+    }
+    [data-variant="C"] .c-chest-toy::before {
+      content: ""; position: absolute; top: -10px; left: 0; right: 0; height: 14px;
+      background: #e8a838; border-radius: 8px 8px 2px 2px;
+    }
+
+    [data-variant="C"] .c-play { padding: calc(var(--safe-top) + 4px) 12px 12px; }
+    [data-variant="C"] .c-hud {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    [data-variant="C"] .c-hud h2 { font-size: 20px; }
+    [data-variant="C"] .c-pool {
+      flex: 1; margin-top: 8px; border-radius: 28px;
+      background:
+        radial-gradient(circle at 20% 80%, #fff6, transparent 40%),
+        linear-gradient(#7ED5E0, #4DB8C4);
+      border: 4px solid #fff;
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    [data-variant="C"] .c-weed {
+      position: absolute; bottom: 0; width: 18px; height: 70px;
+      background: #3a9a6a; border-radius: 20px 20px 0 0; opacity: 0.45;
+    }
+    [data-variant="C"] .c-weed.l { left: 8px; height: 90px; }
+    [data-variant="C"] .c-weed.r { right: 10px; height: 64px; }
+    [data-variant="C"] .c-bubble {
+      position: absolute; width: 10px; height: 10px; border-radius: 50%;
+      border: 2px solid #fff9; animation: cRise 4s linear infinite;
+    }
+    @keyframes cRise {
+      from { transform: translateY(120px); opacity: 0; }
+      10% { opacity: 1; }
+      to { transform: translateY(-40px); opacity: 0; }
+    }
+    [data-variant="C"] .c-board {
+      flex: 1; display: flex; justify-content: space-around; align-items: center;
+      padding: 12px 6px; position: relative; z-index: 1; overflow: visible;
+    }
+    [data-variant="C"] .c-homevial {
+      width: 62px; height: 78px; cursor: pointer;
+      background: none; border: 0; padding: 0; position: relative;
+      transition: transform 0.2s ease;
+      transform-origin: 50% 70%;
+    }
+    [data-variant="C"] .c-globe {
+      width: 62px; height: 62px; border-radius: 50%;
+      border: 3px solid #fff;
+      background: radial-gradient(circle at 30% 25%, #fff8, #ffffff22);
+      overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+      box-shadow: 0 6px 0 #3aa8b066;
+    }
+    [data-variant="C"] .c-stack { display: flex; flex-direction: column-reverse; height: 100%; width: 100%; }
+    [data-variant="C"] .c-peek {
+      position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 6px; z-index: 2;
+    }
+    [data-variant="C"] .c-peek b {
+      width: 7px; height: 9px; background: #1E4450; border-radius: 50%; display: block;
+    }
+    [data-variant="C"] .c-homevial.sel { transform: translateY(-10px); }
+    [data-variant="C"] .c-homevial.sel .c-globe { box-shadow: 0 0 0 4px #fff8, 0 6px 0 #3aa8b066; }
+    [data-variant="C"] .c-tilt {
+      display: block; width: 100%; height: 100%; position: relative;
+      transform-origin: 50% 70%;
+      transition: transform 0.2s ease;
+    }
+    [data-variant="C"] .c-homevial.pour-right { z-index: 6; }
+    [data-variant="C"] .c-homevial.pour-right .c-tilt { transform: translateY(-12px) rotate(22deg); }
+    [data-variant="C"] .c-homevial.pour-left { z-index: 6; }
+    [data-variant="C"] .c-homevial.pour-left .c-tilt { transform: translateY(-12px) rotate(-22deg); }
+    [data-variant="C"] .c-homevial.landing .c-globe { animation: gulp 0.36s ease; }
+    [data-variant="C"] .c-homevial.done { animation: aPop 0.5s ease; }
+    [data-variant="C"] .c-cheer {
+      position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+      font-size: 18px; z-index: 3;
+    }
+    [data-variant="C"] .c-hint { text-align: center; font-weight: 700; margin: 8px 0; font-size: 14px; }
+    [data-variant="C"] .c-tools { display: flex; gap: 8px; }
+    [data-variant="C"] .c-tools .chip {
+      flex: 1; background: #fff; border-radius: 18px; padding: 12px; font-weight: 700;
+      box-shadow: 0 5px 0 #d7c4a0;
+    }
+    [data-variant="C"] .c-tools .shell {
+      flex: 1.3; background: var(--coral); color: #fff; border-radius: 18px;
+      box-shadow: 0 5px 0 #d56a5c;
+    }
+
+    [data-variant="C"] .c-jackpot { padding: calc(var(--safe-top) + 10px) 18px 16px; }
+    [data-variant="C"] .c-jackpot h2 { text-align: center; font-size: 26px; }
+    [data-variant="C"] .c-jackpot p { text-align: center; opacity: 0.75; font-weight: 600; }
+    [data-variant="C"] .c-shrine {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    [data-variant="C"] .c-clams {
+      display: flex; gap: 14px; margin: 18px 0;
+    }
+    [data-variant="C"] .c-clam {
+      width: 96px; height: 82px; position: relative;
+    }
+    [data-variant="C"] .c-clam .shell {
+      position: absolute; inset: 0; border-radius: 48px 48px 22px 22px;
+      background: linear-gradient(#fff3ec, #ff9d8c);
+      border: 4px solid #fff; display: grid; place-items: center; font-size: 32px;
+      box-shadow: 0 10px 0 #e08980;
+    }
+    [data-variant="C"] .c-clam.spin .shell { animation: cFloat 0.25s linear infinite; }
+    [data-variant="C"] .c-open {
+      width: 100%; border-radius: 999px; padding: 16px;
+      background: #1E4450; color: #E7FBFF; font-size: 18px; font-weight: 700;
+      box-shadow: 0 7px 0 #0f2a32;
+    }
+    [data-variant="C"] .c-back { background: transparent; font-weight: 700; padding: 12px; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <div>PROTOTYPE · cute personality · not production</div>
+    <div><strong id="stateLabel">variant=A · screen=home</strong></div>
+  </div>
+  <pre class="state-dump" id="stateDump"></pre>
+
+  <div class="stage">
+    <div class="device-shell" id="deviceShell">
+    <div class="phone" id="phone" data-device="phone" data-variant="B">
+      <header class="status-bar" aria-hidden="true">
+        <span class="clock">9:41</span>
+        <span class="status-notch"></span>
+        <span class="pips">●●● 🔋</span>
+      </header>
+
+      <!-- A Soft Lab -->
+      <div class="variant-root" data-for="A" hidden>
+        <section class="screen a-home" data-screen="home" aria-label="Home">
+          <div class="a-top">
+            <div>
+              <div class="a-brand"><small>Greenhouse lab</small>AquaSort</div>
+            </div>
+            <div class="a-pills">
+              <div class="a-pill hearts">♥ 3</div>
+              <div class="a-pill">🪙 240</div>
+            </div>
+          </div>
+          <div class="a-path">
+            <div class="a-vine" aria-hidden="true"></div>
+            <div class="a-node">
+              <div class="a-node-flask done">1</div>
+              <div class="a-node-meta"><strong>Sprout Bay</strong><em>cleared · +10</em></div>
+            </div>
+            <div class="a-node">
+              <div class="a-node-flask done">2</div>
+              <div class="a-node-meta"><strong>Dew Walk</strong><em>cleared · +10</em></div>
+            </div>
+            <div class="a-node">
+              <div class="a-node-flask now">3</div>
+              <div class="a-node-meta"><strong>Mint House</strong><em>play now</em></div>
+            </div>
+            <div class="a-node">
+              <div class="a-node-flask lock">4</div>
+              <div class="a-node-meta"><strong>Peach Glass</strong><em>locked</em></div>
+            </div>
+            <div class="a-node">
+              <div class="a-node-flask lock">5</div>
+              <div class="a-node-meta"><strong>Gold Leaf</strong><em>locked</em></div>
+            </div>
+          </div>
+          <div class="a-dock">
+            <button type="button" class="btn ghost" data-go="jackpot">Prize</button>
+            <button type="button" class="btn primary" data-go="play">Pour station 3</button>
+          </div>
+        </section>
+
+        <section class="screen a-play" data-screen="play" aria-label="Play">
+          <div class="a-hud">
+            <div class="a-buddy" aria-hidden="true"><div class="a-drop"></div></div>
+            <div class="a-hud-mid">
+              <b>Mint House</b>
+              <span>Station 3 · 8 moves</span>
+            </div>
+            <div class="a-pills">
+              <div class="a-pill hearts">♥ 3</div>
+              <div class="a-pill">🪙 240</div>
+            </div>
+          </div>
+          <div class="a-bench">
+            <div class="a-bench-label">Cozy bench</div>
+            <div class="a-board" data-board="A"></div>
+          </div>
+          <p class="a-hint" data-hint>Pick a flask, then pour</p>
+          <div class="a-tools">
+            <button type="button" class="btn chip" data-act="undo">↺ Undo</button>
+            <button type="button" class="btn chip" data-act="reset">Reset</button>
+            <button type="button" class="btn chip prize" data-go="jackpot">Centrifuge</button>
+          </div>
+        </section>
+
+        <section class="screen a-jackpot" data-screen="jackpot" aria-label="Prize">
+          <div>
+            <h2>Prize centrifuge</h2>
+            <p>Same odds. Softer machine.</p>
+          </div>
+          <div class="a-machine" aria-hidden="true">
+            <div class="a-reel" data-reel="0"><div class="strip"></div></div>
+            <div class="a-reel" data-reel="1"><div class="strip"></div></div>
+            <div class="a-reel" data-reel="2"><div class="strip"></div></div>
+          </div>
+          <div>
+            <button type="button" class="btn a-spin" data-act="spin">Spin · 20 coins</button>
+            <button type="button" class="btn a-back" data-go="play" style="width:100%">Back to bench</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- B Boba Store -->
+      <div class="variant-root" data-for="B">
+        <section class="screen b-home" data-screen="home" aria-label="Home">
+          <div class="b-hub">
+            <div class="b-hub-head">
+              <span class="b-sign">boba store · hub v3</span>
+              <h1>Pearl Counter</h1>
+              <p>Pick a station</p>
+            </div>
+            <div class="b-hub-grid">
+              <button type="button" class="btn counter" data-go="play"><b>🧋</b>Counter</button>
+              <button type="button" class="btn" data-go="store"><b>🛍️</b>Store</button>
+              <button type="button" class="btn lucky" data-go="jackpot"><b>🎰</b>Lucky</button>
+              <button type="button" class="btn" data-go="missions"><b>📋</b>Mission</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen b-missions" data-screen="missions" aria-label="Mission">
+          <div class="b-scene" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="b-play-top">
+            <div>
+              <span class="b-ticket-no">Missions</span>
+              <h2>Shift board</h2>
+              <div style="font-size:13px;opacity:.7;font-weight:650">Complete for coins · cups · spins</div>
+            </div>
+            <div class="b-pills">
+              <div class="b-coin" data-coins>💰 240</div>
+            </div>
+          </div>
+          <div class="b-counter">
+            <div class="b-menu">Shift board · today</div>
+            <div class="b-shift" data-shift></div>
+          </div>
+          <div class="b-floor">
+            <div class="b-dock">
+              <button type="button" class="btn tool" data-go="home"><b>🏠</b>Home</button>
+              <button type="button" class="btn prize" data-act="collect-all" data-collect-all hidden>Collect all</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen b-store" data-screen="store" aria-label="Store">
+          <div class="b-scene" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="b-play-top">
+            <div>
+              <span class="b-ticket-no">Store</span>
+              <h2>Back shelf</h2>
+              <div style="font-size:13px;opacity:.7;font-weight:650" data-store-hint>Cosmetics · challenge counters never help</div>
+            </div>
+            <div class="b-pills">
+              <div class="b-coin" data-coins>💰 240</div>
+            </div>
+          </div>
+          <div class="b-counter">
+            <div class="b-menu">Back shelf · tap Buy then open Counter</div>
+            <div class="b-shelf" data-shelf></div>
+          </div>
+          <div class="b-floor">
+            <div class="b-dock">
+              <button type="button" class="btn tool" data-go="home"><b>🏠</b>Home</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen b-play" data-screen="play" aria-label="Play">
+          <div class="b-scene" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="b-play-top">
+            <div>
+              <span class="b-ticket-no">Ticket 3650</span>
+              <h2>Midnight Float</h2>
+              <div style="font-size:13px;opacity:.7;font-weight:650">Seal 12 cups · 54 pours</div>
+            </div>
+            <div class="b-pills">
+              <div class="b-lives" data-cups>🧋 1</div>
+              <div class="b-coin" data-coins>💰 240</div>
+            </div>
+          </div>
+          <div class="b-counter">
+            <div class="b-menu">Now serving · 12 drinks</div>
+            <div class="b-board" data-board="B"></div>
+          </div>
+          <div class="b-floor">
+          <p class="b-play-hint" data-hint>Pour to finish the ticket</p>
+          <div class="b-dock">
+            <button type="button" class="btn tool" data-go="home"><b>🏠</b>Home</button>
+            <button type="button" class="btn tool" data-act="undo"><b>↩️</b>Undo</button>
+            <button type="button" class="btn tool" data-act="reset"><b>🔁</b>Reset</button>
+            <button type="button" class="btn tool" data-act="extra" data-extra-btn><b>🧋</b>+ Cup</button>
+            <button type="button" class="btn prize" data-go="jackpot">Lucky</button>
+          </div>
+          </div>
+        </section>
+
+        <section class="screen b-jackpot" data-screen="jackpot" aria-label="Prize">
+          <div class="b-scene" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="b-play-top">
+            <div>
+              <span class="b-ticket-no">After hours</span>
+              <h2>Lucky spin</h2>
+              <div style="font-size:13px;opacity:.7;font-weight:650">Match three on a line</div>
+            </div>
+            <div class="b-pills">
+              <div class="b-lives" data-cups>🧋 1</div>
+              <div class="b-coin" data-coins>💰 240</div>
+            </div>
+          </div>
+          <div class="b-counter">
+            <div class="b-treat">
+              <div class="b-menu">Staff treat</div>
+              <ul class="b-pay">
+                <li>⭐⭐⭐ jackpot 50×</li>
+                <li>🥭🥭🥭 coins 8×</li>
+                <li>🍮🍮🍮 undos 3×</li>
+                <li>🧋🧋🧋 extra cup 3× · rare</li>
+                <li>🍓🍓🍓 +1 coin</li>
+                <li>pair (not 🍓) 1×</li>
+              </ul>
+              <div class="b-cost" data-b-menu>5 × 5 lines = 25</div>
+            </div>
+            <div class="b-slot">
+              <div class="b-slot-body">
+                <div class="b-slot-lid" aria-hidden="true"></div>
+                <div class="b-machine">
+                  <div class="b-rails" data-rails="left"></div>
+                  <div class="b-slot-window" data-slot-window>
+                    <div class="b-reel" data-reel="0"><div class="strip"></div></div>
+                    <div class="b-reel" data-reel="1"><div class="strip"></div></div>
+                    <div class="b-reel" data-reel="2"><div class="strip"></div></div>
+                    <svg class="b-paylines" data-paylines viewBox="0 0 150 138" aria-hidden="true"></svg>
+                  </div>
+                  <div class="b-rails" data-rails="right"></div>
+                </div>
+                <div class="b-steps">
+                  <div class="b-step">
+                    <span>Coins / line</span>
+                    <div class="b-stepper">
+                      <button type="button" data-act="bet-down" aria-label="Fewer coins per line">−</button>
+                      <b data-bet>5</b>
+                      <button type="button" data-act="bet-up" aria-label="More coins per line">+</button>
+                    </div>
+                  </div>
+                  <div class="b-step">
+                    <span>Lines</span>
+                    <div class="b-stepper">
+                      <button type="button" data-act="lines-down" aria-label="Fewer lines">−</button>
+                      <b data-lines>5</b>
+                      <button type="button" data-act="lines-up" aria-label="More lines">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="b-floor">
+            <p class="b-play-hint" data-spin-hint>Match three on a line · cost = coins × lines</p>
+            <div class="b-dock">
+              <button type="button" class="btn tool" data-go="home"><b>🏠</b>Home</button>
+              <button type="button" class="btn prize" data-act="spin" data-spin-cost>Spin · 25</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- C Creature Reef -->
+      <div class="variant-root" data-for="C" hidden>
+        <section class="screen c-home" data-screen="home" aria-label="Home">
+          <div class="c-sky">
+            <h1><small>Tide pool</small>Find their friends</h1>
+            <div class="c-bubbles" aria-label="lives and coins">
+              <i>🫧3</i><i>🪙</i>
+            </div>
+          </div>
+          <div class="c-map">
+            <div class="c-isle"><div class="c-bowl-node">🐠</div><strong>Lagoon</strong></div>
+            <div class="c-isle"><div class="c-bowl-node">🐡</div><strong>Weed</strong></div>
+            <div class="c-isle now"><div class="c-bowl-node">🐙</div><strong>Now</strong></div>
+            <div class="c-isle lock"><div class="c-bowl-node">🐚</div><strong>Cove</strong></div>
+            <div class="c-isle lock"><div class="c-bowl-node">⭐</div><strong>Pearl</strong></div>
+          </div>
+          <button type="button" class="btn c-play-cta" data-go="play">Help the octopus</button>
+          <div class="c-chest-row">
+            <div class="c-chest-toy" aria-hidden="true"></div>
+            <div style="flex:1;font-weight:700">Clam lottery<div style="font-size:12px;opacity:.7;font-weight:600">Open for pearls</div></div>
+            <button type="button" class="btn" data-go="jackpot" style="background:#1E4450;color:#fff;border-radius:14px;padding:8px 12px">Open</button>
+          </div>
+        </section>
+
+        <section class="screen c-play" data-screen="play" aria-label="Play">
+          <div class="c-hud">
+            <h2>Octopus pool</h2>
+            <div class="c-bubbles"><i>🫧3</i><i>🪙</i></div>
+          </div>
+          <div class="c-pool">
+            <div class="c-weed l"></div>
+            <div class="c-weed r"></div>
+            <div class="c-bubble" style="left:20%;animation-delay:.2s"></div>
+            <div class="c-bubble" style="left:55%;animation-delay:1.4s;width:7px;height:7px"></div>
+            <div class="c-bubble" style="left:78%;animation-delay:2.2s"></div>
+            <div class="c-board" data-board="C"></div>
+          </div>
+          <p class="c-hint" data-hint>Help them find their friends</p>
+          <div class="c-tools">
+            <button type="button" class="btn chip" data-act="undo">Undo</button>
+            <button type="button" class="btn chip" data-act="reset">Reset</button>
+            <button type="button" class="btn chip shell" data-go="jackpot">Clams</button>
+          </div>
+        </section>
+
+        <section class="screen c-jackpot" data-screen="jackpot" aria-label="Prize">
+          <div>
+            <h2>Clam lottery</h2>
+            <p>Three shells. One luck.</p>
+          </div>
+          <div class="c-shrine">
+            <div class="c-clams">
+              <div class="c-clam" data-reel="0"><div class="shell">🐚</div></div>
+              <div class="c-clam" data-reel="1"><div class="shell">🫧</div></div>
+              <div class="c-clam" data-reel="2"><div class="shell">⭐</div></div>
+            </div>
+            <button type="button" class="btn c-open" data-act="spin">Open shells · 20</button>
+            <button type="button" class="btn c-back" data-go="play">Back to pool</button>
+          </div>
+        </section>
+      </div>
+      <aside class="app-banner" aria-label="Advertisement">
+        <span class="ad-tag">Ad</span>
+        <span class="ad-icon" aria-hidden="true"></span>
+        <div class="ad-copy"><strong>Boba Sort</strong><span>Free puzzle · boba store</span></div>
+        <span class="ad-cta">GET</span>
+      </aside>
+    </div>
+    </div>
+  </div>
+
+  <div class="device-bar" role="group" aria-label="Device size">
+    <button type="button" data-device="phone" class="on">Phone</button>
+    <button type="button" data-device="tablet">Tablet</button>
+  </div>
+
+  <div class="flow-bar" role="group" aria-label="Flow step">
+    <button type="button" data-flow="home">Home</button>
+    <button type="button" data-flow="play">Counter</button>
+    <button type="button" data-flow="store">Store</button>
+    <button type="button" data-flow="jackpot">Lucky</button>
+    <button type="button" data-flow="missions">Mission</button>
+  </div>
+  <div class="switcher" role="group" aria-label="Prototype variant switcher">
+    <button type="button" id="prevVar" aria-label="Previous variant">←</button>
+    <div class="label" id="varLabel">A — Soft Lab</div>
+    <button type="button" id="nextVar" aria-label="Next variant">→</button>
+  </div>
+
+  <script>
+    const VARIANTS = {
+      A: { name: "Soft Lab", symbols: ["💧", "🧪", "↺", "🪙", "👑"] },
+      B: { name: "Boba Store", symbols: ["🍓", "🥭", "🧋", "⭐", "🍮"] },
+      C: { name: "Creature Reef", symbols: ["🐚", "🫧", "🐟", "⭐", "💎"] },
+    };
+    const KEYS = Object.keys(VARIANTS);
+    const CAP = 4;
+    const MAX_LEVEL = 3650;
+    /** Campaign cap: 12 colors + 1 empty (same as getLevelDifficulty(3650)). */
+    const MAX_START = () => [
+      [1, 5, 9, 2],
+      [3, 7, 11, 4],
+      [6, 10, 1, 8],
+      [12, 2, 5, 9],
+      [4, 8, 3, 7],
+      [11, 6, 10, 12],
+      [1, 3, 8, 5],
+      [2, 7, 12, 4],
+      [9, 11, 6, 10],
+      [1, 8, 4, 11],
+      [5, 12, 3, 9],
+      [2, 6, 7, 10],
+      [],
+    ];
+    const EARLY_START = () => [[1, 1, 1], [2, 2, 2, 2], [3, 3, 1], [3, 3], []];
+    const START = () => (variant === "B" ? MAX_START() : EARLY_START());
+
+    let variant = "B";
+    let screen = "home";
+    let tubes = START();
+    let selected = null;
+    let moves = 0;
+    let undoStack = [];
+    let spinning = false;
+    let lastSymbols = VARIANTS.B.symbols.slice(0, 3);
+    let lastGrid = [
+      ["🍓", "🍮", "⭐"],
+      ["🧋", "🥭", "🍓"],
+      ["⭐", "🍓", "🥭"],
+    ];
+    let lastWins = [];
+    let coins = 240;
+    let extraCups = 1;
+    let freeSpins = 0;
+    let watchingAd = false;
+    let betPerLine = 5;
+    let activeLines = 5;
+    const BETS = [1, 5, 10, 25];
+    const FREE_COINS = 5;
+    const MAX_TUBES = 15;
+    const MISSIONS_DONE = () => [
+      { id: "campaign", kicker: "Campaign", title: "Ticket 3650 · Midnight Float", blurb: "Seal 12 drinks before close · +40 coins", progress: 3650, target: 3650, go: "play", goLabel: "Play →", fill: "", reward: { coins: 40 } },
+      { id: "tickets", kicker: "Daily · tickets", title: "Seal 3 tickets", blurb: "Any ticket today · +20 coins", progress: 3, target: 3, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 20 } },
+      { id: "newdrinks", kicker: "Daily · new drinks", title: "First-clear 2 new tickets", blurb: "+25 coins · extra straw", progress: 2, target: 2, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 25, cups: 1 } },
+      { id: "spin", kicker: "Daily · lucky spin", title: "Spin the lucky machine", blurb: "3 spins · +2 free draws", progress: 3, target: 3, go: "jackpot", goLabel: "Prize →", fill: "matcha", reward: { spins: 2 } },
+    ];
+    const MISSIONS_MIX = () => [
+      { id: "campaign", kicker: "Campaign", title: "Ticket 3650 · Midnight Float", blurb: "Seal 12 drinks before close · +40 coins", progress: 3649, target: 3650, go: "play", goLabel: "Play →", fill: "", reward: { coins: 40 } },
+      { id: "tickets", kicker: "Daily · tickets", title: "Seal 3 tickets", blurb: "Any ticket today · +20 coins", progress: 2, target: 3, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 20 } },
+      { id: "newdrinks", kicker: "Daily · new drinks", title: "First-clear 2 new tickets", blurb: "+25 coins · extra straw", progress: 1, target: 2, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 25, cups: 1 } },
+      { id: "spin", kicker: "Daily · lucky spin", title: "Spin the lucky machine", blurb: "3 spins · +2 free draws", progress: 1, target: 3, go: "jackpot", goLabel: "Prize →", fill: "matcha", reward: { spins: 2 } },
+    ];
+    function startMissions() {
+      const rows = new URLSearchParams(location.search).get("missions") === "mix"
+        ? MISSIONS_MIX()
+        : MISSIONS_DONE();
+      return rows.map((m) => ({ ...m, claimed: false }));
+    }
+    let missions = startMissions();
+    const STORE_KIND_LABEL = {
+      counter: "Counter theme",
+      cup: "Cup style",
+      menu: "Drink colors",
+      straw: "Straw",
+      cap: "Cap",
+    };
+    const STORE_ITEMS = [
+      { id: "counter_house", kind: "counter", name: "House counter", blurb: "Default wood shop · free starter", price: 0 },
+      { id: "counter_honey", kind: "counter", name: "Honey counter", blurb: "Warm amber shop look", price: 80 },
+      { id: "counter_night", kind: "counter", name: "Night market", blurb: "Neon stall · 20% fewer pours · harder, not easier", price: 120 },
+      { id: "cup_house", kind: "cup", name: "House cup", blurb: "Clear plastic · cosmetic only", price: 0 },
+      { id: "cup_crown", kind: "cup", name: "Crown cup", blurb: "Gold trim · also from Lucky crown", price: 150 },
+      { id: "menu_classic", kind: "menu", name: "Classic menu", blurb: "House drinks · easy to tell apart", price: 0 },
+      { id: "menu_neon", kind: "menu", name: "Neon menu", blurb: "High-contrast liquid colors", price: 75 },
+      { id: "menu_matcha", kind: "menu", name: "Matcha house", blurb: "Tea-shop dyes · still distinct", price: 70 },
+      { id: "straw_house", kind: "straw", name: "House straw", blurb: "Green stripe · free starter", price: 0 },
+      { id: "straw_candy", kind: "straw", name: "Candy straw", blurb: "Pink stripe · cheap impulse", price: 40 },
+      { id: "cap_house", kind: "cap", name: "House cap", blurb: "Dome lid · free starter", price: 0 },
+      { id: "cap_gold", kind: "cap", name: "Gold cap", blurb: "Warm gold dome · cosmetic only", price: 50 },
+    ];
+    const STORE_FREE = STORE_ITEMS.filter((i) => i.price === 0).map((i) => i.id);
+    const COUNTER_LOOKS = {
+      counter_house: { a: "#e0b36a", b: "#c4894b", c: "#d4a05a", shadow: "#5a3218", inset: "#f3d7a4" },
+      counter_honey: { a: "#f0c56a", b: "#e09a32", c: "#f4d48a", shadow: "#8a4a12", inset: "#ffe9b0" },
+      counter_night: { a: "#4a3560", b: "#241830", c: "#6a4880", shadow: "#120814", inset: "#e0a0ff" },
+    };
+    const STRAW_LOOKS = {
+      straw_house: { a: "#6fbf73", b: "#f7fff4" },
+      straw_candy: { a: "#f25c78", b: "#fff8f0" },
+    };
+    const MENU_LOOKS = {
+      menu_classic: ["#e45b5b","#3bbbb0","#f0a020","#6db85a","#4ad4c8","#4a96ff","#6a5cff","#c08ae0","#f04a9a","#f070b0","#c4894b","#e8e06a"],
+      menu_neon: ["#E03C06","#FBD051","#BDEE2B","#1FF91F","#5AF2A6","#5ACCF2","#1F56F9","#5A80F2","#8C1FF9","#FB51FB","#FB51A6","#F91F56"],
+      menu_matcha: ["#c45d48","#5a9e4a","#e8b84a","#2d6b3a","#8fbf6a","#3aa8b0","#6b4ea0","#8b5a2b","#d46a8a","#e8a078","#4a3228","#d4c45a"],
+    };
+    function startShop() {
+      return {
+        owned: new Set(STORE_FREE),
+        equipped: {
+          counter: "counter_house",
+          cup: "cup_house",
+          menu: "menu_classic",
+          straw: "straw_house",
+          cap: "cap_house",
+        },
+      };
+    }
+    let shop = startShop();
+    const LINE_COLORS = { 1: "#E85D4C", 2: "#7EE3D6", 3: "#F0B429", 4: "#5B9BD5", 5: "#F4A261" };
+    const PAYLINES = [
+      { id: 1, name: "Top", cells: [[0, 0], [0, 1], [0, 2]] },
+      { id: 2, name: "Mid", cells: [[1, 0], [1, 1], [1, 2]] },
+      { id: 3, name: "Bot", cells: [[2, 0], [2, 1], [2, 2]] },
+      { id: 4, name: "Diag ↘", cells: [[0, 0], [1, 1], [2, 2]] },
+      { id: 5, name: "Diag ↗", cells: [[2, 0], [1, 1], [0, 2]] },
+    ];
+    const LINE_PAY = { "⭐": 50, "🥭": 8, "🍮": 3, "🧋": 3, "🍓": 1 };
+    const WEIGHTS = [
+      ...Array(52).fill("🍓"),
+      ...Array(18).fill("🥭"),
+      ...Array(20).fill("🍮"),
+      ...Array(2).fill("🧋"),
+      ...Array(8).fill("⭐"),
+    ];
+    let lastMessage = "";
+    let device = "phone";
+    let pouring = false;
+    let pourAnim = null;
+    let displayTubes = null;
+    let pourTimers = [];
+
+    const phone = document.getElementById("phone");
+    const stateLabel = document.getElementById("stateLabel");
+    const stateDump = document.getElementById("stateDump");
+    const varLabel = document.getElementById("varLabel");
+
+    function later(ms, fn) {
+      const id = setTimeout(fn, ms);
+      pourTimers.push(id);
+      return id;
+    }
+    function clearPour() {
+      pourTimers.forEach(clearTimeout);
+      pourTimers = [];
+      pouring = false;
+      pourAnim = null;
+      displayTubes = null;
+    }
+
+    function isComplete(t) {
+      return t.length === CAP && t.every((c) => c === t[0]);
+    }
+    function topRun(t) {
+      if (!t.length) return { color: null, count: 0 };
+      const color = t[t.length - 1];
+      let count = 0;
+      for (let i = t.length - 1; i >= 0 && t[i] === color; i--) count++;
+      return { color, count };
+    }
+    function colorRuns(t) {
+      const runs = [];
+      for (const c of t) {
+        if (runs.length && runs[runs.length - 1].color === c) {
+          runs[runs.length - 1].count += 1;
+        } else {
+          runs.push({ color: c, count: 1 });
+        }
+      }
+      return runs;
+    }
+    function canPour(from, to) {
+      if (from === to) return false;
+      const src = tubes[from];
+      const dst = tubes[to];
+      if (!src.length || isComplete(src)) return false;
+      if (dst.length >= CAP) return false;
+      const { color } = topRun(src);
+      return dst.length === 0 || dst[dst.length - 1] === color;
+    }
+    function pourResult(from, to) {
+      const next = tubes.map((t) => t.slice());
+      const { color, count } = topRun(next[from]);
+      const n = Math.min(count, CAP - next[to].length);
+      for (let i = 0; i < n; i++) {
+        next[from].pop();
+        next[to].push(color);
+      }
+      return { next, color, n };
+    }
+
+    const TOPPING = {
+      1: "white",
+      2: null,
+      3: null,
+      4: "black",
+      5: "white",
+      6: null,
+      7: null,
+      8: "black",
+      9: null,
+      10: "white",
+      11: "black",
+      12: "white",
+    };
+    function bitsHTML(color) {
+      const kind = TOPPING[color];
+      if (!kind) return "";
+      return `<span class="b-bits ${kind}" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b></span>`;
+    }
+
+    function stackHTML(t, incomingFrom, v) {
+      const runs = colorRuns(t);
+      return runs.map((r, idx) => {
+        const top = idx === runs.length - 1;
+        const incoming = incomingFrom != null && top ? " incoming" : "";
+        const fromStyle = incomingFrom != null && top ? `--from:${incomingFrom};` : "";
+        const bits = v === "B" ? bitsHTML(r.color) : "";
+        return `<i class="liq-block liq-${r.color}${top ? " top" : ""}${incoming}" data-n="${r.count}" style="height:${(r.count / CAP) * 100}%;${fromStyle}">${bits}</i>`;
+      }).join("");
+    }
+
+    function tubeMods(i) {
+      let extra = selected === i && !pouring ? " sel" : "";
+      const vis = displayTubes || tubes;
+      if (isComplete(vis[i]) && !(pourAnim && pourAnim.phase !== "land" && pourAnim.to === i)) {
+        extra += " done";
+      }
+      if (pourAnim && pourAnim.from === i) {
+        extra += pourAnim.to > i ? " pour-right" : " pour-left";
+      }
+      if (pourAnim && pourAnim.to === i && pourAnim.phase === "land") extra += " landing";
+      return extra;
+    }
+
+    function tubeHTML(v, t, i) {
+      const extra = tubeMods(i);
+      const incoming = pourAnim && pourAnim.phase === "land" && pourAnim.to === i
+        ? pourAnim.fromScale
+        : null;
+      const segs = stackHTML(t, incoming, v);
+      const vis = displayTubes || tubes;
+      const done = extra.includes("done");
+      if (v === "A") {
+        return `<button type="button" class="a-flask${extra}" data-tube="${i}" aria-label="flask ${i + 1}">
+          <span class="a-tilt">
+            ${done ? '<span class="a-cork"></span><span class="a-face"></span>' : ""}
+            <span class="a-neck"></span>
+            <span class="a-body"><span class="a-stack">${segs}</span></span>
+          </span>
+        </button>`;
+      }
+      if (v === "B") {
+        return `<button type="button" class="b-cup${extra}" data-tube="${i}" aria-label="cup ${i + 1}">
+          <span class="b-tilt">
+            <span class="b-straw"></span>
+            <span class="b-cap"></span>
+            <span class="b-rim"></span>
+            <span class="b-glass"><span class="b-shine"></span><span class="b-stack">${segs}</span></span>
+          </span>
+        </button>`;
+      }
+      const peek = vis[i].length && !isComplete(vis[i])
+        ? `<span class="c-peek"><b></b><b></b></span>` : "";
+      const cheer = done ? `<span class="c-cheer">✨</span>` : "";
+      return `<button type="button" class="c-homevial${extra}" data-tube="${i}" aria-label="bowl ${i + 1}">
+        <span class="c-tilt">
+          ${cheer}
+          <span class="c-globe">${peek}<span class="c-stack">${segs}</span></span>
+        </span>
+      </button>`;
+    }
+
+    function completeCount() {
+      return tubes.filter(isComplete).length;
+    }
+    function won() {
+      return tubes.every((t) => t.length === 0 || isComplete(t));
+    }
+
+    function visibleTubes() {
+      return displayTubes || tubes;
+    }
+
+    function drawStream(board) {
+      if (!pourAnim || pourAnim.phase === "tilt") return;
+      const fromEl = board.querySelector(`[data-tube="${pourAnim.from}"]`);
+      const toEl = board.querySelector(`[data-tube="${pourAnim.to}"]`);
+      if (!fromEl || !toEl) return;
+      const br = board.getBoundingClientRect();
+      const right = pourAnim.to > pourAnim.from;
+      const fr = fromEl.getBoundingClientRect();
+      const tr = toEl.getBoundingClientRect();
+      const lipY = variant === "B" ? fr.height * 0.16 : variant === "C" ? 10 : 22;
+      const a = {
+        x: fr.left - br.left + fr.width * (right ? 0.82 : 0.18),
+        y: fr.top - br.top + lipY,
+      };
+      const b = {
+        x: tr.left - br.left + tr.width / 2,
+        y: tr.top - br.top + (variant === "B" ? tr.height * 0.18 : variant === "C" ? 16 : 30),
+      };
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.max(28, Math.hypot(dx, dy));
+      const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const fx = document.createElement("div");
+      fx.className = `pour-stream liq-${pourAnim.color}${pourAnim.phase === "land" ? " out" : ""}`;
+      fx.style.cssText = `left:${a.x}px;top:${a.y}px;width:${len}px;--ang:${ang}deg;`;
+      fx.innerHTML = `<span class="drop liq-${pourAnim.color}"></span>`;
+      board.appendChild(fx);
+    }
+
+    function renderBoards() {
+      const vis = visibleTubes();
+      document.querySelectorAll("[data-board]").forEach((el) => {
+        el.classList.toggle("dense", vis.length > 6);
+        el.classList.toggle("wide", vis.length === 14);
+        el.classList.toggle("full", vis.length >= 15);
+        el.innerHTML = vis.map((t, i) => tubeHTML(el.dataset.board, t, i)).join("");
+      });
+      const hint = won() && !pouring
+        ? { A: "Ticket done! Coins +10 — lucky draw is open", B: "Ticket done! Coins +10 — lucky spin is open", C: "Ticket done! Coins +10 — lucky draw is open" }[variant]
+        : pouring
+          ? { A: "Pouring…", B: "Sealing…", C: "Swish…" }[variant]
+          : lastMessage === "extra-cup"
+            ? "Extra cup added"
+            : lastMessage === "no-cups"
+              ? "No extra cups — spin Lucky to earn more"
+              : lastMessage === "counter-full"
+                ? "Counter is full"
+          : selected == null
+            ? { A: "Pick a flask, then pour", B: "Pour to finish the ticket", C: "Help them find their friends" }[variant]
+            : "Now pour it into the next cup";
+      document.querySelectorAll("[data-hint]").forEach((el) => { el.textContent = hint; });
+      renderReels(false);
+      renderState();
+      if (pourAnim && pourAnim.phase !== "tilt") {
+        requestAnimationFrame(() => {
+          document.querySelectorAll(".variant-root:not([hidden]) [data-board]").forEach(drawStream);
+        });
+      }
+    }
+
+    function startPour(from, to) {
+      if (pouring || !canPour(from, to)) return false;
+      const before = tubes.map((t) => t.slice());
+      const destTop = topRun(before[to]);
+      const { next, color, n } = pourResult(from, to);
+      const matched = destTop.color === color ? destTop.count : 0;
+      undoStack.push(before);
+      selected = null;
+      pouring = true;
+      lastMessage = "pouring";
+      pourAnim = {
+        from, to, color, n,
+        phase: "tilt",
+        fromScale: matched / (matched + n),
+      };
+
+      displayTubes = before;
+      renderBoards();
+
+      later(variant === "B" ? 160 : 140, () => {
+        pourAnim.phase = "stream";
+        const mid = before.map((t) => t.slice());
+        for (let i = 0; i < n; i++) mid[from].pop();
+        displayTubes = mid;
+        renderBoards();
+      });
+
+      later(variant === "B" ? 520 : 460, () => {
+        tubes = next;
+        displayTubes = next;
+        moves += 1;
+        pourAnim.phase = "land";
+        lastMessage = isComplete(next[to]) ? "complete" : "poured";
+        renderBoards();
+      });
+
+      later(variant === "B" ? 820 : 740, () => {
+        pouring = false;
+        pourAnim = null;
+        displayTubes = null;
+        renderBoards();
+      });
+      return true;
+    }
+
+    function spinCost() {
+      return betPerLine * activeLines;
+    }
+    function visibleRows(lines) {
+      if (lines <= 1) return 1;
+      if (lines === 2) return 2;
+      return 3;
+    }
+    function pickSymbol() {
+      return WEIGHTS[Math.floor(Math.random() * WEIGHTS.length)];
+    }
+    function rollGrid() {
+      return [0, 1, 2].map(() => [pickSymbol(), pickSymbol(), pickSymbol()]);
+    }
+    function readLine(grid, def) {
+      return def.cells.map(([r, c]) => grid[r][c]);
+    }
+    function evaluateLine(symbols, line) {
+      const [a, b, c] = symbols;
+      if (a === b && b === c) {
+        if (a === "🍓") {
+          return { lineId: line.id, coins: 1, extra: 0, undo: 0, label: `${line.name}: 🍓🍓🍓 +1` };
+        }
+        const pay = LINE_PAY[a] * betPerLine;
+        const extra = a === "🧋" ? Math.max(1, Math.floor(betPerLine / 5)) : 0;
+        const undo = a === "🍮" ? Math.max(1, Math.floor(betPerLine / 5) + 1) : 0;
+        const tag = a === "⭐" ? `jackpot +${pay}` : a === "🧋" ? `+${extra} cup` : a === "🍮" ? `+${undo} undo` : `+${pay}`;
+        return { lineId: line.id, coins: pay, extra, undo, label: `${line.name}: ${a}${a}${a} ${tag}` };
+      }
+      const pair = a === b && a !== c ? a : b === c && b !== a ? b : null;
+      if (pair && pair !== "🍓") {
+        return { lineId: line.id, coins: betPerLine, extra: 0, undo: 0, label: `${line.name}: pair +${betPerLine}` };
+      }
+      return null;
+    }
+    function evaluateGrid(grid, lines) {
+      const wins = [];
+      for (const def of PAYLINES.slice(0, lines)) {
+        const win = evaluateLine(readLine(grid, def), def);
+        if (win) wins.push(win);
+      }
+      return wins;
+    }
+
+    function canUseFreeSpin() {
+      return freeSpins > 0 && betPerLine === FREE_COINS;
+    }
+    function canAffordSpin() {
+      return canUseFreeSpin() || coins >= spinCost();
+    }
+
+    function missionDone(m) {
+      return m.progress >= m.target;
+    }
+    function payoutMission(m) {
+      coins += m.reward.coins || 0;
+      extraCups += m.reward.cups || 0;
+      freeSpins += m.reward.spins || 0;
+    }
+    function collectMission(id) {
+      const m = missions.find((row) => row.id === id);
+      if (!m || m.claimed || !missionDone(m)) return;
+      m.claimed = true;
+      payoutMission(m);
+      lastMessage = "collect";
+      renderMissions();
+      renderHud();
+      renderState();
+    }
+    function collectAllMissions() {
+      if (!missions.every(missionDone)) return;
+      const due = missions.filter((m) => !m.claimed);
+      if (!due.length) return;
+      due.forEach((m) => {
+        m.claimed = true;
+        payoutMission(m);
+      });
+      lastMessage = "collect-all";
+      renderMissions();
+      renderHud();
+      renderState();
+    }
+    function renderMissions() {
+      document.querySelectorAll("[data-shift]").forEach((shift) => {
+        shift.innerHTML = missions.map((m) => {
+          const done = missionDone(m);
+          const pct = Math.min(100, (m.progress / m.target) * 100);
+          const cls = m.claimed ? "b-card claimed" : done ? "b-card ready" : "b-card";
+          const attrs = m.claimed
+            ? ""
+            : done
+              ? `data-act="collect" data-mission="${m.id}"`
+              : `data-go="${m.go}"`;
+          const go = m.claimed ? "Claimed" : done ? "Collect →" : m.goLabel;
+          const count = m.id === "campaign" && !done
+            ? `${m.progress} sealed`
+            : `${Math.min(m.progress, m.target)} / ${m.target}`;
+          const fill = m.fill ? ` ${m.fill}` : "";
+          return `<button type="button" class="${cls}" ${attrs}>
+            <span class="kicker">${m.kicker}</span>
+            <strong>${m.title}</strong>
+            <em>${m.blurb}</em>
+            <div class="b-track"><i class="b-fill${fill}" style="width:${pct}%"></i></div>
+            <div class="meta"><span>${count}</span><span class="go">${go}</span></div>
+          </button>`;
+        }).join("");
+      });
+      const showAll = missions.every(missionDone) && missions.some((m) => !m.claimed);
+      document.querySelectorAll("[data-collect-all]").forEach((btn) => {
+        btn.hidden = !showAll;
+        const n = missions.filter((m) => !m.claimed && missionDone(m)).length;
+        btn.textContent = n ? `Collect all · ${n}` : "Collect all";
+      });
+    }
+
+    function applyLooks() {
+      const wood = COUNTER_LOOKS[shop.equipped.counter] || COUNTER_LOOKS.counter_house;
+      phone.style.setProperty("--wood-a", wood.a);
+      phone.style.setProperty("--wood-b", wood.b);
+      phone.style.setProperty("--wood-c", wood.c);
+      phone.style.setProperty("--wood-shadow", wood.shadow);
+      phone.style.setProperty("--wood-inset", wood.inset);
+      const straw = STRAW_LOOKS[shop.equipped.straw] || STRAW_LOOKS.straw_house;
+      phone.style.setProperty("--straw-a", straw.a);
+      phone.style.setProperty("--straw-b", straw.b);
+      const menu = MENU_LOOKS[shop.equipped.menu] || MENU_LOOKS.menu_classic;
+      menu.forEach((hex, i) => phone.style.setProperty(`--liq-${i + 1}`, hex));
+      phone.dataset.counter = shop.equipped.counter;
+      phone.dataset.cup = shop.equipped.cup;
+      phone.dataset.menu = shop.equipped.menu;
+      phone.dataset.straw = shop.equipped.straw;
+      phone.dataset.cap = shop.equipped.cap;
+    }
+    function setStoreHint(text) {
+      document.querySelectorAll("[data-store-hint]").forEach((el) => { el.textContent = text; });
+    }
+    function buyStoreItem(id) {
+      const item = STORE_ITEMS.find((row) => row.id === id);
+      if (!item) return;
+      if (shop.owned.has(item.id)) {
+        shop.equipped[item.kind] = item.id;
+        lastMessage = "equipped";
+        setStoreHint(`Equipped · ${item.name}`);
+        applyLooks();
+        renderStore();
+        renderHud();
+        renderState();
+        return;
+      }
+      if (coins < item.price) {
+        lastMessage = "need-coins";
+        setStoreHint(`Need ${item.price} coins · you have ${coins}`);
+        renderState();
+        return;
+      }
+      coins -= item.price;
+      shop.owned.add(item.id);
+      shop.equipped[item.kind] = item.id;
+      lastMessage = "bought";
+      setStoreHint(`Bought · ${item.name}`);
+      applyLooks();
+      renderStore();
+      renderHud();
+      renderState();
+    }
+    function renderStore() {
+      document.querySelectorAll("[data-shelf]").forEach((shelf) => {
+        let lastKind = "";
+        shelf.innerHTML = STORE_ITEMS.map((item) => {
+          const owned = shop.owned.has(item.id);
+          const on = shop.equipped[item.kind] === item.id;
+          const need = !owned && coins < item.price;
+          const cost = item.price === 0 ? "Free" : `💰 ${item.price}`;
+          const label = on ? "Equipped" : owned ? "Equip" : "Buy";
+          const btnCls = ["b-sku-btn", owned && !on ? "equip" : "", need ? "need" : ""].filter(Boolean).join(" ");
+          const disabled = on ? "disabled" : "";
+          const header = item.kind !== lastKind
+            ? `<div class="b-shelf-label">${STORE_KIND_LABEL[item.kind]}</div>`
+            : "";
+          lastKind = item.kind;
+          return `${header}<div class="b-card b-sku${on ? " gone" : ""}">
+            <div class="b-sku-copy">
+              <span class="kicker">${STORE_KIND_LABEL[item.kind]}</span>
+              <strong>${item.name}</strong>
+              <em>${item.blurb}</em>
+            </div>
+            <div class="b-sku-buy">
+              <span class="b-sku-cost">${cost}</span>
+              <button type="button" class="${btnCls}" data-act="buy" data-item="${item.id}" ${disabled}>${label}</button>
+            </div>
+          </div>`;
+        }).join("");
+      });
+    }
+
+    function renderHud() {
+      const cost = spinCost();
+      const broke = !canAffordSpin();
+      const freeOk = canUseFreeSpin();
+      document.querySelectorAll("[data-coins]").forEach((el) => { el.textContent = `💰 ${coins}`; });
+      document.querySelectorAll("[data-cups]").forEach((el) => { el.textContent = `🧋 ${extraCups}`; });
+      document.querySelectorAll("[data-bet]").forEach((el) => { el.textContent = String(betPerLine); });
+      document.querySelectorAll("[data-lines]").forEach((el) => { el.textContent = String(activeLines); });
+      document.querySelectorAll("[data-spin-cost]").forEach((el) => {
+        el.classList.toggle("ad", broke || watchingAd);
+        el.dataset.act = broke || watchingAd ? "watch-ad" : "spin";
+        if (watchingAd) el.textContent = "Watching…";
+        else if (broke) el.textContent = "Watch ads";
+        else if (freeOk) el.textContent = `Free · ${freeSpins}`;
+        else el.textContent = `Spin · ${cost}`;
+      });
+      document.querySelectorAll("[data-b-menu]").forEach((el) => {
+        el.textContent = freeOk
+          ? `${freeSpins} free spin${freeSpins === 1 ? "" : "s"} · 5 coins / line`
+          : freeSpins > 0
+            ? `Free spins only at 5 coins / line`
+            : broke
+              ? `Need ${cost} coins · watch ads for 3 free spins`
+              : `${betPerLine} × ${activeLines} lines = ${cost}`;
+      });
+      document.querySelectorAll("[data-extra-btn]").forEach((el) => {
+        el.classList.toggle("dim", extraCups <= 0);
+      });
+      if (!spinning && !watchingAd) {
+        if (freeSpins > 0 && !freeOk) setSpinHint("Free spins only work at 5 coins / line");
+        else if (broke) setSpinHint(`Need ${cost} coins — watch an ad for 3 free spins`);
+        else if (freeOk && (lastMessage === "ad-done" || lastMessage === "bet" || lastMessage === "lines")) {
+          setSpinHint(`${freeSpins} free spin${freeSpins === 1 ? "" : "s"} at 5 coins / line`);
+        }
+      }
+    }
+
+    function sizeSlotWindow() {
+      const rows = visibleRows(activeLines);
+      document.querySelectorAll("[data-slot-window]").forEach((win) => {
+        const machine = win.closest(".b-machine");
+        if (!machine) return;
+        if (!machine.clientHeight || !machine.clientWidth) return;
+        const pad = 16;
+        const availH = Math.max(0, machine.clientHeight - pad);
+        const availW = Math.max(0, machine.clientWidth - pad);
+        const gap = 8;
+        const cell = Math.max(40, Math.min(
+          120,
+          Math.floor(availH / rows),
+          Math.floor((availW - gap * 2) / 3),
+        ));
+        win.style.setProperty("--cell", `${cell}px`);
+        win.style.setProperty("--gap", `${gap}px`);
+        win.style.setProperty("--rows", String(rows));
+      });
+    }
+
+    function renderPaylines(isSpin) {
+      sizeSlotWindow();
+      const rows = visibleRows(activeLines);
+      const winSet = new Set((!isSpin && lastWins) ? lastWins.map((w) => w.lineId) : []);
+      document.querySelectorAll("[data-rails='left']").forEach((el) => {
+        el.innerHTML = [1, 2, 3].filter((id) => id <= activeLines)
+          .map((id) => `<i class="${winSet.has(id) ? "win" : ""}" style="background:${LINE_COLORS[id]}">${id}</i>`)
+          .join("");
+      });
+      document.querySelectorAll("[data-rails='right']").forEach((el) => {
+        el.innerHTML = [4, 5].filter((id) => id <= activeLines)
+          .map((id) => `<i class="${winSet.has(id) ? "win" : ""}" style="background:${LINE_COLORS[id]}">${id}</i>`)
+          .join("");
+      });
+      document.querySelectorAll("[data-slot-window]").forEach((win) => {
+        win.style.setProperty("--rows", String(rows));
+      });
+      document.querySelectorAll("[data-paylines]").forEach((svg) => {
+        const win = svg.closest("[data-slot-window]");
+        const cs = win ? getComputedStyle(win) : null;
+        const cell = parseFloat(cs && cs.getPropertyValue("--cell")) || 46;
+        const gap = parseFloat(cs && cs.getPropertyValue("--gap")) || 6;
+        const W = cell * 3 + gap * 2;
+        const H = cell * rows;
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        const cx = (c) => c * (cell + gap) + cell / 2;
+        const cy = (r) => r * cell + cell / 2;
+        let markup = "";
+        for (let id = 1; id <= activeLines; id++) {
+          const cells = PAYLINES[id - 1].cells;
+          if (cells.some(([r]) => r >= rows)) continue;
+          const d = cells.map(([r, c], i) => `${i ? "L" : "M"}${cx(c)} ${cy(r)}`).join(" ");
+          const hit = winSet.has(id);
+          markup += `<path d="${d}" fill="none" stroke="${LINE_COLORS[id]}" stroke-width="${hit ? 4.5 : 2.5}" stroke-linecap="round" opacity="${hit ? 1 : 0.72}"/>`;
+          cells.forEach(([r, c]) => {
+            markup += `<circle cx="${cx(c)}" cy="${cy(r)}" r="${hit ? 5 : 3.5}" fill="${LINE_COLORS[id]}" stroke="#2c2418" stroke-width="1.4"/>`;
+          });
+        }
+        svg.innerHTML = markup;
+      });
+    }
+
+    function renderReels(isSpin) {
+      const pool = VARIANTS[variant].symbols;
+      const rows = variant === "B" ? visibleRows(activeLines) : 3;
+      document.querySelectorAll(".variant-root:not([hidden]) [data-reel]").forEach((el, i) => {
+        el.classList.toggle("spin", isSpin);
+        const strip = el.querySelector(".strip");
+        const shell = el.querySelector(".shell");
+        let shown;
+        if (variant === "B") {
+          shown = [lastGrid[0][i], lastGrid[1][i], lastGrid[2][i]].slice(0, rows);
+        } else {
+          shown = [lastSymbols[i] ?? pool[0]];
+        }
+        const face = shown[0];
+        if (strip) {
+          const rest = pool.filter((s) => !shown.includes(s));
+          const loop = [...shown, rest[0] || pool[1], rest[1] || pool[2], face]
+            .map((s) => `<span>${s}</span>`).join("");
+          strip.innerHTML = loop;
+        } else if (shell) {
+          shell.textContent = face;
+        } else if (!isSpin) {
+          el.textContent = face;
+        }
+      });
+      if (variant === "B") renderPaylines(isSpin);
+      renderHud();
+    }
+
+    function renderState() {
+      const snapshot = {
+        variant,
+        device,
+        screen,
+        level: variant === "B" ? MAX_LEVEL : 3,
+        selected,
+        moves,
+        tubes,
+        complete: completeCount(),
+        won: won(),
+        spinning,
+        lastSymbols,
+        lastGrid,
+        lastWins,
+        coins,
+        extraCups,
+        freeSpins,
+        missions: missions.map((m) => ({
+          id: m.id, progress: m.progress, target: m.target, claimed: m.claimed, done: missionDone(m),
+        })),
+        shop: {
+          owned: [...shop.owned],
+          equipped: { ...shop.equipped },
+        },
+        watchingAd,
+        betPerLine,
+        activeLines,
+        spinCost: spinCost(),
+        pouring,
+        pourAnim: pourAnim && { from: pourAnim.from, to: pourAnim.to, n: pourAnim.n, phase: pourAnim.phase },
+        lastMessage,
+      };
+      stateLabel.textContent = `variant=${variant} · ${device} · screen=${screen} · moves=${moves}`;
+      stateDump.textContent = JSON.stringify(snapshot, null, 2);
+    }
+
+    function readVariantFromURL() {
+      const v = new URLSearchParams(location.search).get("variant");
+      if (v && VARIANTS[v.toUpperCase()]) return v.toUpperCase();
+      return "B";
+    }
+    function readScreenFromURL() {
+      const s = new URLSearchParams(location.search).get("screen");
+      if (["home", "play", "jackpot", "missions", "store"].includes(s)) return s;
+      return "home";
+    }
+    function readDeviceFromURL() {
+      const d = new URLSearchParams(location.search).get("device");
+      return d === "tablet" ? "tablet" : "phone";
+    }
+    function setURL(v, s) {
+      const url = new URL(location.href);
+      url.searchParams.set("variant", v);
+      url.searchParams.set("screen", s);
+      url.searchParams.set("device", device);
+      const coinsParam = new URL(location.href).searchParams.get("coins");
+      if (coinsParam != null) url.searchParams.set("coins", coinsParam);
+      const missionsParam = new URL(location.href).searchParams.get("missions");
+      if (missionsParam != null) url.searchParams.set("missions", missionsParam);
+      history.replaceState(null, "", url);
+    }
+
+    function fitDevice() {
+      const shell = document.getElementById("deviceShell");
+      const w = device === "tablet" ? 834 : 390;
+      const h = device === "tablet" ? 1194 : 844;
+      const maxW = window.innerWidth - 24;
+      const maxH = window.innerHeight - 168;
+      const s = Math.min(1, maxW / w, maxH / h);
+      shell.style.width = `${Math.round(w * s)}px`;
+      shell.style.height = `${Math.round(h * s)}px`;
+      phone.style.transform = `scale(${s})`;
+      phone.style.transformOrigin = "top left";
+    }
+    function applyDevice(next) {
+      device = next === "tablet" ? "tablet" : "phone";
+      phone.dataset.device = device;
+      document.querySelectorAll(".device-bar button").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.device === device);
+      });
+      setURL(variant, screen);
+      renderBoards();
+      requestAnimationFrame(() => {
+        fitDevice();
+        if (variant === "B") renderPaylines(spinning);
+      });
+    }
+
+    function showScreen(next) {
+      screen = next;
+      setURL(variant, screen);
+      document.querySelectorAll(".variant-root:not([hidden]) .screen").forEach((el) => {
+        el.classList.toggle("active", el.dataset.screen === next);
+      });
+      document.querySelectorAll(".flow-bar button").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.flow === next);
+      });
+      renderReels(spinning);
+      renderMissions();
+      renderStore();
+      applyLooks();
+      renderState();
+      if (variant === "B" && next === "jackpot") {
+        requestAnimationFrame(() => renderPaylines(spinning));
+      }
+    }
+
+    function applyVariant(v, { reset = true } = {}) {
+      variant = v;
+      phone.dataset.variant = v;
+      varLabel.textContent = `${v} — ${VARIANTS[v].name}`;
+      document.querySelectorAll(".variant-root").forEach((root) => {
+        root.hidden = root.dataset.for !== v;
+      });
+      lastSymbols = VARIANTS[v].symbols.slice(0, 3);
+      lastWins = [];
+      {
+        const raw = new URLSearchParams(location.search).get("coins");
+        const q = raw == null || raw === "" ? NaN : Number(raw);
+        coins = Number.isFinite(q) && q >= 0 ? Math.floor(q) : 240;
+      }
+      extraCups = 1;
+      freeSpins = 0;
+      watchingAd = false;
+      betPerLine = 5;
+      activeLines = 5;
+      missions = startMissions();
+      shop = startShop();
+      clearPour();
+      if (reset) {
+        tubes = START();
+        selected = null;
+        moves = 0;
+        undoStack = [];
+        lastMessage = "variant-switch";
+        showScreen(readScreenFromURL());
+      } else {
+        showScreen(screen);
+      }
+      renderBoards();
+    }
+
+    function cycle(dir) {
+      const i = KEYS.indexOf(variant);
+      applyVariant(KEYS[(i + dir + KEYS.length) % KEYS.length]);
+    }
+
+    function onTube(i) {
+      if (pouring || won()) return;
+      if (selected == null) {
+        if (!tubes[i].length || isComplete(tubes[i])) {
+          lastMessage = "ignored-empty-or-done";
+          renderState();
+          return;
+        }
+        selected = i;
+        lastMessage = "selected";
+        renderBoards();
+        return;
+      }
+      if (selected === i) {
+        selected = null;
+        lastMessage = "deselected";
+        renderBoards();
+        return;
+      }
+      if (!startPour(selected, i)) {
+        selected = (!tubes[i].length || isComplete(tubes[i])) ? selected : i;
+        lastMessage = "blocked-or-retarget";
+        renderBoards();
+      }
+    }
+
+    function setSpinHint(text) {
+      document.querySelectorAll("[data-spin-hint]").forEach((el) => { el.textContent = text; });
+    }
+
+    function spin() {
+      if (spinning || watchingAd) return;
+      if (variant === "B") {
+        const cost = spinCost();
+        if (!canAffordSpin()) {
+          watchAd();
+          return;
+        }
+        const usedFree = canUseFreeSpin();
+        if (usedFree) freeSpins -= 1;
+        else coins -= cost;
+        spinning = true;
+        lastWins = [];
+        lastMessage = "spinning";
+        setSpinHint("Spinning…");
+        renderReels(true);
+        renderState();
+        setTimeout(() => {
+          lastGrid = rollGrid();
+          lastSymbols = lastGrid[1].slice();
+          lastWins = evaluateGrid(lastGrid, activeLines);
+          const gained = lastWins.reduce((s, w) => s + w.coins, 0);
+          const cups = lastWins.reduce((s, w) => s + w.extra, 0);
+          coins += gained;
+          extraCups += cups;
+          spinning = false;
+          if (lastWins.length === 0) {
+            lastMessage = "spin-done";
+            setSpinHint(usedFree ? "No line hit — free spin used" : "No line hit — try another spin");
+          } else {
+            lastMessage = lastWins.some((w) => w.label.includes("jackpot")) ? "jackpot" : "spin-win";
+            setSpinHint(lastWins.length === 1
+              ? lastWins[0].label
+              : `${lastWins.length} lines hit · +${gained} coins${cups ? ` · +${cups} cup` : ""}`);
+          }
+          renderReels(false);
+          renderState();
+        }, 1400);
+        return;
+      }
+      spinning = true;
+      lastMessage = "spinning";
+      renderReels(true);
+      renderState();
+      const syms = VARIANTS[variant].symbols;
+      setTimeout(() => {
+        lastSymbols = [0, 1, 2].map(() => syms[Math.floor(Math.random() * syms.length)]);
+        spinning = false;
+        lastMessage = lastSymbols[0] === lastSymbols[1] && lastSymbols[1] === lastSymbols[2]
+          ? "jackpot"
+          : "spin-done";
+        renderReels(false);
+        renderState();
+      }, 1400);
+    }
+
+    function watchAd() {
+      if (watchingAd || spinning) return;
+      if (canAffordSpin()) return;
+      watchingAd = true;
+      lastMessage = "watching-ad";
+      setSpinHint("Watching a short ad…");
+      renderHud();
+      renderState();
+      setTimeout(() => {
+        watchingAd = false;
+        freeSpins += 3;
+        betPerLine = FREE_COINS;
+        lastMessage = "ad-done";
+        setSpinHint("+3 free spins at 5 coins / line");
+        renderHud();
+        renderState();
+      }, 1100);
+    }
+
+    function addExtraCup() {
+      if (pouring || won()) return;
+      if (extraCups <= 0) {
+        lastMessage = "no-cups";
+        document.querySelectorAll("[data-hint]").forEach((el) => {
+          el.textContent = "No extra cups — spin Lucky to earn more";
+        });
+        renderState();
+        return;
+      }
+      if (tubes.length >= MAX_TUBES) {
+        lastMessage = "counter-full";
+        document.querySelectorAll("[data-hint]").forEach((el) => {
+          el.textContent = "Counter is full";
+        });
+        renderState();
+        return;
+      }
+      undoStack.push(tubes.map((t) => t.slice()));
+      extraCups -= 1;
+      tubes = tubes.map((t) => t.slice());
+      tubes.push([]);
+      selected = null;
+      lastMessage = "extra-cup";
+      document.querySelectorAll("[data-hint]").forEach((el) => {
+        el.textContent = "Extra cup added";
+      });
+      renderBoards();
+    }
+
+    function cycleBet(dir) {
+      if (spinning) return;
+      const i = BETS.indexOf(betPerLine);
+      betPerLine = BETS[(i + dir + BETS.length) % BETS.length];
+      lastWins = [];
+      lastMessage = "bet";
+      renderReels(false);
+      renderState();
+    }
+
+    function cycleLines(dir) {
+      if (spinning) return;
+      activeLines = Math.max(1, Math.min(5, activeLines + dir));
+      lastWins = [];
+      lastMessage = "lines";
+      setSpinHint(activeLines <= 2
+        ? `${activeLines} line${activeLines === 1 ? "" : "s"} · extra rows open at 3+`
+        : `${activeLines} lines · top / mid / bot${activeLines >= 4 ? " + diags" : ""}`);
+      renderReels(false);
+      renderState();
+    }
+
+    document.getElementById("prevVar").addEventListener("click", () => cycle(-1));
+    document.getElementById("nextVar").addEventListener("click", () => cycle(1));
+    document.querySelectorAll(".flow-bar button").forEach((btn) => {
+      btn.addEventListener("click", () => showScreen(btn.dataset.flow));
+    });
+    phone.addEventListener("click", (e) => {
+      const tube = e.target.closest("[data-tube]");
+      if (tube) {
+        onTube(Number(tube.dataset.tube));
+        return;
+      }
+      const act = e.target.closest("[data-act]");
+      if (act) {
+        const a = act.dataset.act;
+        if (a === "undo" && undoStack.length) {
+          clearPour();
+          tubes = undoStack.pop();
+          selected = null;
+          moves = Math.max(0, moves - 1);
+          lastMessage = "undo";
+          renderBoards();
+        } else if (a === "reset") {
+          clearPour();
+          tubes = START();
+          selected = null;
+          moves = 0;
+          undoStack = [];
+          lastMessage = "reset";
+          renderBoards();
+        } else if (a === "spin") {
+          spin();
+        } else if (a === "watch-ad") {
+          watchAd();
+        } else if (a === "extra") {
+          addExtraCup();
+        } else if (a === "bet-up") {
+          cycleBet(1);
+        } else if (a === "bet-down") {
+          cycleBet(-1);
+        } else if (a === "lines-up") {
+          cycleLines(1);
+        } else if (a === "lines-down") {
+          cycleLines(-1);
+        } else if (a === "collect-all") {
+          collectAllMissions();
+        } else if (a === "collect") {
+          collectMission(act.dataset.mission);
+        } else if (a === "buy") {
+          buyStoreItem(act.dataset.item);
+        }
+        return;
+      }
+      const go = e.target.closest("[data-go]");
+      if (go) showScreen(go.dataset.go);
+    });
+    document.addEventListener("keydown", (e) => {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "ArrowLeft") cycle(-1);
+      if (e.key === "ArrowRight") cycle(1);
+    });
+
+    device = readDeviceFromURL();
+    applyVariant(readVariantFromURL());
+    applyDevice(device);
+    window.addEventListener("resize", () => {
+      fitDevice();
+      if (variant === "B") renderPaylines(spinning);
+    });
+    document.querySelectorAll(".device-bar button").forEach((btn) => {
+      btn.addEventListener("click", () => applyDevice(btn.dataset.device));
+    });
+  </script>
+</body>
+</html>

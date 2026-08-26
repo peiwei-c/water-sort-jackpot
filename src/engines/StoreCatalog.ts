@@ -1,5 +1,5 @@
 /**
- * Lab store catalog — path themes, vial cosmetics, and liquid color palettes.
+ * Shop catalog — shop looks, cup cosmetics, and drink color palettes.
  * Pure data; no UI / ads.
  */
 
@@ -58,8 +58,8 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: PATH_DEFAULT,
     kind: 'path',
-    name: 'Standard Lab',
-    blurb: 'Classic teal conduits · normal move budget.',
+    name: 'House shop',
+    blurb: 'Classic wood counter · normal pour budget.',
     price: 0,
     moveScale: 1,
     pathTheme: {
@@ -76,8 +76,8 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'path_amber',
     kind: 'path',
-    name: 'Amber Conduit',
-    blurb: 'Exclusive look · 10% fewer moves.',
+    name: 'Honey shop',
+    blurb: 'Warm look · 10% fewer pours.',
     price: 80,
     moveScale: 0.9,
     pathTheme: {
@@ -94,8 +94,8 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'path_coral',
     kind: 'path',
-    name: 'Hazard Line',
-    blurb: 'Exclusive look · 20% fewer moves.',
+    name: 'Night market',
+    blurb: 'Exclusive look · 20% fewer pours.',
     price: 120,
     moveScale: 0.8,
     pathTheme: {
@@ -112,8 +112,8 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'path_midnight',
     kind: 'path',
-    name: 'Midnight Glass',
-    blurb: 'Rarest look · 30% fewer moves.',
+    name: 'Late night',
+    blurb: 'Rarest look · 30% fewer pours.',
     price: 160,
     moveScale: 0.7,
     pathTheme: {
@@ -130,7 +130,7 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: VIAL_DEFAULT,
     kind: 'vial',
-    name: 'Clear Glass',
+    name: 'House cup',
     blurb: 'Cosmetic only · no gameplay change.',
     price: 0,
     vialTheme: {
@@ -145,7 +145,7 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'vial_teal',
     kind: 'vial',
-    name: 'Teal Crystal',
+    name: 'Matcha cup',
     blurb: 'Cosmetic only · no gameplay change.',
     price: 60,
     vialTheme: {
@@ -160,7 +160,7 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'vial_amber',
     kind: 'vial',
-    name: 'Reagent Amber',
+    name: 'Honey cup',
     blurb: 'Cosmetic only · no gameplay change.',
     price: 90,
     vialTheme: {
@@ -175,8 +175,8 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: VIAL_CROWN,
     kind: 'vial',
-    name: 'Crown Alloy',
-    blurb: 'Cosmetic only · also from Centrifuge crown.',
+    name: 'Crown cup',
+    blurb: 'Cosmetic only · also from Lucky crown.',
     price: 150,
     vialTheme: {
       rim: 'rgba(255, 215, 100, 0.7)',
@@ -190,15 +190,15 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: PALETTE_DEFAULT,
     kind: 'palette',
-    name: 'Classic Reagents',
-    blurb: 'Default liquid colors · tuned so every hue is easy to tell apart.',
+    name: 'House menu',
+    blurb: 'Default drink colors · every hue is easy to tell apart.',
     price: 0,
     waterPalette: CLASSIC_PALETTE,
   },
   {
     id: 'palette_neon',
     kind: 'palette',
-    name: 'Neon Lab',
+    name: 'Neon menu',
     blurb: 'Electric liquids · high-contrast color theme.',
     price: 75,
     waterPalette: {

@@ -2,7 +2,7 @@
  * Abstract ad layer for AdMob / AppLovin with a mock fallback for local play.
  */
 
-import { allowMockMonetization } from './monetizationGate';
+import { allowMockMonetization, adsDisabled } from './monetizationGate';
 
 export type AdPlacement =
   | 'interstitial_level'
@@ -208,6 +208,10 @@ export function createAdService(provider: AdProviderName = 'mock'): IAdService {
 
 export function getAdService(): IAdService {
   if (!singleton) {
+    if (adsDisabled()) {
+      singleton = new FailClosedAdService('mock');
+      return singleton;
+    }
     const fromEnv = process.env.EXPO_PUBLIC_AD_PROVIDER as
       | AdProviderName
       | undefined;
@@ -224,5 +228,14 @@ export function resetAdService(): void {
   singleton = null;
 }
 
-/** Levels between automatic interstitial ads. */
-export const INTERSTITIAL_EVERY_N_LEVELS = 3;
+/** Forced interstitials fire on these ticket milestones (10, 20, 30, …). */
+export const INTERSTITIAL_EVERY_N_LEVELS = 10;
+
+/** True for completed puzzle tickets 10, 20, 30, … — not Lucky / free-spin / banner. */
+export function isInterstitialClearLevel(level: number): boolean {
+  return (
+    Number.isInteger(level) &&
+    level >= INTERSTITIAL_EVERY_N_LEVELS &&
+    level % INTERSTITIAL_EVERY_N_LEVELS === 0
+  );
+}

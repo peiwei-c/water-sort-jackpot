@@ -8,10 +8,13 @@ import {
   waterColor,
 } from '../engines/StoreCatalog';
 import { WATER_COLOR_LABELS } from '../theme/colors';
+import { BOBA } from '../theme/boba';
 
-export const SEGMENT_H = 30;
-export const TUBE_W = 54;
-export const TUBE_GLASS_PAD = 14;
+export const SEGMENT_H = 28;
+export const TUBE_W = 52;
+export const TUBE_GLASS_PAD = 16;
+export const CUP_STRAW_H = 16;
+export const CUP_CAP_H = 14;
 
 type Props = {
   tube: TubeData;
@@ -22,9 +25,7 @@ type Props = {
   vialSkinId?: string;
   paletteId?: string;
   rareSkin?: boolean;
-  /** Tilt direction while pouring: -1 left, 1 right, 0 none */
   tiltDir?: -1 | 0 | 1;
-  /** Hide top N segments during pour (already streamed out) */
   hideTopSegments?: number;
   disabled?: boolean;
   onSelect: (index: number) => void;
@@ -53,14 +54,14 @@ function tubeAccessibilityLabel(
   selected: boolean,
   hinted: boolean | undefined,
 ): string {
-  const vial = index != null ? `Vial ${index + 1}` : 'Vial';
+  const cup = index != null ? `Cup ${index + 1}` : 'Cup';
   if (tube.length === 0) {
-    return `${vial}, empty${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
+    return `${cup}, empty${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
   }
   const top = tube[tube.length - 1];
   const topName = WATER_COLOR_LABELS[top] ?? `color ${top}`;
   const layers = `${tube.length} layer${tube.length === 1 ? '' : 's'}`;
-  return `${vial}, ${layers}, top ${topName}${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
+  return `${cup}, ${layers}, top ${topName}${selected ? ', selected' : ''}${hinted ? ', hinted' : ''}`;
 }
 
 function TubeComponent({
@@ -82,6 +83,7 @@ function TubeComponent({
   const tilt = useRef(new Animated.Value(0)).current;
   const levelPulse = useRef(new Animated.Value(1)).current;
   const theme = getVialTheme(vialSkinId);
+  const gold = vialSkinId === 'vial_crown' || rareSkin;
 
   const visibleTube = useMemo(() => {
     if (hideTopSegments <= 0) return tube;
@@ -90,7 +92,7 @@ function TubeComponent({
 
   useEffect(() => {
     Animated.spring(lift, {
-      toValue: selected ? -18 : 0,
+      toValue: selected ? -12 : 0,
       useNativeDriver: true,
       friction: 6,
       tension: 140,
@@ -99,7 +101,7 @@ function TubeComponent({
 
   useEffect(() => {
     Animated.timing(tilt, {
-      toValue: tiltDir * 28,
+      toValue: tiltDir * 34,
       duration: tiltDir === 0 ? 220 : 280,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
@@ -124,6 +126,7 @@ function TubeComponent({
   const emptySlots = capacity - visibleTube.length;
   const glassH = capacity * SEGMENT_H + TUBE_GLASS_PAD;
   const a11yLabel = tubeAccessibilityLabel(index, tube, selected, hinted);
+  const sealed = visibleTube.length === capacity && new Set(visibleTube).size === 1;
 
   return (
     <Pressable
@@ -140,66 +143,60 @@ function TubeComponent({
       <Animated.View
         style={[
           styles.wrap,
-          rareSkin && styles.rareSkin,
-          selected && {
-            shadowColor: theme.selectGlow,
-            shadowOpacity: 0.9,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 0 },
-          },
           hinted && !selected && styles.hinted,
           {
             transform: [
               { translateY: lift },
-              { rotate: tilt.interpolate({
-                  inputRange: [-28, 0, 28],
-                  outputRange: ['-28deg', '0deg', '28deg'],
-                }) },
-              { scale: levelPulse },
+              {
+                rotate: tilt.interpolate({
+                  inputRange: [-34, 0, 34],
+                  outputRange: ['-34deg', '0deg', '34deg'],
+                }),
+              },
+              { scale: selected ? 1.04 : levelPulse },
             ],
           },
         ]}
       >
-        {/* Rim / lip */}
+        <View style={styles.straw} />
+        <View style={[styles.cap, gold && styles.capGold, sealed && styles.capDone]}>
+          <View style={[styles.capHole, gold && styles.capHoleGold]} />
+        </View>
         <View
           style={[
-            styles.rimOuter,
-            { backgroundColor: theme.rim, borderColor: theme.rimBorder },
+            styles.rim,
+            gold && styles.rimGold,
+            { borderColor: theme.rimBorder },
           ]}
-        >
-          <View style={styles.rimInner} />
-          <View style={styles.rimHighlight} />
-        </View>
+        />
 
-        {/* Glass body */}
         <View
           style={[
             styles.glass,
             {
               height: glassH,
-              borderColor: theme.glassBorder,
-              backgroundColor: theme.glassFill,
+              borderColor: gold ? 'rgba(240,200,80,0.75)' : 'rgba(255,255,255,0.55)',
             },
+            selected && { borderColor: theme.selectGlow },
           ]}
         >
-          {/* Left shadow for cylinder depth */}
-          <View style={styles.glassShadowL} />
-          {/* Right highlight edge */}
-          <View style={styles.glassShadowR} />
-          {/* Specular streak */}
-          <View style={styles.specular} />
-
+          <View style={styles.glassShine} />
           <View style={styles.inner}>
             {Array.from({ length: emptySlots }).map((_, i) => (
               <View key={`e-${i}`} style={styles.emptySegment} />
             ))}
             {[...visibleTube].reverse().map((colorId, i) => {
               const isTop = i === 0;
+              const isBottom = i === visibleTube.length - 1;
               const base = waterColor(paletteId, colorId);
               return (
                 <View
                   key={`c-${visibleTube.length - 1 - i}-${colorId}`}
-                  style={[styles.segment, { height: SEGMENT_H }]}
+                  style={[
+                    styles.segment,
+                    { height: SEGMENT_H },
+                    isBottom && styles.segmentBottom,
+                  ]}
                 >
                   <View
                     style={[
@@ -211,41 +208,27 @@ function TubeComponent({
                       },
                     ]}
                   />
-                  {/* Liquid highlight band */}
                   <View
                     style={[
                       styles.segmentShine,
                       { backgroundColor: shade(base, 55) },
                     ]}
                   />
-                  {/* Darker right edge */}
-                  <View
-                    style={[
-                      styles.segmentShade,
-                      { backgroundColor: shade(base, -40) },
-                    ]}
-                  />
-                  {isTop ? (
-                    <View
-                      style={[
-                        styles.meniscus,
-                        { backgroundColor: shade(base, 30) },
-                      ]}
-                    />
+                  {isBottom ? (
+                    <View style={styles.pearls} pointerEvents="none">
+                      <View style={[styles.pearl, styles.pearlDark, { marginBottom: 1 }]} />
+                      <View style={[styles.pearl, styles.pearlDark, styles.pearlLg]} />
+                      <View style={[styles.pearl, styles.pearlLight, { marginBottom: 4 }]} />
+                      <View style={[styles.pearl, styles.pearlDark]} />
+                      <View style={[styles.pearl, styles.pearlLight, styles.pearlLg]} />
+                    </View>
                   ) : null}
                 </View>
               );
             })}
           </View>
-
-          {/* Bottom glass curve shading */}
-          <View style={styles.glassBottomShade} />
         </View>
-
-        {/* Base foot */}
-        <View style={[styles.base, { backgroundColor: theme.base }]}>
-          <View style={styles.baseHighlight} />
-        </View>
+        <View style={styles.cupShadow} />
       </Animated.View>
     </Pressable>
   );
@@ -278,95 +261,94 @@ export const Tube = memo(TubeComponent, (prev, next) => {
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    marginHorizontal: 6,
-  },
-  rareSkin: {
-    borderRadius: 8,
+    marginHorizontal: 4,
+    paddingTop: CUP_STRAW_H * 0.35,
   },
   hinted: {
-    shadowColor: '#F0B429',
+    shadowColor: BOBA.mango,
     shadowOpacity: 0.95,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
-    borderRadius: 8,
   },
-  rimOuter: {
-    width: TUBE_W + 12,
-    height: 10,
-    borderRadius: 5,
-    marginBottom: -3,
-    zIndex: 3,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  rimInner: {
-    ...StyleSheet.absoluteFill,
-    marginHorizontal: 4,
-    marginVertical: 2,
-    borderRadius: 3,
-    backgroundColor: 'rgba(6, 28, 34, 0.45)',
-  },
-  rimHighlight: {
+  straw: {
     position: 'absolute',
-    top: 1,
-    left: 8,
-    right: 8,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    top: 0,
+    width: 9,
+    height: CUP_STRAW_H + 8,
+    borderRadius: 3,
+    backgroundColor: BOBA.matcha,
+    transform: [{ rotate: '7deg' }],
+    zIndex: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  cap: {
+    width: TUBE_W + 6,
+    height: CUP_CAP_H,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+    backgroundColor: '#d5dee8',
+    marginBottom: -4,
+    zIndex: 5,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 2,
+  },
+  capGold: {
+    backgroundColor: '#e8b84a',
+  },
+  capDone: {
+    backgroundColor: '#8fd18a',
+  },
+  capHole: {
+    width: 10,
+    height: 6,
+    borderRadius: 2,
+    backgroundColor: BOBA.ink,
+  },
+  capHoleGold: {
+    borderWidth: 1,
+    borderColor: '#f0d070',
+  },
+  rim: {
+    width: TUBE_W + 4,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#d8e0e8',
+    zIndex: 4,
+    marginBottom: -1,
+  },
+  rimGold: {
+    backgroundColor: '#d4a017',
   },
   glass: {
     width: TUBE_W,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderTopWidth: 0,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
-  glassShadowL: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 10,
-    backgroundColor: 'rgba(0,20,40,0.22)',
-    zIndex: 2,
-  },
-  glassShadowR: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 7,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    zIndex: 2,
-  },
-  specular: {
-    position: 'absolute',
-    left: 11,
-    top: 8,
-    bottom: 18,
-    width: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    zIndex: 4,
-  },
-  glassBottomShade: {
-    position: 'absolute',
-    left: 2,
-    right: 2,
-    bottom: 0,
-    height: 16,
     borderBottomLeftRadius: 22,
     borderBottomRightRadius: 22,
-    backgroundColor: 'rgba(0,15,30,0.18)',
-    zIndex: 1,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(255,248,240,0.12)',
+  },
+  glassShine: {
+    position: 'absolute',
+    left: 7,
+    top: 8,
+    bottom: 16,
+    width: 7,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    zIndex: 4,
   },
   inner: {
     flex: 1,
     justifyContent: 'flex-end',
     zIndex: 1,
+    paddingHorizontal: 3,
+    paddingBottom: 4,
   },
   emptySegment: {
     height: SEGMENT_H,
@@ -375,52 +357,60 @@ const styles = StyleSheet.create({
     width: '100%',
     overflow: 'hidden',
   },
+  segmentBottom: {
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
   segmentFill: {
     ...StyleSheet.absoluteFill,
-    opacity: 0.92,
+    opacity: 0.94,
   },
   segmentShine: {
     position: 'absolute',
-    left: 8,
-    top: 3,
-    bottom: 3,
-    width: 7,
+    left: 6,
+    top: 2,
+    bottom: 2,
+    width: 6,
     borderRadius: 4,
-    opacity: 0.35,
+    opacity: 0.32,
   },
-  segmentShade: {
+  pearls: {
     position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
+    left: 4,
+    right: 4,
+    bottom: 2,
+    height: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 2,
+    zIndex: 3,
+  },
+  pearl: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  pearlLg: {
     width: 8,
-    opacity: 0.28,
-  },
-  meniscus: {
-    position: 'absolute',
-    left: 2,
-    right: 2,
-    top: 0,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.55,
-  },
-  base: {
-    width: TUBE_W + 8,
     height: 8,
     borderRadius: 4,
-    marginTop: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(200, 255, 245, 0.3)',
-    overflow: 'hidden',
   },
-  baseHighlight: {
-    position: 'absolute',
-    top: 1,
-    left: 6,
-    right: 6,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: 'rgba(255,255,255,0.45)',
+  pearlDark: {
+    backgroundColor: '#1a1008',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  pearlLight: {
+    backgroundColor: '#f3eee6',
+    borderWidth: 0.5,
+    borderColor: 'rgba(90,70,50,0.2)',
+  },
+  cupShadow: {
+    width: TUBE_W * 0.72,
+    height: 6,
+    borderRadius: 99,
+    backgroundColor: 'rgba(50,24,10,0.28)',
+    marginTop: 2,
   },
 });

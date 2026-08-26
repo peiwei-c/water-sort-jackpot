@@ -1,5 +1,5 @@
 /**
- * AdMob App / ad unit IDs for AquaSort Lab.
+ * AdMob App / ad unit IDs for Boba Shop.
  * AdMobAdService uses Google TestIds in __DEV__ or when
  * EXPO_PUBLIC_ADMOB_USE_TEST_IDS=true (preview APKs).
  *

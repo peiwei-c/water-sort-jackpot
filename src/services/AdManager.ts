@@ -5,6 +5,7 @@
 
 import {
   getAdService,
+  isInterstitialClearLevel,
   type AdPlacement,
   type AdResult,
   type AdType,
@@ -12,7 +13,6 @@ import {
 
 export const FIRST_AD_DELAY_MS = 90_000;
 export const INTERSTITIAL_COOLDOWN_MS = 120_000;
-export const FIRST_AD_MIN_LEVEL = 4;
 /** Reserved bottom inset when banner is visible. */
 export const BANNER_HEIGHT = 50;
 
@@ -74,10 +74,11 @@ export class AdManager {
   }
 
   /**
-   * Forced interstitial rules:
+   * Forced interstitial rules (puzzle clears only — not Lucky/free-spin, not banners):
+   * - only on completed tickets 10, 20, 30, …
    * - suppressed by Remove Ads
    * - never during pour animation / active gameplay pour
-   * - first 90s of session OR until level 4 (whichever comes first unlocks)
+   * - first 90s of session
    * - min 120s between forced interstitials
    */
   canShowInterstitial(input: InterstitialGateInput): boolean {
@@ -85,10 +86,8 @@ export class AdManager {
     if (input.isNoAdsPurchased) return false;
     if (input.pourAnimActive) return false;
     if (!this.isReady('interstitial')) return false;
-
-    const pastDelay = now - this.sessionStartedAt >= FIRST_AD_DELAY_MS;
-    const pastLevelGate = input.level >= FIRST_AD_MIN_LEVEL;
-    if (!pastDelay && !pastLevelGate) return false;
+    if (!isInterstitialClearLevel(input.level)) return false;
+    if (now - this.sessionStartedAt < FIRST_AD_DELAY_MS) return false;
 
     if (this.lastInterstitialAt != null) {
       if (now - this.lastInterstitialAt < INTERSTITIAL_COOLDOWN_MS) return false;

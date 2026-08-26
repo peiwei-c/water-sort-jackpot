@@ -5,10 +5,11 @@ import {
   StatusBar,
   SafeAreaView,
   AppState,
+  BackHandler,
   type AppStateStatus,
 } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { LinearGradientFallback } from './src/components/LinearGradientFallback';
+import { useFonts } from 'expo-font';
 import { PlayScreen } from './src/components/PlayScreen';
 import { HomeScreen } from './src/components/HomeScreen';
 import { LoadingScreen } from './src/components/LoadingScreen';
@@ -29,12 +30,15 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useGameStore } from './src/store/gameStore';
 import { bootstrapAds } from './src/services/adsBootstrap';
 import { getAudioManager } from './src/services/audio/AudioManager';
-import { LAB } from './src/theme/colors';
 import { ANDROID_TOP_INSET } from './src/theme/androidTopInset';
+import { BOBA } from './src/theme/boba';
+import { BOBA_FONT_MAP } from './src/theme/loadBobaFonts';
 
 void SplashScreen.preventAutoHideAsync();
 
 function AppShell() {
+  const [fontsLoaded, fontError] = useFonts(BOBA_FONT_MAP);
+  const fontsReady = fontsLoaded || !!fontError;
   const screen = useGameStore((s) => s.screen);
   const hydrated = useGameStore((s) => s.hydrated);
   const modal = useGameStore((s) => s.modal);
@@ -66,11 +70,10 @@ function AppShell() {
   }, [hydrate]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !fontsReady) return;
     void SplashScreen.hideAsync();
-  }, [hydrated]);
+  }, [hydrated, fontsReady]);
 
-  // Persistence finishes in ~ms; hold the branded boot so the animation can play.
   useEffect(() => {
     const t = setTimeout(() => setSplashElapsed(true), MIN_BOOT_MS);
     return () => clearTimeout(t);
@@ -85,21 +88,18 @@ function AppShell() {
     });
   }, [markAdsReady]);
 
-  // BGM: home/store share menu bed; play uses bench bed (crossfades).
   useEffect(() => {
-    if (shouldShowBoot(hydrated, splashElapsed)) return;
+    if (shouldShowBoot(hydrated, splashElapsed, fontsReady)) return;
     const track = screen === 'play' ? 'play' : 'home';
     void getAudioManager().playBgm(track);
-  }, [screen, hydrated, splashElapsed]);
+  }, [screen, hydrated, splashElapsed, fontsReady]);
 
   useEffect(() => {
     const onChange = (next: AppStateStatus) => {
       if (next === 'background') {
-        // True background / kill path — settle jackpot so payouts aren't lost.
         flushSession({ settleJackpot: true });
         void getAudioManager().handleAppBackground();
       } else if (next === 'inactive') {
-        // iOS Control Center etc. — save puzzle, keep Collect / 2× offer intact.
         flushSession({ settleJackpot: false });
         void getAudioManager().handleAppBackground();
       } else if (next === 'active') {
@@ -113,20 +113,34 @@ function AppShell() {
   }, [flushSession, refreshLives, refreshMissions]);
 
   useEffect(() => {
+    const onBackPress = () => {
+      const { screen, modal, closeModal, goHome } = useGameStore.getState();
+      if (modal !== 'none') {
+        closeModal();
+        return true;
+      }
+      if (screen !== 'home') {
+        goHome();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
     if (!lastMessage) return;
     const t = setTimeout(dismissMessage, 2200);
     return () => clearTimeout(t);
   }, [lastMessage, dismissMessage]);
 
-  if (shouldShowBoot(hydrated, splashElapsed)) {
+  if (shouldShowBoot(hydrated, splashElapsed, fontsReady)) {
     return <LoadingScreen />;
   }
 
   return (
-    <LinearGradientFallback
-      colors={[LAB.benchDeep, LAB.benchMid]}
-      style={styles.root}
-    >
+    <View style={styles.root}>
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" />
 
@@ -149,7 +163,7 @@ function AppShell() {
         {showSlots ? <SlotMachineModal /> : null}
         <AdBanner />
       </SafeAreaView>
-    </LinearGradientFallback>
+    </View>
   );
 }
 
@@ -164,6 +178,7 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: BOBA.skyTop,
   },
   safe: {
     flex: 1,

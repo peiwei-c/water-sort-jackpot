@@ -135,29 +135,28 @@ export function SlotMachineModal() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.titleRow}>
-              <Text style={styles.labEyebrow}>HYDROLOGY LAB</Text>
+              <Text style={styles.labEyebrow}>LUCKY</Text>
             </View>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>Centrifuge</Text>
+              <Text style={styles.title}>Lucky spin</Text>
               <Pressable
                 style={styles.infoBtn}
                 onPress={() => setShowPaytable(true)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="Reagent chart"
+                accessibilityLabel="Pay table"
               >
                 <Text style={styles.infoBtnText}>i</Text>
               </Pressable>
             </View>
 
             <Text style={styles.sub}>
-              Dial reagent lines to open more chamber rows. Spin the drum to
-              extract coins and lab supplies.
+              Dial lines to open more rows. Spin for coins and shop supplies.
             </Text>
 
             <View style={styles.wallet}>
               <View style={styles.balancePill}>
-                <Text style={styles.balanceLabel}>Reagents</Text>
+                <Text style={styles.balanceLabel}>Coins</Text>
                 <Text style={styles.walletText}>🪙 {coins}</Text>
               </View>
               {freeSpins > 0 ? (
@@ -168,11 +167,11 @@ export function SlotMachineModal() {
               ) : null}
             </View>
 
-            {/* Centrifuge chamber */}
+            {/* Lucky cabinet */}
             <View style={styles.cabinet}>
               <View style={styles.cabinetTop}>
                 <View style={styles.hazardBar} />
-                <Text style={styles.cabinetBadge}>CENTRIFUGE CHAMBER</Text>
+                <Text style={styles.cabinetBadge}>LUCKY WINDOW</Text>
                 <View style={styles.hazardBar} />
               </View>
 
@@ -236,7 +235,7 @@ export function SlotMachineModal() {
             {(modal === 'slot_machine' || modal === 'spin_result') && (
               <View style={styles.controls}>
                 <View style={styles.controlBlock}>
-                  <Text style={styles.controlLabel}>Dose / line</Text>
+                  <Text style={styles.controlLabel}>Bet / line</Text>
                   <View style={styles.stepper}>
                     <Pressable style={styles.stepBtn} onPress={() => cycleBet(-1)}>
                       <Text style={styles.stepBtnText}>−</Text>
@@ -248,7 +247,7 @@ export function SlotMachineModal() {
                   </View>
                 </View>
                 <View style={styles.controlBlock}>
-                  <Text style={styles.controlLabel}>Reagent lines</Text>
+                  <Text style={styles.controlLabel}>Lines</Text>
                   <View style={styles.stepper}>
                     <Pressable
                       style={styles.stepBtn}
@@ -339,7 +338,7 @@ export function SlotMachineModal() {
                   onPress={closeModal}
                   disabled={spinning}
                 >
-                  <Text style={styles.btnGhostText}>Leave Chamber</Text>
+                  <Text style={styles.btnGhostText}>Home</Text>
                 </Pressable>
                 {canAffordSpin ? (
                   <Pressable
@@ -382,7 +381,7 @@ export function SlotMachineModal() {
               <Text style={styles.paytableRow}>👑👑👑  →  50×</Text>
               <Text style={styles.paytableRow}>🪙🪙🪙  →  8×</Text>
               <Text style={styles.paytableRow}>
-                ↺↺↺  →  3× + Undo items
+                🔄🔄🔄  →  3× + Undo items
               </Text>
               <Text style={styles.paytableRow}>
                 🧪🧪🧪  →  3× + Extra Tube

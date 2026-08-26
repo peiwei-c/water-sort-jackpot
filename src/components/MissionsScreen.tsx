@@ -13,7 +13,8 @@ import {
   countClaimableMissions,
   type MissionView,
 } from '../store/gameStore';
-import { COLORS, LAB } from '../theme/colors';
+import { BOBA, FONTS } from '../theme/boba';
+import { BobaScene, BobaPill, WoodCounter, DockBtn } from './BobaScene';
 
 export function MissionsScreen() {
   const missionBoard = useGameStore((s) => s.missionBoard);
@@ -21,6 +22,8 @@ export function MissionsScreen() {
   const claimMissionReward = useGameStore((s) => s.claimMissionReward);
   const goHome = useGameStore((s) => s.goHome);
   const refreshMissions = useGameStore((s) => s.refreshMissions);
+
+  const coins = useGameStore((s) => s.coins);
 
   const missions = useMemo(
     () => listMissionViews(missionBoard),
@@ -30,65 +33,65 @@ export function MissionsScreen() {
   const weekly = missions.filter((m) => m.cadence === 'weekly');
   const claimable = countClaimableMissions(missionBoard);
 
+  const collectAll = () => {
+    for (const mission of missions) {
+      if (mission.claimable) claimMissionReward(mission.id);
+    }
+  };
+
   return (
-    <View style={styles.root}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>HYDROLOGY LAB</Text>
-        <Text style={styles.title}>Lab Missions</Text>
-        <Text style={styles.sub}>
-          Daily tasks reset at midnight. Weekly tasks reset each Monday. Claim
-          coins, lives, vials, undos, and free spins.
-        </Text>
-        <View style={styles.metaRow}>
-          <View style={styles.chip}>
-            <Text style={styles.chipText}>
-              {claimable > 0 ? `${claimable} ready` : 'In progress'}
-            </Text>
+    <BobaScene>
+      <View style={styles.root}>
+        <View style={styles.top}>
+          <View style={styles.topCopy}>
+            <Text style={styles.eyebrow}>Missions</Text>
+            <Text style={styles.title}>Shift board</Text>
+            <Text style={styles.sub}>Complete for coins · cups · spins</Text>
           </View>
-          <Pressable
-            style={styles.refreshBtn}
-            onPress={refreshMissions}
-            accessibilityLabel="Refresh missions"
+          <BobaPill mango>💰 {coins}</BobaPill>
+        </View>
+
+        {lastMessage ? <Text style={styles.toast}>{lastMessage}</Text> : null}
+
+        <WoodCounter menu="Shift board · today">
+          <ScrollView
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.refreshText}>Refresh</Text>
-          </Pressable>
+            <Text style={styles.section}>Daily</Text>
+            {daily.map((mission) => (
+              <MissionRow
+                key={mission.id}
+                mission={mission}
+                onClaim={() => claimMissionReward(mission.id)}
+              />
+            ))}
+
+            <Text style={[styles.section, styles.sectionGap]}>Weekly</Text>
+            {weekly.map((mission) => (
+              <MissionRow
+                key={mission.id}
+                mission={mission}
+                onClaim={() => claimMissionReward(mission.id)}
+              />
+            ))}
+          </ScrollView>
+        </WoodCounter>
+
+        <View style={styles.dock}>
+          <DockBtn emoji="🏠" label="Home" onPress={goHome} />
+          {claimable > 0 ? (
+            <DockBtn
+              label="Collect all"
+              prize
+              onPress={collectAll}
+            />
+          ) : (
+            <DockBtn emoji="🔄" label="Refresh" onPress={refreshMissions} />
+          )}
         </View>
       </View>
-
-      {lastMessage ? <Text style={styles.toast}>{lastMessage}</Text> : null}
-
-      <ScrollView
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.section}>DAILY</Text>
-        {daily.map((mission) => (
-          <MissionRow
-            key={mission.id}
-            mission={mission}
-            onClaim={() => claimMissionReward(mission.id)}
-          />
-        ))}
-
-        <Text style={[styles.section, styles.sectionGap]}>WEEKLY</Text>
-        {weekly.map((mission) => (
-          <MissionRow
-            key={mission.id}
-            mission={mission}
-            onClaim={() => claimMissionReward(mission.id)}
-          />
-        ))}
-      </ScrollView>
-
-      <Pressable
-        style={styles.backBtn}
-        onPress={goHome}
-        accessibilityRole="button"
-        accessibilityLabel="Back to path"
-      >
-        <Text style={styles.backText}>Back to Path</Text>
-      </Pressable>
-    </View>
+    </BobaScene>
   );
 }
 
@@ -154,93 +157,75 @@ function MissionRow({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 10,
   },
-  header: {
-    marginBottom: 10,
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  topCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
-    color: LAB.label,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 2,
+    color: BOBA.sign,
+    fontFamily: FONTS.ui,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
   },
   title: {
-    color: COLORS.text,
-    fontSize: 28,
-    fontWeight: '900',
+    color: BOBA.cream,
+    fontFamily: FONTS.displaySoft,
+    fontSize: 22,
     marginTop: 2,
   },
   sub: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-  },
-  chip: {
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  chipText: {
-    color: COLORS.text,
-    fontWeight: '700',
+    color: 'rgba(255,248,240,0.7)',
+    fontFamily: FONTS.body,
     fontSize: 13,
-  },
-  refreshBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  refreshText: {
-    color: LAB.glassBright,
-    fontWeight: '700',
-    fontSize: 13,
+    marginTop: 2,
   },
   toast: {
-    color: LAB.reagent,
-    fontWeight: '700',
+    color: BOBA.mango,
+    fontFamily: FONTS.bodyBold,
     fontSize: 13,
-    marginBottom: 8,
+    marginVertical: 4,
     textAlign: 'center',
   },
   list: {
-    paddingBottom: 20,
-    gap: 10,
-  },
-  section: {
-    color: LAB.label,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  sectionGap: {
-    marginTop: 12,
-  },
-  card: {
-    backgroundColor: LAB.benchMid,
-    borderWidth: 1.5,
-    borderColor: 'rgba(126, 227, 214, 0.22)',
-    borderRadius: 16,
-    padding: 14,
+    padding: 8,
+    paddingBottom: 16,
     gap: 8,
   },
-  cardReady: {
-    borderColor: LAB.reagent,
+  section: {
+    color: BOBA.menuText,
+    fontFamily: FONTS.uiBlack,
+    letterSpacing: 1.4,
+    fontSize: 10,
+    textTransform: 'uppercase',
   },
+  sectionGap: {
+    marginTop: 8,
+  },
+  card: {
+    backgroundColor: BOBA.cream,
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+    shadowColor: '#8a5a28',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  cardReady: {},
   cardClaimed: {
-    opacity: 0.65,
+    opacity: 0.55,
   },
   cardTop: {
     flexDirection: 'row',
@@ -249,32 +234,33 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   itemName: {
-    color: COLORS.text,
-    fontWeight: '800',
+    color: BOBA.ink,
+    fontFamily: FONTS.bodyBold,
     fontSize: 16,
     flex: 1,
   },
   reward: {
-    color: LAB.reagent,
-    fontWeight: '700',
+    color: BOBA.straw,
+    fontFamily: FONTS.bodyBold,
     fontSize: 12,
     textAlign: 'right',
     maxWidth: '46%',
   },
   itemBlurb: {
-    color: COLORS.textMuted,
+    color: 'rgba(74,34,28,0.65)',
+    fontFamily: FONTS.body,
     fontSize: 13,
     lineHeight: 18,
   },
   progressTrack: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(74,34,28,0.12)',
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: LAB.glassBright,
+    backgroundColor: BOBA.straw,
     borderRadius: 999,
   },
   cardFoot: {
@@ -283,46 +269,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   progressText: {
-    color: LAB.label,
-    fontWeight: '700',
+    color: 'rgba(74,34,28,0.65)',
+    fontFamily: FONTS.bodyBold,
     fontSize: 13,
   },
   claimedText: {
-    color: LAB.label,
-    fontWeight: '700',
+    color: 'rgba(74,34,28,0.5)',
+    fontFamily: FONTS.bodyBold,
     fontSize: 13,
   },
   claimBtn: {
-    backgroundColor: LAB.reagent,
+    backgroundColor: BOBA.straw,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 999,
   },
   claimDisabled: {
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.18)',
+    backgroundColor: 'rgba(74,34,28,0.08)',
   },
   claimText: {
-    color: '#1A1200',
-    fontWeight: '800',
+    color: BOBA.cream,
+    fontFamily: FONTS.bodyBold,
     fontSize: 13,
   },
   claimTextDisabled: {
-    color: LAB.label,
+    color: 'rgba(74,34,28,0.45)',
   },
-  backBtn: {
+  dock: {
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 8,
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  backText: {
-    color: COLORS.text,
-    fontWeight: '800',
-    fontSize: 15,
   },
 });
+

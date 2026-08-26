@@ -1,7 +1,6 @@
 import {
   AdManager,
   FIRST_AD_DELAY_MS,
-  FIRST_AD_MIN_LEVEL,
   INTERSTITIAL_COOLDOWN_MS,
   BANNER_HEIGHT,
   createAdManager,
@@ -59,11 +58,31 @@ describe('AdManager policy', () => {
     ).toBe(false);
   });
 
-  it('blocks interstitial before 90s and before level 4', async () => {
+  it('blocks interstitial off a 10/20/30 milestone even after 90s', async () => {
     const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: 3,
+        level: 9,
+        pourAnimActive: false,
+        isNoAdsPurchased: false,
+        now: FIRST_AD_DELAY_MS,
+      }),
+    ).toBe(false);
+    expect(
+      mgr.canShowInterstitial({
+        level: 15,
+        pourAnimActive: false,
+        isNoAdsPurchased: false,
+        now: FIRST_AD_DELAY_MS,
+      }),
+    ).toBe(false);
+  });
+
+  it('blocks interstitial at level 10 before 90s', async () => {
+    const mgr = await readyManager(0);
+    expect(
+      mgr.canShowInterstitial({
+        level: 10,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS - 1,
@@ -71,26 +90,22 @@ describe('AdManager policy', () => {
     ).toBe(false);
   });
 
-  it('allows interstitial after 90s even below level 4', async () => {
+  it('allows interstitial at tickets 10 and 20 after 90s', async () => {
     const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: 2,
+        level: 10,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS,
       }),
     ).toBe(true);
-  });
-
-  it('allows interstitial at level 4 before 90s', async () => {
-    const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: FIRST_AD_MIN_LEVEL,
+        level: 20,
         pourAnimActive: false,
         isNoAdsPurchased: false,
-        now: 1_000,
+        now: FIRST_AD_DELAY_MS,
       }),
     ).toBe(true);
   });
@@ -119,7 +134,7 @@ describe('AdManager policy', () => {
     const mgr = await readyManager(0);
     const now = FIRST_AD_DELAY_MS + 5_000;
     const result = await mgr.showInterstitialSafe({
-      level: 5,
+      level: 10,
       pourAnimActive: false,
       isNoAdsPurchased: false,
       now,
