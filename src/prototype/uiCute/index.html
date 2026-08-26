@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AquaSort · Cute UI Prototype (THROWWAY)</title>
+  <title>AquaSort · Cute UI Prototype v2 hub</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
   <!--
     PROTOTYPE — throwaway.
     Question: What should a cute, engaging AquaSort personality look like (home + play + jackpot)?
     Three variants via ?variant=A|B|C — structurally different, not palette tweaks.
+    v2 hub: B home is nav-only (counter / store / lucky / mission).
   -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -105,7 +107,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: var(--status-h);
-      z-index: 34;
+      z-index: 40;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -115,7 +117,7 @@
       font-weight: 700;
       letter-spacing: 0.02em;
       pointer-events: none;
-      background: linear-gradient(180deg, rgba(20,10,12,0.45), rgba(20,10,12,0.12));
+      background: linear-gradient(180deg, #2a1418 0%, rgba(42,20,24,0.62) 62%, transparent);
     }
     .status-bar .clock { min-width: 48px; }
     .status-bar .pips { display: flex; align-items: center; gap: 6px; font-size: 12px; }
@@ -138,7 +140,7 @@
       position: absolute;
       left: 0; right: 0; bottom: 0;
       height: var(--banner-h);
-      z-index: 34;
+      z-index: 40;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -199,7 +201,15 @@
     }
     .device-bar button.on { background: #4A221C; color: #fff; }
     .variant-root { position: absolute; inset: 0; }
-    .screen { display: none; flex-direction: column; overflow: hidden; position: absolute; inset: 0; padding-bottom: var(--banner-h); }
+    .screen {
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      position: absolute;
+      inset: 0;
+      padding-top: calc(var(--status-h) + 10px);
+      padding-bottom: calc(var(--banner-h) + 8px);
+    }
     .screen.active { display: flex; }
 
     .switcher {
@@ -252,30 +262,30 @@
     }
     .btn:active { transform: scale(0.97); }
     .btn:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+    .btn[hidden] { display: none !important; }
 
     /* Shared liquid (patterned for color-access) */
-    .liq-1 {
-      background-color: #F07868;
+    .liq-1 { background-color: var(--liq-1, #F07868);
       background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.22) 5px 8px);
     }
     .liq-2 {
-      background-color: #3DC4B0;
+      background-color: var(--liq-2, #3DC4B0);
       background-image: radial-gradient(circle at 30% 40%, rgba(255,255,255,.4) 1.4px, transparent 1.8px);
       background-size: 7px 7px;
     }
     .liq-3 {
-      background-color: #E8A838;
+      background-color: var(--liq-3, #E8A838);
       background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255,255,255,.28) 5px 7px);
     }
-    .liq-4 { background-color: #7ED957; background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.25) 6px 8px); }
-    .liq-5 { background-color: #4ECDC4; background-image: radial-gradient(circle at 70% 30%, rgba(255,255,255,.45) 1.5px, transparent 1.9px); background-size: 8px 8px; }
-    .liq-6 { background-color: #5B9CFF; background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255,255,255,.22) 5px 7px); }
-    .liq-7 { background-color: #6C63FF; background-image: repeating-linear-gradient(-30deg, transparent 0 5px, rgba(255,255,255,.2) 5px 8px); }
-    .liq-8 { background-color: #B57EDC; background-image: radial-gradient(circle at 40% 60%, rgba(255,255,255,.4) 1.6px, transparent 2px); background-size: 9px 9px; }
-    .liq-9 { background-color: #F764B2; background-image: repeating-linear-gradient(0deg, transparent 0 4px, rgba(255,255,255,.25) 4px 6px); }
-    .liq-10 { background-color: #EB70AD; background-image: repeating-linear-gradient(60deg, transparent 0 6px, rgba(255,255,255,.2) 6px 9px); }
-    .liq-11 { background-color: #C4894B; background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.18) 5px 8px); }
-    .liq-12 { background-color: #DEDE7C; background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,.35) 1.4px, transparent 1.8px); background-size: 7px 7px; }
+    .liq-4 { background-color: var(--liq-4, #7ED957); background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.25) 6px 8px); }
+    .liq-5 { background-color: var(--liq-5, #4ECDC4); background-image: radial-gradient(circle at 70% 30%, rgba(255,255,255,.45) 1.5px, transparent 1.9px); background-size: 8px 8px; }
+    .liq-6 { background-color: var(--liq-6, #5B9CFF); background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255,255,255,.22) 5px 7px); }
+    .liq-7 { background-color: var(--liq-7, #6C63FF); background-image: repeating-linear-gradient(-30deg, transparent 0 5px, rgba(255,255,255,.2) 5px 8px); }
+    .liq-8 { background-color: var(--liq-8, #B57EDC); background-image: radial-gradient(circle at 40% 60%, rgba(255,255,255,.4) 1.6px, transparent 2px); background-size: 9px 9px; }
+    .liq-9 { background-color: var(--liq-9, #F764B2); background-image: repeating-linear-gradient(0deg, transparent 0 4px, rgba(255,255,255,.25) 4px 6px); }
+    .liq-10 { background-color: var(--liq-10, #EB70AD); background-image: repeating-linear-gradient(60deg, transparent 0 6px, rgba(255,255,255,.2) 6px 9px); }
+    .liq-11 { background-color: var(--liq-11, #C4894B); background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255,255,255,.18) 5px 8px); }
+    .liq-12 { background-color: var(--liq-12, #DEDE7C); background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,.35) 1.4px, transparent 1.8px); background-size: 7px 7px; }
     .liq-block {
       display: block;
       position: relative;
@@ -602,20 +612,20 @@
       --mango: #FFB703;
       --matcha: #6FBF73;
       --wood: #E8C9A0;
+      --wood-a: #e0b36a;
+      --wood-b: #c4894b;
+      --wood-c: #d4a05a;
+      --wood-shadow: #5a3218;
+      --wood-inset: #f3d7a4;
+      --straw-a: #6fbf73;
+      --straw-b: #f7fff4;
+      --liq-1: #e45b5b; --liq-2: #3bbbb0; --liq-3: #f0a020; --liq-4: #6db85a;
+      --liq-5: #4ad4c8; --liq-6: #4a96ff; --liq-7: #6a5cff; --liq-8: #c08ae0;
+      --liq-9: #f04a9a; --liq-10: #f070b0; --liq-11: #c4894b; --liq-12: #e8e06a;
       font-family: Fredoka, Nunito, sans-serif;
     }
     [data-variant="B"] .screen {
-      background: linear-gradient(180deg, #FFE8D2 0%, #FFD6C0 40%, #F5C6A8 100%);
-      color: var(--ink);
-    }
-    [data-variant="B"] .b-home,
-    [data-variant="B"] .b-play,
-    [data-variant="B"] .b-jackpot,
-    [data-variant="B"] .b-missions,
-    [data-variant="B"] .b-store {
-      padding: calc(var(--safe-top) + 2px) 10px var(--banner-h);
-      position: absolute;
-      inset: 0;
+      padding: calc(var(--status-h) + 12px) 12px calc(var(--banner-h) + 14px);
       justify-content: stretch;
       background:
         radial-gradient(ellipse 70% 36% at 80% 8%, #ffc07866, transparent 55%),
@@ -635,31 +645,66 @@
     [data-variant="B"] .b-pills {
       display: flex; gap: 8px; align-items: center;
     }
-    [data-variant="B"] .b-home-links {
+    [data-variant="B"] .b-hub {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      padding: 8px 4px 4px;
+    }
+    [data-variant="B"] .b-hub-head {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    [data-variant="B"] .b-sign {
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: #ffd08a;
+    }
+    [data-variant="B"] .b-hub-head h1 {
+      font-family: "Baloo 2", sans-serif;
+      font-size: 34px;
+      line-height: 1.05;
+      margin: 6px 0 6px;
+      color: #fff8f0;
+    }
+    [data-variant="B"] .b-hub-head p {
+      font-size: 14px; font-weight: 650; opacity: 0.78;
+    }
+    [data-variant="B"] .b-hub-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      margin-top: 8px;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
-    [data-variant="B"] .b-home-links .tool {
-      background: #fff;
-      border-radius: 16px;
-      padding: 12px 8px;
-      font-weight: 700;
-      font-size: 13px;
+    [data-variant="B"] .b-hub-grid .btn {
+      flex-direction: column;
+      min-height: 118px;
+      border-radius: 22px;
+      background: #fff8f0;
       color: var(--ink);
-      box-shadow: 0 5px 0 #e7b89a;
+      font-weight: 700;
+      font-size: 16px;
+      box-shadow: 0 6px 0 #8a5a28;
+      gap: 8px;
     }
-    [data-variant="B"] .b-home-links .tool.prize {
+    [data-variant="B"] .b-hub-grid .btn b {
+      font-size: 28px;
+      line-height: 1;
+    }
+    [data-variant="B"] .b-hub-grid .btn.counter {
+      background: var(--straw);
+      color: #fff;
+      box-shadow: 0 6px 0 #c63d58;
+    }
+    [data-variant="B"] .b-hub-grid .btn.lucky {
       background: var(--mango);
-      box-shadow: 0 5px 0 #d49a00;
+      color: var(--ink);
+      box-shadow: 0 6px 0 #d49a00;
     }
-    [data-variant="B"] .b-home-links .tool b {
-      display: block;
-      font-size: 17px;
-      margin-bottom: 2px;
-    }
-    [data-variant="B"] .b-store {
+    [data-variant="B"] .b-shelf {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -668,76 +713,8 @@
       gap: 8px;
       padding: 8px 10px 10px;
     }
-    [data-variant="B"] .b-hero {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 10px 8px 14px;
-      color: #5a3a1e;
-    }
-    [data-variant="B"] .b-sign {
-      font-size: 11px; font-weight: 800;
-      letter-spacing: 0.2em; text-transform: uppercase;
-      color: #a45a2a;
-    }
-    [data-variant="B"] .b-hero h3 {
-      font-family: "Baloo 2", sans-serif;
-      font-size: 30px;
-      line-height: 1.05;
-      margin: 6px 0 4px;
-      color: #4a2a16;
-    }
-    [data-variant="B"] .b-hero p { font-size: 13px; font-weight: 650; opacity: 0.75; }
-    [data-variant="B"] .b-hero-cups {
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
-      margin: 14px 0 4px;
-    }
-    [data-variant="B"] .b-hero-cups i {
-      width: 26px;
-      border-radius: 5px 5px 13px 13px;
-      position: relative;
-      background:
-        linear-gradient(90deg, rgba(255,255,255,.3) 0 30%, transparent 45%),
-        linear-gradient(180deg, rgba(255,255,255,.4), transparent 30%),
-        var(--wood);
-      border: 2px solid rgba(255,255,255,.55);
-      box-shadow: inset 0 -4px 0 rgba(90,50,24,.18);
-    }
-    [data-variant="B"] .b-hero-cups i::before {
-      content: "";
-      position: absolute; left: 52%; top: -12px;
-      width: 5px; height: 14px;
-      transform: translateX(-50%) rotate(8deg);
-      background: repeating-linear-gradient(90deg, #6fbf73 0 2px, #f7fff4 2px 4px);
-      border-radius: 2px;
-    }
-    [data-variant="B"] .b-hero-cups i::after {
-      content: "";
-      position: absolute; left: 22%; right: 22%; top: -3px;
-      height: 8px;
-      background: #fff8f0;
-      border-radius: 4px;
-      box-shadow: 0 1px 0 #d4b08a;
-    }
-    [data-variant="B"] .b-hero-cups .hc-1 { height: 34px; background-color: #e45b5b; }
-    [data-variant="B"] .b-hero-cups .hc-2 { height: 46px; background-color: #f0a020; }
-    [data-variant="B"] .b-hero-cups .hc-3 { height: 28px; background-color: #6db85a; }
-    [data-variant="B"] .b-hero-cups .hc-4 { height: 40px; background-color: #4a96ff; }
-    [data-variant="B"] .b-hero-cups .hc-5 { height: 32px; background-color: #c08ae0; }
-    [data-variant="B"] .b-go {
-      width: 100%; border-radius: 999px; padding: 14px;
-      background: var(--straw); color: #fff; font-weight: 700; font-size: 17px;
-      box-shadow: 0 6px 0 #c63d58; position: relative; z-index: 1;
-      margin-bottom: 8px;
-    }
     [data-variant="B"] .b-scene {
-      position: absolute; left: 0; right: 0; top: var(--status-h); bottom: var(--banner-h);
+      position: absolute; left: 0; right: 0; top: calc(var(--status-h) + 4px); bottom: var(--banner-h);
       pointer-events: none; z-index: 0;
       background:
         repeating-linear-gradient(#f6d2c0 0 22px, #e8b09a 22px 24px),
@@ -756,7 +733,17 @@
     [data-variant="B"] .b-play-top,
     [data-variant="B"] .b-counter { position: relative; z-index: 1; }
     [data-variant="B"] .b-play-top {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-shrink: 0;
+      gap: 8px;
+      min-width: 0;
+    }
+    [data-variant="B"] .b-play-top > div:first-child {
+      min-width: 0;
+      flex: 1;
+    }
+    [data-variant="B"] .b-pills {
+      display: flex; gap: 8px; align-items: center;
       flex-shrink: 0;
     }
     [data-variant="B"] .b-play-top h2 {
@@ -765,8 +752,8 @@
     [data-variant="B"] .b-floor {
       flex-shrink: 0;
       position: relative;
-      z-index: 1;
-      padding: 4px 0 8px;
+      z-index: 3;
+      padding: 8px 0 6px;
       background: transparent;
     }
     [data-variant="B"] .b-counter {
@@ -777,9 +764,12 @@
       flex-direction: column;
       border-radius: 18px 18px 12px 12px;
       background:
-        repeating-linear-gradient(180deg, #e0b36a 0 3px, #c4894b 3px 4px, #d4a05a 4px 7px);
+        repeating-linear-gradient(180deg, var(--wood-a) 0 3px, var(--wood-b) 3px 4px, var(--wood-c) 4px 7px);
       padding: 6px 4px 10px;
-      box-shadow: 0 8px 0 #5a3218, inset 0 2px 0 #f3d7a4;
+      box-shadow: 0 8px 0 var(--wood-shadow), inset 0 2px 0 var(--wood-inset);
+      overflow: hidden;
+    }
+    [data-variant="B"] .b-play .b-counter {
       overflow: visible;
     }
     [data-variant="B"] .b-menu {
@@ -855,7 +845,7 @@
       position: absolute; top: 0; left: 52%; width: 18%; min-width: 8px; height: 20%;
       transform: translateX(-50%) rotate(7deg);
       background:
-        repeating-linear-gradient(90deg, #6fbf73 0 3px, #f7fff4 3px 6px);
+        repeating-linear-gradient(90deg, var(--straw-a) 0 3px, var(--straw-b) 3px 6px);
       border-radius: 3px 3px 2px 2px;
       box-shadow: 1px 0 0 rgba(40,20,10,.2), inset -1px 0 0 rgba(255,255,255,.5);
       z-index: 5;
@@ -986,18 +976,68 @@
     .phone[data-device="tablet"] [data-variant="B"] .b-bits b { width: 11px; height: 11px; }
     .phone[data-device="tablet"] [data-variant="B"] .b-bits b:nth-child(2),
     .phone[data-device="tablet"] [data-variant="B"] .b-bits b:nth-child(5) { width: 13px; height: 13px; }
-    [data-variant="B"] .b-stack .liq-1 { background-color: #e45b5b; }
-    [data-variant="B"] .b-stack .liq-2 { background-color: #3bbbb0; }
-    [data-variant="B"] .b-stack .liq-3 { background-color: #f0a020; }
-    [data-variant="B"] .b-stack .liq-4 { background-color: #6db85a; }
-    [data-variant="B"] .b-stack .liq-5 { background-color: #4ad4c8; }
-    [data-variant="B"] .b-stack .liq-6 { background-color: #4a96ff; }
-    [data-variant="B"] .b-stack .liq-7 { background-color: #6a5cff; }
-    [data-variant="B"] .b-stack .liq-8 { background-color: #c08ae0; }
-    [data-variant="B"] .b-stack .liq-9 { background-color: #f04a9a; }
-    [data-variant="B"] .b-stack .liq-10 { background-color: #f070b0; }
-    [data-variant="B"] .b-stack .liq-11 { background-color: #c4894b; }
-    [data-variant="B"] .b-stack .liq-12 { background-color: #e8e06a; }
+    [data-variant="B"] .b-stack .liq-1 { background-color: var(--liq-1); }
+    [data-variant="B"] .b-stack .liq-2 { background-color: var(--liq-2); }
+    [data-variant="B"] .b-stack .liq-3 { background-color: var(--liq-3); }
+    [data-variant="B"] .b-stack .liq-4 { background-color: var(--liq-4); }
+    [data-variant="B"] .b-stack .liq-5 { background-color: var(--liq-5); }
+    [data-variant="B"] .b-stack .liq-6 { background-color: var(--liq-6); }
+    [data-variant="B"] .b-stack .liq-7 { background-color: var(--liq-7); }
+    [data-variant="B"] .b-stack .liq-8 { background-color: var(--liq-8); }
+    [data-variant="B"] .b-stack .liq-9 { background-color: var(--liq-9); }
+    [data-variant="B"] .b-stack .liq-10 { background-color: var(--liq-10); }
+    [data-variant="B"] .b-stack .liq-11 { background-color: var(--liq-11); }
+    [data-variant="B"] .b-stack .liq-12 { background-color: var(--liq-12); }
+    .phone[data-cup="cup_crown"] .b-rim {
+      background: linear-gradient(180deg, #ffe9a0, #d4a017);
+      box-shadow: 0 1px 0 #8a6a10;
+    }
+    .phone[data-cup="cup_crown"] .b-cap::after {
+      box-shadow: inset 0 0 0 1.5px #f0d070;
+    }
+    .phone[data-cup="cup_crown"] .b-glass {
+      border-color: rgba(240, 200, 80, 0.75);
+    }
+    .phone[data-cap="cap_gold"] .b-cap {
+      background:
+        radial-gradient(ellipse at 32% 28%, rgba(255,255,255,.9), transparent 42%),
+        linear-gradient(180deg, #fff4c4 0%, #e8b84a 55%, #c49220 100%);
+    }
+    .phone[data-counter="counter_honey"] .b-home,
+    .phone[data-counter="counter_honey"] .b-play,
+    .phone[data-counter="counter_honey"] .b-jackpot,
+    .phone[data-counter="counter_honey"] .b-missions,
+    .phone[data-counter="counter_honey"] .b-store {
+      background:
+        radial-gradient(ellipse 70% 36% at 80% 8%, #ffd07888, transparent 55%),
+        linear-gradient(180deg, #6a3018 0%, #d47828 28%, #f0b050 58%, #e8c878 100%);
+    }
+    .phone[data-counter="counter_night"] .b-home,
+    .phone[data-counter="counter_night"] .b-play,
+    .phone[data-counter="counter_night"] .b-jackpot,
+    .phone[data-counter="counter_night"] .b-missions,
+    .phone[data-counter="counter_night"] .b-store {
+      background:
+        radial-gradient(ellipse 70% 36% at 80% 8%, #c070ff44, transparent 55%),
+        radial-gradient(ellipse 50% 30% at 12% 18%, #ff4aa833, transparent 50%),
+        linear-gradient(180deg, #1a1020 0%, #3a1840 28%, #5a2460 55%, #2a1830 100%);
+    }
+    [data-variant="B"] .b-shelf-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #f3e6c4;
+      padding: 8px 4px 2px;
+    }
+    [data-variant="B"] .b-sku-btn.equip {
+      background: var(--mango);
+      color: var(--ink);
+      box-shadow: 0 3px 0 #d49a00;
+    }
+    [data-variant="B"] .b-sku-btn.need {
+      opacity: 0.55;
+    }
     [data-variant="B"] .b-stack .liq-2::after,
     [data-variant="B"] .b-stack .liq-3::after,
     [data-variant="B"] .b-stack .liq-6::after,
@@ -1104,6 +1144,16 @@
       flex: 1.1; font-size: 12px; padding: 8px 4px;
     }
     [data-variant="B"] .b-dock .tool.dim { opacity: 0.45; }
+    [data-variant="B"] .b-missions .b-dock .prize {
+      flex: 1.6;
+      font-size: 15px;
+      padding: 12px 10px;
+    }
+    [data-variant="B"] .b-card.claimed {
+      opacity: 0.55;
+      cursor: default;
+    }
+    [data-variant="B"] .b-card.claimed .go { color: var(--ink); opacity: 0.55; }
 
     [data-variant="B"] .b-shift {
       flex: 1;
@@ -1159,10 +1209,52 @@
       font-weight: 700;
       font-size: 12px;
     }
-    [data-variant="B"] .b-card .price {
-      color: var(--straw);
+    [data-variant="B"] .b-sku {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: default;
+    }
+    [data-variant="B"] .b-sku:active { transform: none; box-shadow: 0 4px 0 #8a5a28; }
+    [data-variant="B"] .b-sku-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    [data-variant="B"] .b-sku-buy {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 6px;
+      min-width: 86px;
+    }
+    [data-variant="B"] .b-sku-cost {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    [data-variant="B"] .b-sku-btn {
+      border: 0;
+      min-width: 76px;
+      background: var(--straw);
+      color: #fff;
+      font: inherit;
       font-weight: 700;
-      font-size: 12px;
+      font-size: 13px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      box-shadow: 0 3px 0 #c63d58;
+      cursor: pointer;
+    }
+    [data-variant="B"] .b-sku-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #c63d58; }
+    [data-variant="B"] .b-sku.gone .b-sku-cost { opacity: 0.7; }
+    [data-variant="B"] .b-sku.gone .b-sku-btn {
+      background: #ead4b8;
+      color: var(--ink);
+      box-shadow: 0 3px 0 #c4a078;
+      cursor: default;
     }
     [data-variant="B"] .b-card.gone { opacity: 0.55; }
     [data-variant="B"] .b-track {
@@ -1587,7 +1679,7 @@
       </header>
 
       <!-- A Soft Lab -->
-      <div class="variant-root" data-for="A">
+      <div class="variant-root" data-for="A" hidden>
         <section class="screen a-home" data-screen="home" aria-label="Home">
           <div class="a-top">
             <div>
@@ -1669,36 +1761,19 @@
       </div>
 
       <!-- B Boba Store -->
-      <div class="variant-root" data-for="B" hidden>
+      <div class="variant-root" data-for="B">
         <section class="screen b-home" data-screen="home" aria-label="Home">
-          <div class="b-scene" aria-hidden="true"><i></i><i></i><i></i></div>
-          <div class="b-play-top">
-            <div>
-              <span class="b-ticket-no">Boba store</span>
-              <h2>Pearl Counter</h2>
-              <div style="font-size:13px;opacity:.7;font-weight:650">Ticket 3650 · evening rush</div>
+          <div class="b-hub">
+            <div class="b-hub-head">
+              <span class="b-sign">boba store · hub v3</span>
+              <h1>Pearl Counter</h1>
+              <p>Pick a station</p>
             </div>
-            <div class="b-pills">
-              <div class="b-lives" data-cups>🧋 3</div>
-              <div class="b-coin" data-coins>💰 240</div>
-            </div>
-          </div>
-          <div class="b-counter">
-            <div class="b-hero">
-              <span class="b-sign">now open · home v2</span>
-              <h3>Pearl Counter</h3>
-              <p>Sort the drinks · seal the ticket</p>
-              <div class="b-hero-cups" aria-hidden="true">
-                <i class="hc-1"></i><i class="hc-2"></i><i class="hc-3"></i><i class="hc-4"></i><i class="hc-5"></i>
-              </div>
-            </div>
-          </div>
-          <div class="b-floor">
-            <button type="button" class="btn b-go" data-go="play">Open the counter</button>
-            <div class="b-home-links">
-              <button type="button" class="btn tool prize" data-go="jackpot"><b>🎰</b>Lucky spin</button>
-              <button type="button" class="btn tool" data-go="missions"><b>📋</b>Mission</button>
-              <button type="button" class="btn tool" data-go="store"><b>🛍️</b>Store</button>
+            <div class="b-hub-grid">
+              <button type="button" class="btn counter" data-go="play"><b>🧋</b>Counter</button>
+              <button type="button" class="btn" data-go="store"><b>🛍️</b>Store</button>
+              <button type="button" class="btn lucky" data-go="jackpot"><b>🎰</b>Lucky</button>
+              <button type="button" class="btn" data-go="missions"><b>📋</b>Mission</button>
             </div>
           </div>
         </section>
@@ -1717,40 +1792,12 @@
           </div>
           <div class="b-counter">
             <div class="b-menu">Shift board · today</div>
-            <div class="b-shift">
-              <button type="button" class="b-card" data-go="play">
-                <span class="kicker">Campaign</span>
-                <strong>Ticket 3650 · Midnight Float</strong>
-                <em>Seal 12 drinks before close</em>
-                <div class="b-track"><i class="b-fill" style="width:99.9%"></i></div>
-                <div class="meta"><span>3649 sealed</span><span class="go">Play →</span></div>
-              </button>
-              <button type="button" class="b-card" data-go="play">
-                <span class="kicker">Daily · tickets</span>
-                <strong>Seal 3 tickets</strong>
-                <em>Any ticket today · +20 coins</em>
-                <div class="b-track"><i class="b-fill mango" style="width:67%"></i></div>
-                <div class="meta"><span>2 / 3</span><span class="go">Play →</span></div>
-              </button>
-              <button type="button" class="b-card" data-go="play">
-                <span class="kicker">Daily · new drinks</span>
-                <strong>First-clear 2 new tickets</strong>
-                <em>+25 coins · extra straw</em>
-                <div class="b-track"><i class="b-fill mango" style="width:50%"></i></div>
-                <div class="meta"><span>1 / 2</span><span class="go">Play →</span></div>
-              </button>
-              <button type="button" class="b-card ready" data-go="jackpot">
-                <span class="kicker">Daily · lucky spin</span>
-                <strong>Spin the lucky machine</strong>
-                <em>3 spins · +2 free draws</em>
-                <div class="b-track"><i class="b-fill matcha" style="width:33%"></i></div>
-                <div class="meta"><span>1 / 3</span><span class="go">Prize →</span></div>
-              </button>
-            </div>
+            <div class="b-shift" data-shift></div>
           </div>
           <div class="b-floor">
             <div class="b-dock">
               <button type="button" class="btn tool" data-go="home"><b>🏠</b>Home</button>
+              <button type="button" class="btn prize" data-act="collect-all" data-collect-all hidden>Collect all</button>
             </div>
           </div>
         </section>
@@ -1761,40 +1808,15 @@
             <div>
               <span class="b-ticket-no">Store</span>
               <h2>Back shelf</h2>
-              <div style="font-size:13px;opacity:.7;font-weight:650">Buy with coins</div>
+              <div style="font-size:13px;opacity:.7;font-weight:650" data-store-hint>Cosmetics · challenge counters never help</div>
             </div>
             <div class="b-pills">
               <div class="b-coin" data-coins>💰 240</div>
             </div>
           </div>
           <div class="b-counter">
-            <div class="b-menu">Store shelf · cosmetics only</div>
-            <div class="b-store">
-              <button type="button" class="b-card" data-act="buy">
-                <span class="kicker">Counter theme</span>
-                <strong>Honey counter</strong>
-                <em>Warm amber shop look · 10% fewer pours</em>
-                <div class="meta"><span>80 coins</span><span class="price">Buy</span></div>
-              </button>
-              <button type="button" class="b-card" data-act="buy">
-                <span class="kicker">Cup style</span>
-                <strong>Crown cup</strong>
-                <em>Gold trim · also from Lucky crown</em>
-                <div class="meta"><span>150 coins</span><span class="price">Buy</span></div>
-              </button>
-              <button type="button" class="b-card" data-act="buy">
-                <span class="kicker">Drink colors</span>
-                <strong>Neon menu</strong>
-                <em>High-contrast liquid colors</em>
-                <div class="meta"><span>75 coins</span><span class="price">Buy</span></div>
-              </button>
-              <button type="button" class="b-card gone">
-                <span class="kicker">Owned</span>
-                <strong>House counter · House cup · Classic menu</strong>
-                <em>Default look · free starter set</em>
-                <div class="meta"><span>Equipped</span><span class="price">✓</span></div>
-              </button>
-            </div>
+            <div class="b-menu">Back shelf · tap Buy then open Counter</div>
+            <div class="b-shelf" data-shelf></div>
           </div>
           <div class="b-floor">
             <div class="b-dock">
@@ -1980,8 +2002,10 @@
 
   <div class="flow-bar" role="group" aria-label="Flow step">
     <button type="button" data-flow="home">Home</button>
-    <button type="button" data-flow="play">Play</button>
-    <button type="button" data-flow="jackpot">Prize</button>
+    <button type="button" data-flow="play">Counter</button>
+    <button type="button" data-flow="store">Store</button>
+    <button type="button" data-flow="jackpot">Lucky</button>
+    <button type="button" data-flow="missions">Mission</button>
   </div>
   <div class="switcher" role="group" aria-label="Prototype variant switcher">
     <button type="button" id="prevVar" aria-label="Previous variant">←</button>
@@ -2040,6 +2064,74 @@
     const BETS = [1, 5, 10, 25];
     const FREE_COINS = 5;
     const MAX_TUBES = 15;
+    const MISSIONS_DONE = () => [
+      { id: "campaign", kicker: "Campaign", title: "Ticket 3650 · Midnight Float", blurb: "Seal 12 drinks before close · +40 coins", progress: 3650, target: 3650, go: "play", goLabel: "Play →", fill: "", reward: { coins: 40 } },
+      { id: "tickets", kicker: "Daily · tickets", title: "Seal 3 tickets", blurb: "Any ticket today · +20 coins", progress: 3, target: 3, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 20 } },
+      { id: "newdrinks", kicker: "Daily · new drinks", title: "First-clear 2 new tickets", blurb: "+25 coins · extra straw", progress: 2, target: 2, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 25, cups: 1 } },
+      { id: "spin", kicker: "Daily · lucky spin", title: "Spin the lucky machine", blurb: "3 spins · +2 free draws", progress: 3, target: 3, go: "jackpot", goLabel: "Prize →", fill: "matcha", reward: { spins: 2 } },
+    ];
+    const MISSIONS_MIX = () => [
+      { id: "campaign", kicker: "Campaign", title: "Ticket 3650 · Midnight Float", blurb: "Seal 12 drinks before close · +40 coins", progress: 3649, target: 3650, go: "play", goLabel: "Play →", fill: "", reward: { coins: 40 } },
+      { id: "tickets", kicker: "Daily · tickets", title: "Seal 3 tickets", blurb: "Any ticket today · +20 coins", progress: 2, target: 3, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 20 } },
+      { id: "newdrinks", kicker: "Daily · new drinks", title: "First-clear 2 new tickets", blurb: "+25 coins · extra straw", progress: 1, target: 2, go: "play", goLabel: "Play →", fill: "mango", reward: { coins: 25, cups: 1 } },
+      { id: "spin", kicker: "Daily · lucky spin", title: "Spin the lucky machine", blurb: "3 spins · +2 free draws", progress: 1, target: 3, go: "jackpot", goLabel: "Prize →", fill: "matcha", reward: { spins: 2 } },
+    ];
+    function startMissions() {
+      const rows = new URLSearchParams(location.search).get("missions") === "mix"
+        ? MISSIONS_MIX()
+        : MISSIONS_DONE();
+      return rows.map((m) => ({ ...m, claimed: false }));
+    }
+    let missions = startMissions();
+    const STORE_KIND_LABEL = {
+      counter: "Counter theme",
+      cup: "Cup style",
+      menu: "Drink colors",
+      straw: "Straw",
+      cap: "Cap",
+    };
+    const STORE_ITEMS = [
+      { id: "counter_house", kind: "counter", name: "House counter", blurb: "Default wood shop · free starter", price: 0 },
+      { id: "counter_honey", kind: "counter", name: "Honey counter", blurb: "Warm amber shop look", price: 80 },
+      { id: "counter_night", kind: "counter", name: "Night market", blurb: "Neon stall · 20% fewer pours · harder, not easier", price: 120 },
+      { id: "cup_house", kind: "cup", name: "House cup", blurb: "Clear plastic · cosmetic only", price: 0 },
+      { id: "cup_crown", kind: "cup", name: "Crown cup", blurb: "Gold trim · also from Lucky crown", price: 150 },
+      { id: "menu_classic", kind: "menu", name: "Classic menu", blurb: "House drinks · easy to tell apart", price: 0 },
+      { id: "menu_neon", kind: "menu", name: "Neon menu", blurb: "High-contrast liquid colors", price: 75 },
+      { id: "menu_matcha", kind: "menu", name: "Matcha house", blurb: "Tea-shop dyes · still distinct", price: 70 },
+      { id: "straw_house", kind: "straw", name: "House straw", blurb: "Green stripe · free starter", price: 0 },
+      { id: "straw_candy", kind: "straw", name: "Candy straw", blurb: "Pink stripe · cheap impulse", price: 40 },
+      { id: "cap_house", kind: "cap", name: "House cap", blurb: "Dome lid · free starter", price: 0 },
+      { id: "cap_gold", kind: "cap", name: "Gold cap", blurb: "Warm gold dome · cosmetic only", price: 50 },
+    ];
+    const STORE_FREE = STORE_ITEMS.filter((i) => i.price === 0).map((i) => i.id);
+    const COUNTER_LOOKS = {
+      counter_house: { a: "#e0b36a", b: "#c4894b", c: "#d4a05a", shadow: "#5a3218", inset: "#f3d7a4" },
+      counter_honey: { a: "#f0c56a", b: "#e09a32", c: "#f4d48a", shadow: "#8a4a12", inset: "#ffe9b0" },
+      counter_night: { a: "#4a3560", b: "#241830", c: "#6a4880", shadow: "#120814", inset: "#e0a0ff" },
+    };
+    const STRAW_LOOKS = {
+      straw_house: { a: "#6fbf73", b: "#f7fff4" },
+      straw_candy: { a: "#f25c78", b: "#fff8f0" },
+    };
+    const MENU_LOOKS = {
+      menu_classic: ["#e45b5b","#3bbbb0","#f0a020","#6db85a","#4ad4c8","#4a96ff","#6a5cff","#c08ae0","#f04a9a","#f070b0","#c4894b","#e8e06a"],
+      menu_neon: ["#E03C06","#FBD051","#BDEE2B","#1FF91F","#5AF2A6","#5ACCF2","#1F56F9","#5A80F2","#8C1FF9","#FB51FB","#FB51A6","#F91F56"],
+      menu_matcha: ["#c45d48","#5a9e4a","#e8b84a","#2d6b3a","#8fbf6a","#3aa8b0","#6b4ea0","#8b5a2b","#d46a8a","#e8a078","#4a3228","#d4c45a"],
+    };
+    function startShop() {
+      return {
+        owned: new Set(STORE_FREE),
+        equipped: {
+          counter: "counter_house",
+          cup: "cup_house",
+          menu: "menu_classic",
+          straw: "straw_house",
+          cap: "cap_house",
+        },
+      };
+    }
+    let shop = startShop();
     const LINE_COLORS = { 1: "#E85D4C", 2: "#7EE3D6", 3: "#F0B429", 4: "#5B9BD5", 5: "#F4A261" };
     const PAYLINES = [
       { id: 1, name: "Top", cells: [[0, 0], [0, 1], [0, 2]] },
@@ -2371,6 +2463,150 @@
       return canUseFreeSpin() || coins >= spinCost();
     }
 
+    function missionDone(m) {
+      return m.progress >= m.target;
+    }
+    function payoutMission(m) {
+      coins += m.reward.coins || 0;
+      extraCups += m.reward.cups || 0;
+      freeSpins += m.reward.spins || 0;
+    }
+    function collectMission(id) {
+      const m = missions.find((row) => row.id === id);
+      if (!m || m.claimed || !missionDone(m)) return;
+      m.claimed = true;
+      payoutMission(m);
+      lastMessage = "collect";
+      renderMissions();
+      renderHud();
+      renderState();
+    }
+    function collectAllMissions() {
+      if (!missions.every(missionDone)) return;
+      const due = missions.filter((m) => !m.claimed);
+      if (!due.length) return;
+      due.forEach((m) => {
+        m.claimed = true;
+        payoutMission(m);
+      });
+      lastMessage = "collect-all";
+      renderMissions();
+      renderHud();
+      renderState();
+    }
+    function renderMissions() {
+      document.querySelectorAll("[data-shift]").forEach((shift) => {
+        shift.innerHTML = missions.map((m) => {
+          const done = missionDone(m);
+          const pct = Math.min(100, (m.progress / m.target) * 100);
+          const cls = m.claimed ? "b-card claimed" : done ? "b-card ready" : "b-card";
+          const attrs = m.claimed
+            ? ""
+            : done
+              ? `data-act="collect" data-mission="${m.id}"`
+              : `data-go="${m.go}"`;
+          const go = m.claimed ? "Claimed" : done ? "Collect →" : m.goLabel;
+          const count = m.id === "campaign" && !done
+            ? `${m.progress} sealed`
+            : `${Math.min(m.progress, m.target)} / ${m.target}`;
+          const fill = m.fill ? ` ${m.fill}` : "";
+          return `<button type="button" class="${cls}" ${attrs}>
+            <span class="kicker">${m.kicker}</span>
+            <strong>${m.title}</strong>
+            <em>${m.blurb}</em>
+            <div class="b-track"><i class="b-fill${fill}" style="width:${pct}%"></i></div>
+            <div class="meta"><span>${count}</span><span class="go">${go}</span></div>
+          </button>`;
+        }).join("");
+      });
+      const showAll = missions.every(missionDone) && missions.some((m) => !m.claimed);
+      document.querySelectorAll("[data-collect-all]").forEach((btn) => {
+        btn.hidden = !showAll;
+        const n = missions.filter((m) => !m.claimed && missionDone(m)).length;
+        btn.textContent = n ? `Collect all · ${n}` : "Collect all";
+      });
+    }
+
+    function applyLooks() {
+      const wood = COUNTER_LOOKS[shop.equipped.counter] || COUNTER_LOOKS.counter_house;
+      phone.style.setProperty("--wood-a", wood.a);
+      phone.style.setProperty("--wood-b", wood.b);
+      phone.style.setProperty("--wood-c", wood.c);
+      phone.style.setProperty("--wood-shadow", wood.shadow);
+      phone.style.setProperty("--wood-inset", wood.inset);
+      const straw = STRAW_LOOKS[shop.equipped.straw] || STRAW_LOOKS.straw_house;
+      phone.style.setProperty("--straw-a", straw.a);
+      phone.style.setProperty("--straw-b", straw.b);
+      const menu = MENU_LOOKS[shop.equipped.menu] || MENU_LOOKS.menu_classic;
+      menu.forEach((hex, i) => phone.style.setProperty(`--liq-${i + 1}`, hex));
+      phone.dataset.counter = shop.equipped.counter;
+      phone.dataset.cup = shop.equipped.cup;
+      phone.dataset.menu = shop.equipped.menu;
+      phone.dataset.straw = shop.equipped.straw;
+      phone.dataset.cap = shop.equipped.cap;
+    }
+    function setStoreHint(text) {
+      document.querySelectorAll("[data-store-hint]").forEach((el) => { el.textContent = text; });
+    }
+    function buyStoreItem(id) {
+      const item = STORE_ITEMS.find((row) => row.id === id);
+      if (!item) return;
+      if (shop.owned.has(item.id)) {
+        shop.equipped[item.kind] = item.id;
+        lastMessage = "equipped";
+        setStoreHint(`Equipped · ${item.name}`);
+        applyLooks();
+        renderStore();
+        renderHud();
+        renderState();
+        return;
+      }
+      if (coins < item.price) {
+        lastMessage = "need-coins";
+        setStoreHint(`Need ${item.price} coins · you have ${coins}`);
+        renderState();
+        return;
+      }
+      coins -= item.price;
+      shop.owned.add(item.id);
+      shop.equipped[item.kind] = item.id;
+      lastMessage = "bought";
+      setStoreHint(`Bought · ${item.name}`);
+      applyLooks();
+      renderStore();
+      renderHud();
+      renderState();
+    }
+    function renderStore() {
+      document.querySelectorAll("[data-shelf]").forEach((shelf) => {
+        let lastKind = "";
+        shelf.innerHTML = STORE_ITEMS.map((item) => {
+          const owned = shop.owned.has(item.id);
+          const on = shop.equipped[item.kind] === item.id;
+          const need = !owned && coins < item.price;
+          const cost = item.price === 0 ? "Free" : `💰 ${item.price}`;
+          const label = on ? "Equipped" : owned ? "Equip" : "Buy";
+          const btnCls = ["b-sku-btn", owned && !on ? "equip" : "", need ? "need" : ""].filter(Boolean).join(" ");
+          const disabled = on ? "disabled" : "";
+          const header = item.kind !== lastKind
+            ? `<div class="b-shelf-label">${STORE_KIND_LABEL[item.kind]}</div>`
+            : "";
+          lastKind = item.kind;
+          return `${header}<div class="b-card b-sku${on ? " gone" : ""}">
+            <div class="b-sku-copy">
+              <span class="kicker">${STORE_KIND_LABEL[item.kind]}</span>
+              <strong>${item.name}</strong>
+              <em>${item.blurb}</em>
+            </div>
+            <div class="b-sku-buy">
+              <span class="b-sku-cost">${cost}</span>
+              <button type="button" class="${btnCls}" data-act="buy" data-item="${item.id}" ${disabled}>${label}</button>
+            </div>
+          </div>`;
+        }).join("");
+      });
+    }
+
     function renderHud() {
       const cost = spinCost();
       const broke = !canAffordSpin();
@@ -2518,6 +2754,13 @@
         coins,
         extraCups,
         freeSpins,
+        missions: missions.map((m) => ({
+          id: m.id, progress: m.progress, target: m.target, claimed: m.claimed, done: missionDone(m),
+        })),
+        shop: {
+          owned: [...shop.owned],
+          equipped: { ...shop.equipped },
+        },
         watchingAd,
         betPerLine,
         activeLines,
@@ -2551,6 +2794,8 @@
       url.searchParams.set("device", device);
       const coinsParam = new URL(location.href).searchParams.get("coins");
       if (coinsParam != null) url.searchParams.set("coins", coinsParam);
+      const missionsParam = new URL(location.href).searchParams.get("missions");
+      if (missionsParam != null) url.searchParams.set("missions", missionsParam);
       history.replaceState(null, "", url);
     }
 
@@ -2590,6 +2835,9 @@
         btn.classList.toggle("on", btn.dataset.flow === next);
       });
       renderReels(spinning);
+      renderMissions();
+      renderStore();
+      applyLooks();
       renderState();
       if (variant === "B" && next === "jackpot") {
         requestAnimationFrame(() => renderPaylines(spinning));
@@ -2606,7 +2854,8 @@
       lastSymbols = VARIANTS[v].symbols.slice(0, 3);
       lastWins = [];
       {
-        const q = Number(new URLSearchParams(location.search).get("coins"));
+        const raw = new URLSearchParams(location.search).get("coins");
+        const q = raw == null || raw === "" ? NaN : Number(raw);
         coins = Number.isFinite(q) && q >= 0 ? Math.floor(q) : 240;
       }
       extraCups = 1;
@@ -2614,6 +2863,8 @@
       watchingAd = false;
       betPerLine = 5;
       activeLines = 5;
+      missions = startMissions();
+      shop = startShop();
       clearPour();
       if (reset) {
         tubes = START();
@@ -2833,12 +3084,12 @@
           cycleLines(1);
         } else if (a === "lines-down") {
           cycleLines(-1);
+        } else if (a === "collect-all") {
+          collectAllMissions();
+        } else if (a === "collect") {
+          collectMission(act.dataset.mission);
         } else if (a === "buy") {
-          lastMessage = "store";
-          document.querySelectorAll("[data-hint]").forEach((el) => {
-            el.textContent = "Prototype only — cosmetics shop";
-          });
-          renderState();
+          buyStoreItem(act.dataset.item);
         }
         return;
       }
@@ -2852,8 +3103,9 @@
       if (e.key === "ArrowRight") cycle(1);
     });
 
+    device = readDeviceFromURL();
     applyVariant(readVariantFromURL());
-    applyDevice(readDeviceFromURL());
+    applyDevice(device);
     window.addEventListener("resize", () => {
       fitDevice();
       if (variant === "B") renderPaylines(spinning);
