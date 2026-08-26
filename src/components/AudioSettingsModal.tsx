@@ -9,7 +9,8 @@ import {
 import { DialogCloseX } from './DialogCloseX';
 import { useAudioPrefs } from '../hooks/useAudioPrefs';
 import { getAudioManager } from '../services/audio/AudioManager';
-import { LAB, COLORS } from '../theme/colors';
+import { APP_NAME } from '../constants/brand';
+import { BOBA, FONTS } from '../theme/boba';
 
 type Props = {
   visible: boolean;
@@ -29,7 +30,7 @@ export function AudioSettingsModal({ visible, onClose }: Props) {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <DialogCloseX onPress={onClose} />
-          <Text style={styles.eyebrow}>BOBA SHOP</Text>
+          <Text style={styles.eyebrow}>{APP_NAME}</Text>
           <Text style={styles.title}>Audio</Text>
           <Text style={styles.sub}>Tune the shop speakers. Prefs save automatically.</Text>
 
@@ -144,7 +145,7 @@ function BusRow({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(4, 18, 24, 0.82)',
+    backgroundColor: 'rgba(42, 20, 24, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
@@ -155,26 +156,26 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 22,
     paddingTop: 28,
-    backgroundColor: LAB.benchDeep,
-    borderWidth: 1.5,
-    borderColor: 'rgba(126, 227, 214, 0.32)',
+    backgroundColor: BOBA.cream,
   },
   eyebrow: {
-    color: LAB.label,
-    fontWeight: '800',
+    color: BOBA.straw,
+    fontFamily: FONTS.uiBlack,
     letterSpacing: 2,
     fontSize: 11,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   title: {
-    color: COLORS.text,
-    fontWeight: '900',
-    fontSize: 26,
+    color: BOBA.ink,
+    fontFamily: FONTS.display,
+    fontSize: 28,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 4,
   },
   sub: {
-    color: COLORS.textMuted,
+    color: 'rgba(74,34,28,0.68)',
+    fontFamily: FONTS.body,
     fontSize: 13,
     textAlign: 'center',
     marginTop: 6,
@@ -185,9 +186,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 14,
     borderRadius: 16,
-    backgroundColor: LAB.glassDim,
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.2)',
+    backgroundColor: '#fff6ee',
   },
   busHeader: {
     flexDirection: 'row',
@@ -196,30 +195,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   busLabel: {
-    color: COLORS.text,
-    fontWeight: '700',
+    color: BOBA.ink,
+    fontFamily: FONTS.bodyBold,
     fontSize: 14,
   },
   muteChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(126, 227, 214, 0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.35)',
+    backgroundColor: BOBA.woodInset,
   },
   muteChipOn: {
-    backgroundColor: 'rgba(232, 93, 76, 0.22)',
-    borderColor: LAB.hazard,
+    backgroundColor: 'rgba(242, 92, 120, 0.22)',
   },
   muteText: {
-    color: LAB.glassBright,
-    fontWeight: '800',
+    color: BOBA.ink,
+    fontFamily: FONTS.uiBlack,
     fontSize: 11,
     letterSpacing: 0.6,
   },
   muteTextOn: {
-    color: LAB.hazard,
+    color: BOBA.strawDeep,
   },
   sliderRow: {
     flexDirection: 'row',
@@ -232,12 +228,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(8, 32, 40, 0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(126, 227, 214, 0.28)',
+    backgroundColor: BOBA.cream,
+    shadowColor: BOBA.peach,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   stepText: {
-    color: COLORS.text,
+    color: BOBA.ink,
     fontSize: 20,
     fontWeight: '700',
     lineHeight: 22,
@@ -246,31 +245,31 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 10,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: BOBA.woodInset,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: LAB.reagent,
+    backgroundColor: BOBA.straw,
   },
   pct: {
     width: 40,
     textAlign: 'right',
-    color: LAB.label,
-    fontWeight: '700',
+    color: BOBA.ink,
+    fontFamily: FONTS.ui,
     fontSize: 12,
   },
   done: {
     marginTop: 6,
-    backgroundColor: LAB.reagent,
+    backgroundColor: BOBA.straw,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
   },
   doneText: {
-    color: '#1A1200',
-    fontWeight: '800',
+    color: BOBA.cream,
+    fontFamily: FONTS.bodyBold,
     fontSize: 15,
   },
 });

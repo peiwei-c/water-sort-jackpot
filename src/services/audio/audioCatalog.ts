@@ -9,11 +9,11 @@ export type SfxId = 'tap' | 'pour' | 'success' | 'fail';
 
 /**
  * Local asset map (`assets/audio/`).
- * BGM: looping stereo beds. SFX: short one-shots — swap files to upgrade.
+ * BGM: looping cafe-lofi beds. SFX: short one-shots.
  */
 export const BGM_SOURCES: Record<BgmId, AudioSource> = {
-  home: require('../../../assets/audio/bgm_home.wav'),
-  play: require('../../../assets/audio/bgm_play.wav'),
+  home: require('../../../assets/audio/bgm_home.m4a'),
+  play: require('../../../assets/audio/bgm_play.m4a'),
 };
 
 export const SFX_SOURCES: Record<SfxId, AudioSource> = {

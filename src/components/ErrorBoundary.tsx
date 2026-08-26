@@ -1,6 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LAB } from '../theme/colors';
+import { BOBA } from '../theme/boba';
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -43,31 +43,31 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: LAB.benchDeep,
+    backgroundColor: BOBA.skyTop,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
   },
   title: {
-    color: LAB.glassBright,
+    color: BOBA.cream,
     fontSize: 22,
     fontWeight: '900',
     marginBottom: 10,
   },
   body: {
-    color: LAB.label,
+    color: BOBA.sign,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 22,
   },
   btn: {
-    backgroundColor: LAB.reagent,
+    backgroundColor: BOBA.straw,
     paddingHorizontal: 22,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   btnText: {
-    color: '#06141C',
+    color: BOBA.cream,
     fontWeight: '800',
   },
 });

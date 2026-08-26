@@ -135,7 +135,7 @@ export function SlotMachineModal() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.titleRow}>
-              <Text style={styles.labEyebrow}>AFTER HOURS</Text>
+              <Text style={styles.labEyebrow}>LUCKY</Text>
             </View>
             <View style={styles.titleRow}>
               <Text style={styles.title}>Lucky spin</Text>
@@ -144,7 +144,7 @@ export function SlotMachineModal() {
                 onPress={() => setShowPaytable(true)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="Reagent chart"
+                accessibilityLabel="Pay table"
               >
                 <Text style={styles.infoBtnText}>i</Text>
               </Pressable>
@@ -167,7 +167,7 @@ export function SlotMachineModal() {
               ) : null}
             </View>
 
-            {/* Centrifuge chamber */}
+            {/* Lucky cabinet */}
             <View style={styles.cabinet}>
               <View style={styles.cabinetTop}>
                 <View style={styles.hazardBar} />
@@ -235,7 +235,7 @@ export function SlotMachineModal() {
             {(modal === 'slot_machine' || modal === 'spin_result') && (
               <View style={styles.controls}>
                 <View style={styles.controlBlock}>
-                  <Text style={styles.controlLabel}>Dose / line</Text>
+                  <Text style={styles.controlLabel}>Bet / line</Text>
                   <View style={styles.stepper}>
                     <Pressable style={styles.stepBtn} onPress={() => cycleBet(-1)}>
                       <Text style={styles.stepBtnText}>−</Text>
@@ -247,7 +247,7 @@ export function SlotMachineModal() {
                   </View>
                 </View>
                 <View style={styles.controlBlock}>
-                  <Text style={styles.controlLabel}>Reagent lines</Text>
+                  <Text style={styles.controlLabel}>Lines</Text>
                   <View style={styles.stepper}>
                     <Pressable
                       style={styles.stepBtn}

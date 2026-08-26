@@ -53,7 +53,7 @@ import {
 import { getAudioManager } from '../services/audio/AudioManager';
 import {
   getAdService,
-  INTERSTITIAL_EVERY_N_LEVELS,
+  isInterstitialClearLevel,
   type AdPlacement,
 } from '../services/AdService';
 import { getAdManager } from '../services/AdManager';
@@ -792,10 +792,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         getAudioManager().playSfx('success');
         set({ session: null });
         persistSoon();
-        const since = get().levelsCompletedSinceAd;
         if (
           !opts?.skipAds &&
-          since >= INTERSTITIAL_EVERY_N_LEVELS
+          isInterstitialClearLevel(get().level)
         ) {
           if (get().isNoAdsPurchased) {
             set({ levelsCompletedSinceAd: 0 });
