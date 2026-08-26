@@ -32,6 +32,7 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "prototype:ui2026": "npx --yes serve src/prototype/ui2026 -p 3456",
+    "prototype:uiCute": "npx --yes serve src/prototype/uiCute -p 3457",
     "build:dev": "eas build --profile development",
     "build:preview": "eas build --profile preview",
     "build:prod": "eas build --profile production",
