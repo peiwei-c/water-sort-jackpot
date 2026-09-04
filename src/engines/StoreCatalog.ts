@@ -77,7 +77,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_amber',
     kind: 'path',
     name: 'Honey shop',
-    blurb: 'Warm look · 10% fewer pours.',
+    blurb: 'Challenge · 10% fewer pours.',
     price: 80,
     moveScale: 0.9,
     pathTheme: {
@@ -95,7 +95,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_coral',
     kind: 'path',
     name: 'Night market',
-    blurb: 'Exclusive look · 20% fewer pours.',
+    blurb: 'Challenge · 20% fewer pours.',
     price: 120,
     moveScale: 0.8,
     pathTheme: {
@@ -113,7 +113,7 @@ export const STORE_ITEMS: StoreItem[] = [
     id: 'path_midnight',
     kind: 'path',
     name: 'Late night',
-    blurb: 'Rarest look · 30% fewer pours.',
+    blurb: 'Challenge · 30% fewer pours.',
     price: 160,
     moveScale: 0.7,
     pathTheme: {

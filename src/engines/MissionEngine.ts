@@ -57,7 +57,7 @@ export const DAILY_MISSIONS: MissionDef[] = [
     id: 'daily_clear_3',
     cadence: 'daily',
     title: 'Sort 3 tickets',
-    blurb: 'Clear any 3 drinks today.',
+    blurb: 'Clear any 3 tickets today.',
     metric: 'station_clear',
     target: 3,
     reward: { coins: 20 },
@@ -92,7 +92,7 @@ export const DAILY_MISSIONS: MissionDef[] = [
   {
     id: 'daily_ad_1',
     cadence: 'daily',
-    title: 'Sponsor Scan',
+    title: 'Watch a clip',
     blurb: 'Watch 1 rewarded ad (hint, life, moves, etc.).',
     metric: 'rewarded_ad',
     target: 1,

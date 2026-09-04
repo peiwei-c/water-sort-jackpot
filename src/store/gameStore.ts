@@ -706,8 +706,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           ? 'campaign_complete'
           : 'level_complete';
         pendingMessage = isCampaignComplete(currentLevel)
-          ? `Campaign complete! All ${MAX_LEVEL} levels cleared`
-          : `Level complete! +${reward} coin${reward === 1 ? '' : 's'}`;
+          ? `Shop clear! All ${MAX_LEVEL} tickets sealed`
+          : `Ticket sealed! +${reward} coin${reward === 1 ? '' : 's'}`;
         clearReward = reward;
       } else if (nextMoves <= 0) {
         pendingModal = 'out_of_moves';
@@ -912,7 +912,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { unlockedLevel, session } = get();
       const safe = Math.floor(level);
       if (safe < 1 || safe > unlockedLevel || safe > MAX_LEVEL) {
-        set({ lastMessage: 'Level locked' });
+        set({ lastMessage: 'Ticket locked' });
         return;
       }
       const diff = getLevelDifficulty(safe);
@@ -1130,7 +1130,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         pourAnim: null,
         modal: 'none',
         hintHighlight: null,
-        lastMessage: 'Level restarted',
+        lastMessage: 'Ticket restarted',
         session: null,
         ...livesSnapshot(spent),
       });
@@ -1160,7 +1160,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         set({
           screen: openJackpot ? 'play' : 'home',
           modal: openJackpot ? 'slot_machine' : 'campaign_complete',
-          lastMessage: `You finished all ${MAX_LEVEL} levels!`,
+          lastMessage: `You sealed all ${MAX_LEVEL} tickets!`,
           session: null,
           consecutiveFailCount: 0,
           hintHighlight: null,
@@ -1220,7 +1220,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintHighlight: null,
         lastMessage: openJackpot
           ? `Ticket ${level} ready · spin Lucky`
-          : `Level ${level} · ${diff.tierLabel}`,
+          : `Ticket ${level} · ${diff.tierLabel}`,
         session: null,
         ...livesSnapshot(spent),
       });

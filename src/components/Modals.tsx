@@ -364,8 +364,8 @@ export function OutOfMovesModal() {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.eyebrow}>NO MOVES LEFT</Text>
-          <Text style={styles.title}>Reagents stalled!</Text>
+          <Text style={styles.eyebrow}>NO POURS LEFT</Text>
+          <Text style={styles.title}>Ticket stalled!</Text>
           <Text style={styles.sub}>
             {showExtraMovesAd
               ? `Watch an ad for +${EXTRA_MOVES_FROM_AD} pours, or restart the ticket.`

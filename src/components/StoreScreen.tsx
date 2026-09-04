@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import {
@@ -12,6 +13,10 @@ import {
   type StoreKind,
   type StoreItem,
 } from '../engines/StoreCatalog';
+import {
+  getRemoveAdsPriceLabel,
+  REMOVE_ADS_PRICE_LABEL,
+} from '../services/IapService';
 import { BOBA, FONTS } from '../theme/boba';
 import { BobaScene, BobaPill, WoodCounter, DockBtn } from './BobaScene';
 
@@ -25,7 +30,22 @@ export function StoreScreen() {
   const buyItem = useGameStore((s) => s.buyItem);
   const equipItem = useGameStore((s) => s.equipItem);
   const goHome = useGameStore((s) => s.goHome);
+  const isNoAdsPurchased = useGameStore((s) => s.isNoAdsPurchased);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const purchaseRemoveAds = useGameStore((s) => s.purchaseRemoveAds);
+  const restorePurchases = useGameStore((s) => s.restorePurchases);
   const [tab, setTab] = useState<StoreKind>('palette');
+  const [priceLabel, setPriceLabel] = useState(REMOVE_ADS_PRICE_LABEL);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getRemoveAdsPriceLabel().then((label) => {
+      if (!cancelled) setPriceLabel(label);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const items = useMemo(() => itemsOfKind(tab), [tab]);
   const owned = useMemo(() => new Set(ownedItemIds), [ownedItemIds]);
@@ -44,7 +64,7 @@ export function StoreScreen() {
             <Text style={styles.eyebrow}>Store</Text>
             <Text style={styles.title}>Back shelf</Text>
             <Text style={styles.sub}>
-              Cosmetics · harder shops never help
+              Looks and challenge shops · never easier
             </Text>
           </View>
           <BobaPill mango>💰 {coins}</BobaPill>
@@ -75,6 +95,40 @@ export function StoreScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.iapCard}>
+              <View style={styles.iapCopy}>
+                <Text style={styles.iapTitle}>Remove Ads</Text>
+                <Text style={styles.iapBlurb}>
+                  Hides the banner and between-ticket ads. Optional rewarded
+                  boosts stay.
+                </Text>
+                <Pressable
+                  onPress={() => void restorePurchases()}
+                  disabled={isAdLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Restore purchases"
+                  hitSlop={8}
+                >
+                  <Text style={styles.restoreText}>Restore Purchases</Text>
+                </Pressable>
+              </View>
+              {isAdLoading ? (
+                <ActivityIndicator color={BOBA.straw} />
+              ) : isNoAdsPurchased ? (
+                <View style={styles.equippedPill}>
+                  <Text style={styles.equippedText}>Owned</Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.buyBtn}
+                  onPress={() => void purchaseRemoveAds()}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove Ads for ${priceLabel}`}
+                >
+                  <Text style={styles.buyText}>{priceLabel}</Text>
+                </Pressable>
+              )}
+            </View>
             {items.map((item) => (
               <StoreRow
                 key={item.id}
@@ -188,6 +242,7 @@ function StoreRow({
           <Pressable
             style={[styles.buyBtn, !canAfford && styles.buyDisabled]}
             onPress={onBuy}
+            disabled={!canAfford}
             accessibilityRole="button"
             accessibilityLabel={
               canAfford
@@ -270,6 +325,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginVertical: 4,
     textAlign: 'center',
+  },
+  iapCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: BOBA.cream,
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 8,
+    shadowColor: '#8a5a28',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  iapCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
+  },
+  iapTitle: {
+    color: BOBA.ink,
+    fontFamily: FONTS.bodyBold,
+    fontSize: 15,
+  },
+  iapBlurb: {
+    color: 'rgba(74,34,28,0.65)',
+    fontFamily: FONTS.body,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  restoreText: {
+    color: BOBA.straw,
+    fontFamily: FONTS.ui,
+    fontSize: 12,
+    marginTop: 4,
   },
   list: {
     gap: 8,

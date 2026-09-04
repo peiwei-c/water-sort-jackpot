@@ -224,7 +224,7 @@ export function evaluateLine(
           undoItems: 0,
           extraTubeItems: Math.max(1, Math.floor(bet / 5)),
           unlockRareSkin: false,
-          label: `${line.name}: 🧪🧪🧪 +${Math.max(1, Math.floor(bet / 5))} tube`,
+          label: `${line.name}: 🧋🧋🧋 +${Math.max(1, Math.floor(bet / 5))} cup`,
         };
       case SlotSymbol.Undo:
         return {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import {
   useGameStore,
@@ -28,9 +28,21 @@ export function HomeScreen() {
   const openMissions = useGameStore((s) => s.openMissions);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
   const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
+  const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
+  const refreshLives = useGameStore((s) => s.refreshLives);
 
   const [audioOpen, setAudioOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+
+  useEffect(() => {
+    if (!hasSeenLabManual) setManualOpen(true);
+  }, [hasSeenLabManual]);
+
+  useEffect(() => {
+    if (lives >= MAX_LIVES) return;
+    const id = setInterval(() => refreshLives(), 1000);
+    return () => clearInterval(id);
+  }, [lives, refreshLives]);
 
   const ticket = session?.level ?? Math.min(unlockedLevel, MAX_LEVEL);
   const claimable = countClaimableMissions(missionBoard);

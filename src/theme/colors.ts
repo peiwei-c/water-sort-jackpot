@@ -70,6 +70,6 @@ export const SYMBOL_EMOJI = {
   drop: '💧',
   coin: '🪙',
   undo: '🔄',
-  extra_tube: '🧪',
+  extra_tube: '🧋',
   crown: '👑',
 } as const;

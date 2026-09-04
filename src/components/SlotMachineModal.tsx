@@ -38,6 +38,7 @@ export function SlotMachineModal() {
   const freeSpins = useGameStore((s) => s.freeSpins);
   const lastSpin = useGameStore((s) => s.lastSpin);
   const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const adsReady = useGameStore((s) => s.adsReady);
   const lastMessage = useGameStore((s) => s.lastMessage);
   const betPerLine = useGameStore((s) => s.betPerLine);
   const activeLines = useGameStore((s) => s.activeLines);
@@ -128,6 +129,11 @@ export function SlotMachineModal() {
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
+          <DialogCloseX
+            onPress={() => {
+              if (!spinning) closeModal();
+            }}
+          />
           <ScrollView
             bounces={false}
             showsVerticalScrollIndicator={false}
@@ -161,7 +167,7 @@ export function SlotMachineModal() {
               </View>
               {freeSpins > 0 ? (
                 <View style={styles.balancePill}>
-                  <Text style={styles.balanceLabel}>Free runs</Text>
+                  <Text style={styles.balanceLabel}>Free spins</Text>
                   <Text style={styles.walletText}>×{freeSpins}</Text>
                 </View>
               ) : null}
@@ -171,7 +177,7 @@ export function SlotMachineModal() {
             <View style={styles.cabinet}>
               <View style={styles.cabinetTop}>
                 <View style={styles.hazardBar} />
-                <Text style={styles.cabinetBadge}>LUCKY WINDOW</Text>
+                <Text style={styles.cabinetBadge}>LUCKY</Text>
                 <View style={styles.hazardBar} />
               </View>
 
@@ -269,12 +275,12 @@ export function SlotMachineModal() {
 
             <Text style={styles.cost}>
               {usingFreeSpin
-                ? `Free run · dose ${betPerLine} × ${activeLines} lines (1 / 5 / 10 only)`
+                ? `Free spin · bet ${betPerLine} × ${activeLines} lines (1 / 5 / 10 only)`
                 : freeSpins > 0 && !isFreeSpinBet(betPerLine)
-                  ? `Free runs need dose 1 / 5 / 10 — or pay ${cost}🪙 at dose 25`
+                  ? `Free spins need bet 1 / 5 / 10 — or pay ${cost}🪙 at bet 25`
                   : canAffordSpin
-                    ? `This run costs ${cost}🪙  (${betPerLine} dose × ${activeLines} lines)`
-                    : `Need ${cost}🪙 — balance ${coins}🪙 is too low. Watch an ad for free runs.`}
+                    ? `This spin costs ${cost}🪙  (${betPerLine} bet × ${activeLines} lines)`
+                    : `Need ${cost}🪙 — balance ${coins}🪙 is too low. Watch an ad for free spins.`}
             </Text>
 
             {lastMessage && !spinning ? (
@@ -306,10 +312,17 @@ export function SlotMachineModal() {
                   <Text style={styles.btnGhostText}>Collect</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.btn, styles.btnAccent]}
+                  style={[
+                    styles.btn,
+                    styles.btnAccent,
+                    !adsReady && styles.btnDisabled,
+                  ]}
+                  disabled={!adsReady || isAdLoading}
                   onPress={() => watchAd('rewarded_2x_payout')}
                 >
-                  <Text style={styles.btnWarmText}>Watch Ad · 2×</Text>
+                  <Text style={styles.btnWarmText}>
+                    {adsReady ? 'Watch Ad · 2×' : 'Ad Unavailable'}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -323,10 +336,17 @@ export function SlotMachineModal() {
                   <Text style={styles.btnGhostText}>Maybe Later</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.btn, styles.btnAccent]}
+                  style={[
+                    styles.btn,
+                    styles.btnAccent,
+                    !adsReady && styles.btnDisabled,
+                  ]}
+                  disabled={!adsReady || isAdLoading}
                   onPress={() => watchAd('rewarded_free_spins')}
                 >
-                  <Text style={styles.btnWarmText}>Watch Ad · 3 Runs</Text>
+                  <Text style={styles.btnWarmText}>
+                    {adsReady ? 'Watch Ad · 3 Spins' : 'Ad Unavailable'}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -338,7 +358,7 @@ export function SlotMachineModal() {
                   onPress={closeModal}
                   disabled={spinning}
                 >
-                  <Text style={styles.btnGhostText}>Home</Text>
+                  <Text style={styles.btnGhostText}>Close</Text>
                 </Pressable>
                 {canAffordSpin ? (
                   <Pressable
@@ -350,17 +370,23 @@ export function SlotMachineModal() {
                       {spinning
                         ? 'Spinning…'
                         : usingFreeSpin
-                          ? `Free Run (×${freeSpins})`
-                          : `RUN (−${cost}🪙)`}
+                          ? `Free Spin (×${freeSpins})`
+                          : `SPIN (−${cost}🪙)`}
                     </Text>
                   </Pressable>
                 ) : (
                   <Pressable
-                    style={[styles.btn, styles.btnAccent]}
+                    style={[
+                      styles.btn,
+                      styles.btnAccent,
+                      !adsReady && styles.btnDisabled,
+                    ]}
                     onPress={() => watchAd('rewarded_free_spins')}
-                    disabled={spinning || isAdLoading}
+                    disabled={spinning || isAdLoading || !adsReady}
                   >
-                    <Text style={styles.btnWarmText}>Watch Ad · 3 Runs</Text>
+                    <Text style={styles.btnWarmText}>
+                      {adsReady ? 'Watch Ad · 3 Spins' : 'Ad Unavailable'}
+                    </Text>
                   </Pressable>
                 )}
               </View>
@@ -377,19 +403,19 @@ export function SlotMachineModal() {
             />
             <View style={styles.paytableCard}>
               <DialogCloseX onPress={() => setShowPaytable(false)} />
-              <Text style={styles.paytableTitle}>Reagent Chart</Text>
+              <Text style={styles.paytableTitle}>Pay table</Text>
               <Text style={styles.paytableRow}>👑👑👑  →  50×</Text>
               <Text style={styles.paytableRow}>🪙🪙🪙  →  8×</Text>
               <Text style={styles.paytableRow}>
                 🔄🔄🔄  →  3× + Undo items
               </Text>
               <Text style={styles.paytableRow}>
-                🧪🧪🧪  →  3× + Extra Tube
+                🧋🧋🧋  →  3× + Extra cup
               </Text>
               <Text style={styles.paytableRow}>💧💧💧  →  +1🪙</Text>
               <Text style={styles.paytableRow}>Any pair (not 💧)  →  1×</Text>
               <Text style={styles.paytableNote}>
-                × means times your dose per line. Run cost = dose × lines.
+                × means times your bet per line. Spin cost = bet × lines.
               </Text>
               <Pressable
                 style={styles.paytableClose}
@@ -409,7 +435,7 @@ export function SlotMachineModal() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(4, 18, 24, 0.88)',
+    backgroundColor: 'rgba(42, 20, 24, 0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
@@ -426,6 +452,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 18,
+    paddingTop: 36,
   },
   labEyebrow: {
     color: LAB.label,
@@ -465,7 +492,7 @@ const styles = StyleSheet.create({
   },
   paytableBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(4, 18, 24, 0.72)',
+    backgroundColor: 'rgba(42, 20, 24, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -726,6 +753,9 @@ const styles = StyleSheet.create({
   },
   btnWarm: {
     backgroundColor: LAB.reagent,
+  },
+  btnDisabled: {
+    opacity: 0.45,
   },
   btnGhostText: {
     color: COLORS.text,

@@ -114,7 +114,23 @@ function AppShell() {
 
   useEffect(() => {
     const onBackPress = () => {
-      const { screen, modal, closeModal, goHome } = useGameStore.getState();
+      const { screen, modal, closeModal, goHome, nextLevel } =
+        useGameStore.getState();
+      // Hardware back must match each modal's onRequestClose. A blanket
+      // closeModal() on a sealed ticket leaves the player on a won board.
+      if (modal === 'level_complete') {
+        void nextLevel({ goHome: true });
+        return true;
+      }
+      if (
+        modal === 'campaign_complete' ||
+        modal === 'out_of_lives' ||
+        modal === 'out_of_moves' ||
+        modal === 'ad_extra_moves'
+      ) {
+        goHome();
+        return true;
+      }
       if (modal !== 'none') {
         closeModal();
         return true;
