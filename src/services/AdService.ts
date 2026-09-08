@@ -228,10 +228,10 @@ export function resetAdService(): void {
   singleton = null;
 }
 
-/** Forced interstitials fire on these ticket milestones (10, 20, 30, …). */
-export const INTERSTITIAL_EVERY_N_LEVELS = 10;
+/** Forced interstitials fire on these ticket milestones (5, 10, 15, …). */
+export const INTERSTITIAL_EVERY_N_LEVELS = 5;
 
-/** True for completed puzzle tickets 10, 20, 30, … — not Lucky / free-spin / banner. */
+/** True for completed puzzle tickets 5, 10, 15, … — not Lucky / free-spin / banner. */
 export function isInterstitialClearLevel(level: number): boolean {
   return (
     Number.isInteger(level) &&

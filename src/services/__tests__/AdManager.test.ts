@@ -58,11 +58,11 @@ describe('AdManager policy', () => {
     ).toBe(false);
   });
 
-  it('blocks interstitial off a 10/20/30 milestone even after 90s', async () => {
+  it('blocks interstitial off a 5/10/15 milestone even after 90s', async () => {
     const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: 9,
+        level: 4,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS,
@@ -70,7 +70,7 @@ describe('AdManager policy', () => {
     ).toBe(false);
     expect(
       mgr.canShowInterstitial({
-        level: 15,
+        level: 7,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS,
@@ -78,11 +78,11 @@ describe('AdManager policy', () => {
     ).toBe(false);
   });
 
-  it('blocks interstitial at level 10 before 90s', async () => {
+  it('blocks interstitial at level 5 before 90s', async () => {
     const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: 10,
+        level: 5,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS - 1,
@@ -90,11 +90,11 @@ describe('AdManager policy', () => {
     ).toBe(false);
   });
 
-  it('allows interstitial at tickets 10 and 20 after 90s', async () => {
+  it('allows interstitial at tickets 5 and 10 after 90s', async () => {
     const mgr = await readyManager(0);
     expect(
       mgr.canShowInterstitial({
-        level: 10,
+        level: 5,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS,
@@ -102,7 +102,7 @@ describe('AdManager policy', () => {
     ).toBe(true);
     expect(
       mgr.canShowInterstitial({
-        level: 20,
+        level: 10,
         pourAnimActive: false,
         isNoAdsPurchased: false,
         now: FIRST_AD_DELAY_MS,
@@ -110,14 +110,15 @@ describe('AdManager policy', () => {
     ).toBe(true);
   });
 
-  it('enforces 120s cooldown between interstitials', async () => {
-    const mgr = await readyManager(0, 50_000);
+  it('enforces cooldown between interstitials', async () => {
+    const lastAt = FIRST_AD_DELAY_MS;
+    const mgr = await readyManager(0, lastAt);
     expect(
       mgr.canShowInterstitial({
         level: 10,
         pourAnimActive: false,
         isNoAdsPurchased: false,
-        now: 50_000 + INTERSTITIAL_COOLDOWN_MS - 1,
+        now: lastAt + INTERSTITIAL_COOLDOWN_MS - 1,
       }),
     ).toBe(false);
     expect(
@@ -125,7 +126,7 @@ describe('AdManager policy', () => {
         level: 10,
         pourAnimActive: false,
         isNoAdsPurchased: false,
-        now: 50_000 + INTERSTITIAL_COOLDOWN_MS,
+        now: lastAt + INTERSTITIAL_COOLDOWN_MS,
       }),
     ).toBe(true);
   });

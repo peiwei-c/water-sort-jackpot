@@ -2,9 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import {
   useGameStore,
-  MAX_LIVES,
-  msUntilNextLife,
-  formatRegenCountdown,
   countClaimableMissions,
 } from '../store/gameStore';
 import { MAX_LEVEL } from '../engines/LevelProgression';
@@ -18,8 +15,6 @@ import { BobaScene, BobaPill, HubTile } from './BobaScene';
 
 export function HomeScreen() {
   const coins = useGameStore((s) => s.coins);
-  const lives = useGameStore((s) => s.lives);
-  const nextLifeAt = useGameStore((s) => s.nextLifeAt);
   const unlockedLevel = useGameStore((s) => s.unlockedLevel);
   const session = useGameStore((s) => s.session);
   const missionBoard = useGameStore((s) => s.missionBoard);
@@ -33,7 +28,6 @@ export function HomeScreen() {
   const freeSpins = useGameStore((s) => s.freeSpins);
   const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
   const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
-  const refreshLives = useGameStore((s) => s.refreshLives);
 
   const [audioOpen, setAudioOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -42,20 +36,8 @@ export function HomeScreen() {
     if (!hasSeenLabManual) setManualOpen(true);
   }, [hasSeenLabManual]);
 
-  useEffect(() => {
-    if (lives >= MAX_LIVES) return;
-    const id = setInterval(() => refreshLives(), 1000);
-    return () => clearInterval(id);
-  }, [lives, refreshLives]);
-
   const ticket = session?.level ?? Math.min(unlockedLevel, MAX_LEVEL);
   const claimable = countClaimableMissions(missionBoard);
-  const regenMs =
-    lives < MAX_LIVES ? msUntilNextLife({ lives, nextLifeAt }) : null;
-  const livesChip =
-    regenMs != null
-      ? `🧋 ${lives} · ${formatRegenCountdown(regenMs)}`
-      : `🧋 ${lives}`;
 
   const tap = () => getAudioManager().playSfx('tap');
 
@@ -64,7 +46,6 @@ export function HomeScreen() {
       <View style={styles.root}>
         <View style={styles.topBar}>
           <View style={styles.wallet}>
-            <BobaPill>{livesChip}</BobaPill>
             <BobaPill mango>💰 {coins}</BobaPill>
             {freeSpins > 0 ? <BobaPill>{`🎰 ×${freeSpins}`}</BobaPill> : null}
           </View>

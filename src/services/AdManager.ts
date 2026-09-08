@@ -12,7 +12,7 @@ import {
 } from './AdService';
 
 export const FIRST_AD_DELAY_MS = 90_000;
-export const INTERSTITIAL_COOLDOWN_MS = 120_000;
+export const INTERSTITIAL_COOLDOWN_MS = 30_000;
 /** Reserved bottom inset when banner is visible. */
 export const BANNER_HEIGHT = 50;
 
@@ -75,11 +75,11 @@ export class AdManager {
 
   /**
    * Forced interstitial rules (puzzle clears only — not Lucky/free-spin, not banners):
-   * - only on completed tickets 10, 20, 30, …
+   * - only on completed tickets 5, 10, 15, …
    * - suppressed by Remove Ads
    * - never during pour animation / active gameplay pour
    * - first 90s of session
-   * - min 120s between forced interstitials
+   * - min 30s between forced interstitials
    */
   canShowInterstitial(input: InterstitialGateInput): boolean {
     const now = input.now ?? Date.now();

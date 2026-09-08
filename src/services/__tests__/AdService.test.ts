@@ -65,13 +65,13 @@ describe('AdService mock', () => {
 });
 
 describe('isInterstitialClearLevel', () => {
-  it('is true only on tickets 10, 20, 30, …', () => {
+  it('is true only on tickets 5, 10, 15, …', () => {
     expect(isInterstitialClearLevel(0)).toBe(false);
     expect(isInterstitialClearLevel(1)).toBe(false);
-    expect(isInterstitialClearLevel(9)).toBe(false);
+    expect(isInterstitialClearLevel(4)).toBe(false);
+    expect(isInterstitialClearLevel(5)).toBe(true);
+    expect(isInterstitialClearLevel(6)).toBe(false);
     expect(isInterstitialClearLevel(10)).toBe(true);
-    expect(isInterstitialClearLevel(11)).toBe(false);
-    expect(isInterstitialClearLevel(20)).toBe(true);
-    expect(isInterstitialClearLevel(30)).toBe(true);
+    expect(isInterstitialClearLevel(15)).toBe(true);
   });
 });

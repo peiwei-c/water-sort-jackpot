@@ -12,7 +12,6 @@ import {
   MAX_LIVES,
   createFullLives,
   syncLives,
-  spendLife,
   grantLife,
   msUntilNextLife,
   formatRegenCountdown,
@@ -940,18 +939,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      const spent = spendLife({
-        lives: get().lives,
-        nextLifeAt: get().nextLifeAt,
-      });
-      if (!spent) {
-        set({
-          modal: 'out_of_lives',
-          lastMessage: 'Out of lives',
-        });
-        return;
-      }
-
       const next = createPuzzle(safe);
       set({
         screen: 'play',
@@ -967,7 +954,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         consecutiveFailCount: 0,
         lastMessage: null,
         session: null,
-        ...livesSnapshot(spent),
       });
       persistSoon();
     },
@@ -1108,18 +1094,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restartLevel: () => {
-      const spent = spendLife({
-        lives: get().lives,
-        nextLifeAt: get().nextLifeAt,
-      });
-      if (!spent) {
-        set({
-          modal: 'out_of_lives',
-          lastMessage: 'Out of lives — watch an ad or wait',
-        });
-        return;
-      }
-
       const level = get().level;
       const next = createPuzzle(level);
       const diff = getLevelDifficulty(level);
@@ -1134,7 +1108,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintHighlight: null,
         lastMessage: 'Ticket restarted',
         session: null,
-        ...livesSnapshot(spent),
       });
       persistSoon();
     },
@@ -1185,26 +1158,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         return;
       }
 
-      const spent = spendLife({
-        lives: get().lives,
-        nextLifeAt: get().nextLifeAt,
-      });
-      if (!spent) {
-        collectPendingQuietly(get, set);
-        set({
-          screen: 'home',
-          modal: 'out_of_lives',
-          selectedTube: null,
-          pourAnim: null,
-          session: null,
-          consecutiveFailCount: 0,
-          hintHighlight: null,
-          lastMessage: 'Ticket sealed — need a life for the next one',
-        });
-        persistSoon();
-        return;
-      }
-
       const next = createPuzzle(level);
       const diff = getLevelDifficulty(level);
       const openJackpot = !!opts?.openJackpot;
@@ -1224,7 +1177,6 @@ export const useGameStore = create<GameStore>((set, get) => {
           ? `Ticket ${level} ready · spin Lucky`
           : `Ticket ${level} · ${diff.tierLabel}`,
         session: null,
-        ...livesSnapshot(spent),
       });
       persistSoon();
     },

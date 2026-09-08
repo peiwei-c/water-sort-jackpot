@@ -62,7 +62,7 @@ Legal pages live in `docs/` for GitHub Pages:
 - Level clear → **+10** coins
 - Spin → bet × lines coins (or free spins from rewarded ads)
 - Remove Ads → store price for `com.aquasort.lab.remove_ads` (hides banner + interstitial only; mock only in `__DEV__` / Jest)
-- Interstitial every **3** levels
+- Interstitial every **5** levels
 - Rewarded: extra tube · 1 free spin · 2× payout
 
 ### Persistence / app kill

@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
-import {
-  useGameStore,
-  MAX_LIVES,
-  msUntilNextLife,
-  formatRegenCountdown,
-} from '../store/gameStore';
+import { useGameStore } from '../store/gameStore';
 import { adsDisabled } from '../services/monetizationGate';
 import { APP_NAME } from '../constants/brand';
 import { LabManualModal } from './LabManualModal';
@@ -15,24 +10,8 @@ import { BOBA, FONTS } from '../theme/boba';
 export function GameHUD() {
   const level = useGameStore((s) => s.level);
   const coins = useGameStore((s) => s.coins);
-  const lives = useGameStore((s) => s.lives);
-  const nextLifeAt = useGameStore((s) => s.nextLifeAt);
   const tierLabel = useGameStore((s) => s.tierLabel);
-  const refreshLives = useGameStore((s) => s.refreshLives);
   const [showHelp, setShowHelp] = useState(false);
-
-  useEffect(() => {
-    if (lives >= MAX_LIVES) return;
-    const id = setInterval(() => refreshLives(), 1000);
-    return () => clearInterval(id);
-  }, [lives, refreshLives]);
-
-  const regenMs =
-    lives < MAX_LIVES ? msUntilNextLife({ lives, nextLifeAt }) : null;
-  const livesLabel =
-    regenMs != null
-      ? `🧋 ${lives} · ${formatRegenCountdown(regenMs)}`
-      : `🧋 ${lives}`;
 
   return (
     <>
@@ -50,7 +29,6 @@ export function GameHUD() {
           <Text style={styles.sub}>{tierLabel}</Text>
         </View>
         <View style={styles.pills}>
-          <BobaPill>{livesLabel}</BobaPill>
           <BobaPill mango>💰 {coins}</BobaPill>
         </View>
       </View>
@@ -123,7 +101,7 @@ export function GameControls() {
           <View style={styles.confirmCard}>
             <Text style={styles.confirmTitle}>Restart ticket?</Text>
             <Text style={styles.confirmBody}>
-              This costs 1 life and clears mid-puzzle progress for this ticket.
+              This clears mid-puzzle progress for this ticket.
             </Text>
             <View style={styles.confirmRow}>
               <Pressable
