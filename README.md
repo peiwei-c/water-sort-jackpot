@@ -1,6 +1,6 @@
-# AquaSort Lab
+# Boba Shop
 
-Hyper-casual hybrid: **Water Sort Puzzle** + **3-reel Centrifuge** with AdMob monetization.
+Hyper-casual hybrid: **water-sort puzzle** + **Lucky spin** in a cute tea shop, with AdMob monetization.
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Legal pages live in `docs/` for GitHub Pages:
 
 ### Policy (AdManager)
 
-- **Interstitial**: on “Next Station” only; suppressed for first **90s** or until **Level 4**; **120s** cooldown; never during pour; suppressed by Remove Ads
+- **Interstitial**: on ticket clear only; suppressed for first **90s** or until **Level 4**; **120s** cooldown; never during pour; suppressed by Remove Ads
 - **Banner**: bottom of screen; hidden when Remove Ads purchased
 - **Rewarded** (always available, even with Remove Ads): extra tube · undo (1–3 pours) · hint · skip level (after 2 fails) · extra moves · free spins · 2× payout
 
