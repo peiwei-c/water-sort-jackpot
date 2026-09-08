@@ -9,12 +9,22 @@ import {
 } from '../engines/StoreCatalog';
 import { WATER_COLOR_LABELS } from '../theme/colors';
 import { BOBA } from '../theme/boba';
+import {
+  CUP_CAP_H,
+  CUP_STRAW_H,
+  SEGMENT_H,
+  TUBE_GLASS_PAD,
+  TUBE_W,
+} from './tubeMetrics';
+import { segmentShowsPearls } from './tubePearls';
 
-export const SEGMENT_H = 28;
-export const TUBE_W = 52;
-export const TUBE_GLASS_PAD = 16;
-export const CUP_STRAW_H = 16;
-export const CUP_CAP_H = 14;
+export {
+  CUP_CAP_H,
+  CUP_STRAW_H,
+  SEGMENT_H,
+  TUBE_GLASS_PAD,
+  TUBE_W,
+} from './tubeMetrics';
 
 type Props = {
   tube: TubeData;
@@ -89,6 +99,10 @@ function TubeComponent({
     if (hideTopSegments <= 0) return tube;
     return tube.slice(0, Math.max(0, tube.length - hideTopSegments));
   }, [tube, hideTopSegments]);
+  const displayColors = useMemo(
+    () => [...visibleTube].reverse(),
+    [visibleTube],
+  );
 
   useEffect(() => {
     Animated.spring(lift, {
@@ -185,13 +199,14 @@ function TubeComponent({
             {Array.from({ length: emptySlots }).map((_, i) => (
               <View key={`e-${i}`} style={styles.emptySegment} />
             ))}
-            {[...visibleTube].reverse().map((colorId, i) => {
+            {displayColors.map((colorId, i) => {
               const isTop = i === 0;
-              const isBottom = i === visibleTube.length - 1;
+              const isBottom = i === displayColors.length - 1;
+              const showPearls = segmentShowsPearls(displayColors, i);
               const base = waterColor(paletteId, colorId);
               return (
                 <View
-                  key={`c-${visibleTube.length - 1 - i}-${colorId}`}
+                  key={`c-${displayColors.length - 1 - i}-${colorId}`}
                   style={[
                     styles.segment,
                     { height: SEGMENT_H },
@@ -214,7 +229,7 @@ function TubeComponent({
                       { backgroundColor: shade(base, 55) },
                     ]}
                   />
-                  {isBottom ? (
+                  {showPearls ? (
                     <View style={styles.pearls} pointerEvents="none">
                       <View style={[styles.pearl, styles.pearlDark, { marginBottom: 1 }]} />
                       <View style={[styles.pearl, styles.pearlDark, styles.pearlLg]} />
@@ -261,7 +276,6 @@ export const Tube = memo(TubeComponent, (prev, next) => {
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    marginHorizontal: 4,
     paddingTop: CUP_STRAW_H * 0.35,
   },
   hinted: {

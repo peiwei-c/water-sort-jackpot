@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { Tube, SEGMENT_H, TUBE_GLASS_PAD, CUP_STRAW_H, CUP_CAP_H } from './Tube';
 import type { Tube as TubeData } from '../engines/WaterSortEngine';
 import { waterColor, PALETTE_DEFAULT } from '../engines/StoreCatalog';
 import { useGameStore, POUR_ANIM_MS } from '../store/gameStore';
+import { computeBoardLayout } from './tubeBoardLayout';
 
 type Layout = { x: number; y: number; width: number; height: number };
 
@@ -57,6 +58,11 @@ export function TubeBoard({
   const ribbon = useRef(new Animated.Value(0)).current;
   const droplet = useRef(new Animated.Value(0)).current;
   const animToken = useRef(0);
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  const layout = useMemo(
+    () => computeBoardLayout(displayTubes.length, capacity, area.w, area.h),
+    [displayTubes.length, capacity, area.w, area.h],
+  );
 
   const onLayoutTube = useCallback((index: number, layout: Layout) => {
     layouts.current[index] = layout;
@@ -154,31 +160,57 @@ export function TubeBoard({
   });
 
   return (
-    <View style={styles.board}>
-      {displayTubes.map((tube, index) => (
-        <Tube
-          key={`tube-${index}`}
-          tube={tube}
-          capacity={capacity}
-          index={index}
-          selected={selectedTube === index && !pourAnim}
-          hinted={
-            !!hintHighlight &&
-            (hintHighlight.fromIndex === index ||
-              hintHighlight.toIndex === index)
-          }
-          rareSkin={rareSkin}
-          vialSkinId={vialSkinId}
-          paletteId={paletteId}
-          tiltDir={tiltFor(index)}
-          disabled={!!pourAnim}
-          onSelect={onSelect}
-          onLayoutTube={onLayoutTube}
-        />
-      ))}
+    <View
+      style={styles.viewport}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setArea((prev) =>
+          prev.w === width && prev.h === height ? prev : { w: width, h: height },
+        );
+      }}
+    >
+      <View
+        style={{
+          width: layout.contentW * layout.scale,
+          height: layout.contentH * layout.scale,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <View
+          style={[
+            styles.board,
+            {
+              width: layout.contentW,
+              height: layout.contentH,
+              transform: [{ scale: layout.scale }],
+            },
+          ]}
+        >
+          {displayTubes.map((tube, index) => (
+            <Tube
+              key={`tube-${index}`}
+              tube={tube}
+              capacity={capacity}
+              index={index}
+              selected={selectedTube === index && !pourAnim}
+              hinted={
+                !!hintHighlight &&
+                (hintHighlight.fromIndex === index ||
+                  hintHighlight.toIndex === index)
+              }
+              rareSkin={rareSkin}
+              vialSkinId={vialSkinId}
+              paletteId={paletteId}
+              tiltDir={tiltFor(index)}
+              disabled={!!pourAnim}
+              onSelect={onSelect}
+              onLayoutTube={onLayoutTube}
+            />
+          ))}
 
-      {stream && pourAnim ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          {stream && pourAnim ? (
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Animated.View
             style={{
               position: 'absolute',
@@ -238,18 +270,27 @@ export function TubeBoard({
           />
         </View>
       ) : null}
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  viewport: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'visible',
+  },
   board: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 28,
+    alignContent: 'center',
     gap: 4,
     position: 'relative',
     overflow: 'visible',

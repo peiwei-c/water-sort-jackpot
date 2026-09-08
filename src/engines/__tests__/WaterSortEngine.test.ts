@@ -333,7 +333,7 @@ describe('WaterSortEngine', () => {
       const laterScores: number[] = [];
       for (let seed = 0; seed < 16; seed++) {
         earlyScores.push(disorderScore(WaterSortEngine.createDefaultLevel(1).getTubes(), 4));
-        laterScores.push(disorderScore(WaterSortEngine.createDefaultLevel(20).getTubes(), 4));
+        laterScores.push(disorderScore(WaterSortEngine.createDefaultLevel(200).getTubes(), 4));
       }
       const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
       expect(avg(laterScores)).toBeGreaterThan(avg(earlyScores));
@@ -394,8 +394,8 @@ describe('WaterSortEngine', () => {
 
     it('gets harder by adding colors across levels', () => {
       const early = getLevelDifficulty(1);
-      const mid = getLevelDifficulty(30);
-      const late = getLevelDifficulty(85);
+      const mid = getLevelDifficulty(125);
+      const late = getLevelDifficulty(275);
 
       expect(mid.colorCount).toBeGreaterThan(early.colorCount);
       expect(late.colorCount).toBeGreaterThan(mid.colorCount);

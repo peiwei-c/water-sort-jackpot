@@ -31,15 +31,17 @@ export function PlayScreen() {
             overflowVisible
             menu={`Now serving · ${tubesCount} drinks · ${movesLeft} pours`}
           >
-            <TubeBoard
-              tubes={tubes}
-              capacity={capacity}
-              selectedTube={selectedTube}
-              vialSkinId={equippedVialId}
-              paletteId={equippedPaletteId}
-              rareSkin={rareSkinUnlocked}
-              onSelect={selectTube}
-            />
+            <View style={styles.boardSlot}>
+              <TubeBoard
+                tubes={tubes}
+                capacity={capacity}
+                selectedTube={selectedTube}
+                vialSkinId={equippedVialId}
+                paletteId={equippedPaletteId}
+                rareSkin={rareSkinUnlocked}
+                onSelect={selectTube}
+              />
+            </View>
           </WoodCounter>
           <Text style={styles.hint}>
             {lastMessage || 'Pour to finish the ticket'}
@@ -60,6 +62,12 @@ const styles = StyleSheet.create({
     zIndex: 1,
     paddingHorizontal: 10,
     minHeight: 0,
+  },
+  boardSlot: {
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
+    overflow: 'visible',
   },
   hint: {
     textAlign: 'center',

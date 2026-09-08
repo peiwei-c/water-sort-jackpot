@@ -1,6 +1,6 @@
 /**
  * 3650-level campaign difficulty curve.
- * Color dwell is 10 levels by default; Normal 20, Hard 30, Expert 40.
+ * Beginner/Easy last 50 tickets each; Normal/Hard/Expert last 100 per color.
  * After the 12-color cap, difficulty continues via move-budget squeeze
  * and scramble complexity. Pure data + math — no UI or ad code.
  */
@@ -12,14 +12,12 @@ export const LEVEL_CAPACITY = 4;
 export const START_TOTAL_TUBES = 5;
 /** Colors at level 1 (4 colors + 1 empty = 5 tubes). */
 export const START_COLOR_COUNT = 4;
-/** Default levels spent at a color (Beginner, Easy). */
-export const LEVELS_PER_TUBE_STEP = 10;
-/** Levels spent at each Normal color (6 then 7). */
-export const NORMAL_LEVELS_PER_COLOR = 20;
-/** Levels spent at each Hard color (8 then 9). */
-export const HARD_LEVELS_PER_COLOR = 30;
-/** Levels spent at each Expert color (10 then 11). */
-export const EXPERT_LEVELS_PER_COLOR = 40;
+/** Last ticket of the first (Beginner) band. */
+export const EASY_ONBOARDING_END_LEVEL = 50;
+/** Levels spent at Beginner and Easy colors. */
+export const LEVELS_PER_TUBE_STEP = 50;
+/** Levels spent at each Normal, Hard, and Expert color. */
+export const MID_TIER_LEVELS_PER_COLOR = 100;
 /** Palette / engine cap for distinct liquids. */
 export const MAX_COLOR_COUNT = 12;
 /** Helper empties baked into every generated board. */
@@ -32,12 +30,12 @@ export const BASE_EMPTY_TUBES = 1;
 export const LEVELS_AT_COLOR: readonly number[] = [
   LEVELS_PER_TUBE_STEP, // 4 — Beginner
   LEVELS_PER_TUBE_STEP, // 5 — Easy
-  NORMAL_LEVELS_PER_COLOR, // 6 — Normal
-  NORMAL_LEVELS_PER_COLOR, // 7 — Normal
-  HARD_LEVELS_PER_COLOR, // 8 — Hard
-  HARD_LEVELS_PER_COLOR, // 9 — Hard
-  EXPERT_LEVELS_PER_COLOR, // 10 — Expert
-  EXPERT_LEVELS_PER_COLOR, // 11 — Expert
+  MID_TIER_LEVELS_PER_COLOR, // 6 — Normal
+  MID_TIER_LEVELS_PER_COLOR, // 7 — Normal
+  MID_TIER_LEVELS_PER_COLOR, // 8 — Hard
+  MID_TIER_LEVELS_PER_COLOR, // 9 — Hard
+  MID_TIER_LEVELS_PER_COLOR, // 10 — Expert
+  MID_TIER_LEVELS_PER_COLOR, // 11 — Expert
 ];
 
 /** First level that uses the 12-color cap. */
@@ -84,12 +82,12 @@ function tierFor(
 
 /**
  * Fluid tubes = colors.
- * Beginner 1–10: 4 colors (10)
- * Easy 11–20: 5 colors (10)
- * Normal 21–40 / 41–60: 6 then 7 colors (20 each)
- * Hard 61–90 / 91–120: 8 then 9 colors (30 each)
- * Expert 121–160 / 161–200: 10 then 11 colors (40 each)
- * Level 201+: 12 colors (max)
+ * Beginner 1–50: 4 colors (50)
+ * Easy 51–100: 5 colors (50)
+ * Normal 101–200 / 201–300: 6 then 7 colors (100 each)
+ * Hard 301–400 / 401–500: 8 then 9 colors (100 each)
+ * Expert 501–600 / 601–700: 10 then 11 colors (100 each)
+ * Level 701+: 12 colors (max)
  */
 function colorCountFor(level: number): number {
   let remaining = level;
@@ -174,7 +172,7 @@ export function isCampaignComplete(completedLevel: number): boolean {
  * Sample milestones for docs / tests — verifies the tube/color ramp.
  */
 export function sampleDifficultyCurve(
-  steps: number[] = [1, 10, 20, 40, 60, 90, 120, 160, 201, 3650],
+  steps: number[] = [1, 50, 51, 100, 200, 300, 400, 500, 600, 701, 3650],
 ): LevelDifficulty[] {
   return steps.map(getLevelDifficulty);
 }

@@ -27,6 +27,10 @@ export function HomeScreen() {
   const openStore = useGameStore((s) => s.openStore);
   const openMissions = useGameStore((s) => s.openMissions);
   const openSlotMachine = useGameStore((s) => s.openSlotMachine);
+  const watchAd = useGameStore((s) => s.watchAd);
+  const adsReady = useGameStore((s) => s.adsReady);
+  const isAdLoading = useGameStore((s) => s.isAdLoading);
+  const freeSpins = useGameStore((s) => s.freeSpins);
   const markLabManualSeen = useGameStore((s) => s.markLabManualSeen);
   const hasSeenLabManual = useGameStore((s) => s.hasSeenLabManual);
   const refreshLives = useGameStore((s) => s.refreshLives);
@@ -58,9 +62,31 @@ export function HomeScreen() {
   return (
     <BobaScene>
       <View style={styles.root}>
-        <View style={styles.wallet}>
-          <BobaPill>{livesChip}</BobaPill>
-          <BobaPill mango>💰 {coins}</BobaPill>
+        <View style={styles.topBar}>
+          <View style={styles.wallet}>
+            <BobaPill>{livesChip}</BobaPill>
+            <BobaPill mango>💰 {coins}</BobaPill>
+            {freeSpins > 0 ? <BobaPill>{`🎰 ×${freeSpins}`}</BobaPill> : null}
+          </View>
+          <Pressable
+            onPress={() => {
+              tap();
+              void watchAd('rewarded_free_spins');
+            }}
+            disabled={!adsReady || isAdLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Watch an ad for a free Lucky spin"
+            accessibilityState={{ disabled: !adsReady || isAdLoading }}
+            style={({ pressed }) => [
+              styles.adsBtn,
+              (!adsReady || isAdLoading) && styles.adsBtnOff,
+              pressed && adsReady && !isAdLoading && styles.adsBtnPressed,
+            ]}
+          >
+            <Text style={styles.adsBtnText}>
+              {isAdLoading ? 'Watching…' : adsReady ? '📺 Ads' : 'Ads off'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.hub}>
@@ -167,11 +193,39 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 10,
   },
-  wallet: {
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
     zIndex: 2,
+  },
+  wallet: {
+    flexDirection: 'row',
+    flexShrink: 1,
+    gap: 8,
+  },
+  adsBtn: {
+    backgroundColor: BOBA.straw,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    shadowColor: BOBA.strawDeep,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  adsBtnOff: {
+    opacity: 0.45,
+  },
+  adsBtnPressed: {
+    transform: [{ translateY: 2 }],
+  },
+  adsBtnText: {
+    fontFamily: FONTS.bodyBold,
+    fontSize: 15,
+    color: BOBA.cream,
   },
   hub: {
     flex: 1,

@@ -79,6 +79,8 @@ import {
   scaledMoveLimit,
 } from '../engines/StoreCatalog';
 export const EXTRA_MOVES_FROM_AD = 5;
+/** Lucky spins granted by a rewarded free-spin ad. */
+export const FREE_SPINS_FROM_AD = 1;
 export const POUR_ANIM_MS = 520;
 /** Failures on the same station before Skip Level is offered. */
 export const SKIP_AFTER_FAILS = 2;
@@ -1512,13 +1514,21 @@ export const useGameStore = create<GameStore>((set, get) => {
           persistSoon();
         } else if (placement === 'rewarded_free_spins') {
           const bet = get().betPerLine;
+          const modal = get().modal;
+          const luckyOpen =
+            modal === 'slot_machine' ||
+            modal === 'spin_result' ||
+            modal === 'ad_2x_payout' ||
+            modal === 'ad_free_spins';
           set({
             isAdLoading: false,
-            freeSpins: get().freeSpins + 3,
+            freeSpins: get().freeSpins + FREE_SPINS_FROM_AD,
             // Free spins only apply at 1/5/10 — clamp if on 25
             betPerLine: isFreeSpinBet(bet) ? bet : 10,
-            modal: 'slot_machine',
-            lastMessage: '+3 Lucky spins (bet 1 / 5 / 10 only)',
+            modal: luckyOpen ? 'slot_machine' : modal,
+            lastMessage: `+${FREE_SPINS_FROM_AD} Lucky spin${
+              FREE_SPINS_FROM_AD === 1 ? '' : 's'
+            } (bet 1 / 5 / 10 only)`,
           });
         } else if (placement === 'rewarded_2x_payout') {
           set({ isAdLoading: false });

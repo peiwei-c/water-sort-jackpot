@@ -25,7 +25,7 @@ import {
   type SlotGrid,
   type SlotSymbol,
 } from '../engines/JackpotEngine';
-import { useGameStore } from '../store/gameStore';
+import { FREE_SPINS_FROM_AD, useGameStore } from '../store/gameStore';
 import { COLORS, LAB } from '../theme/colors';
 import { DialogCloseX } from './DialogCloseX';
 
@@ -345,7 +345,11 @@ export function SlotMachineModal() {
                   onPress={() => watchAd('rewarded_free_spins')}
                 >
                   <Text style={styles.btnWarmText}>
-                    {adsReady ? 'Watch Ad · 3 Spins' : 'Ad Unavailable'}
+                    {adsReady
+                      ? `Watch Ad · ${FREE_SPINS_FROM_AD} Spin${
+                          FREE_SPINS_FROM_AD === 1 ? '' : 's'
+                        }`
+                      : 'Ad Unavailable'}
                   </Text>
                 </Pressable>
               </View>
@@ -385,7 +389,11 @@ export function SlotMachineModal() {
                     disabled={spinning || isAdLoading || !adsReady}
                   >
                     <Text style={styles.btnWarmText}>
-                      {adsReady ? 'Watch Ad · 3 Spins' : 'Ad Unavailable'}
+                      {adsReady
+                        ? `Watch Ad · ${FREE_SPINS_FROM_AD} Spin${
+                            FREE_SPINS_FROM_AD === 1 ? '' : 's'
+                          }`
+                        : 'Ad Unavailable'}
                     </Text>
                   </Pressable>
                 )}
